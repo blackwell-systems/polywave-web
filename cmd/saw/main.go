@@ -6,6 +6,9 @@ import (
 	"os"
 )
 
+// version is set at build time via -ldflags "-X main.version=...".
+var version = "dev"
+
 func main() {
 	if len(os.Args) < 2 {
 		printUsage(os.Stderr)
@@ -38,7 +41,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "--version", "-version":
-		fmt.Println("saw v0.1.0")
+		fmt.Printf("saw %s\n", version)
 	case "--help", "-help", "help":
 		printUsage(os.Stdout)
 	default:

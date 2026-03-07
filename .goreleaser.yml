@@ -1,10 +1,8 @@
 version: 2
 
-project_name: saw
-
 before:
   hooks:
-    - go mod verify
+    - go mod tidy
 
 builds:
   - id: saw
@@ -13,43 +11,69 @@ builds:
     env:
       - CGO_ENABLED=0
     goos:
-      - darwin
       - linux
+      - darwin
     goarch:
       - amd64
       - arm64
     ldflags:
       - -s -w
+      - -X main.version={{.Version}}
 
 archives:
   - id: saw
-    formats: [tar.gz]
-    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-    format_overrides:
-      - goos: windows
-        formats: [zip]
+    format: tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE*
+      - README*
+      - CHANGELOG*
 
 checksum:
-  name_template: checksums.txt
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: Features
+      regexp: '^feat:'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix:'
+      order: 1
+    - title: Others
+      order: 999
 
 release:
   github:
     owner: blackwell-systems
     name: scout-and-wave-go
+  draft: false
+  prerelease: auto
 
-brews:
-  - name: saw
-    repository:
-      owner: blackwell-systems
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    commit_author:
-      name: blackwell-systems
-      email: noreply@blackwell.systems
-    homepage: https://github.com/blackwell-systems/scout-and-wave-go
-    description: CLI for the Scout-and-Wave parallel agent coordination protocol
-    license: MIT
-    install: |
-      bin.install "saw"
-    test: |
-      system "#{bin}/saw", "--version"
+# Brew publishing disabled - requires PAT with cross-repo permissions
+# Formula is manually maintained in blackwell-systems/homebrew-tap
+# brews:
+#   - name: saw
+#     repository:
+#       owner: blackwell-systems
+#       name: homebrew-tap
+#       token: "{{ .Env.GITHUB_TOKEN }}"
+#     directory: Formula
+#     homepage: https://github.com/blackwell-systems/scout-and-wave-go
+#     description: "CLI for the Scout-and-Wave parallel agent coordination protocol"
+#     license: MIT
+#     install: |
+#       bin.install "saw"
+#     test: |
+#       system "#{bin}/saw", "--version"
