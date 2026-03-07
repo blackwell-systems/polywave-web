@@ -34,3 +34,4 @@ Thumbs.db
 # SAW artifacts
 .claude/
 docs/IMPL/IMPL-*.md
+!docs/IMPL/IMPL-demo-*.md
