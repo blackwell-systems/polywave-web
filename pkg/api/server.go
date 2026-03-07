@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"time"
 )
@@ -35,10 +36,11 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("POST /api/impl/{slug}/approve", s.handleApprove)
 	s.mux.HandleFunc("POST /api/impl/{slug}/reject", s.handleReject)
 	s.mux.HandleFunc("GET /api/wave/{slug}/events", s.handleWaveEvents)
-	s.mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, "saw serve is running")
-	})
+	sub, err := fs.Sub(staticFiles, "web/dist")
+	if err != nil {
+		panic("saw: failed to sub embed.FS: " + err.Error())
+	}
+	s.mux.Handle("/", http.FileServer(http.FS(sub)))
 
 	return s
 }
