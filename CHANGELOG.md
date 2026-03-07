@@ -15,6 +15,16 @@ All notable changes to this project will be documented in this file.
 - CLI flags: `--addr`, `--impl-dir`, `--repo`, `--no-browser`
 - Auto-opens browser on macOS/Linux
 
+**Web UI frontend (React + TypeScript + Tailwind)**
+- `web/` — Vite-based React project with TypeScript and Tailwind CSS
+- `ReviewScreen` — IMPL doc review with suitability badge, file ownership table, wave structure diagram, interface contracts display, and approve/reject action buttons
+- `WaveBoard` — live wave execution dashboard with per-wave progress bars, agent cards showing status/files/errors, and scaffold status row
+- `useWaveEvents` — SSE hook that subscribes to `/api/wave/{slug}/events` and maintains live agent/wave state
+- `AgentCard` — color-coded status badges (pending/running/complete/failed) with file list and failure details
+- `ProgressBar` — animated progress bar with label and percentage
+- `web/embed.go` + `pkg/api/embed.go` — `go:embed` integration bakes `web/dist/` into the Go binary; single `saw` binary serves the React app
+- `Makefile` — `make build` runs `npm run build` then `go build`; `make clean` removes artifacts
+
 ## [0.1.1] - 2026-03-06
 
 ### Added
