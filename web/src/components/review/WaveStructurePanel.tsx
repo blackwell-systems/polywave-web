@@ -29,29 +29,36 @@ interface TimelineNode {
   agentCount?: number
 }
 
-function TimelineDot({ type }: { type: NodeType }) {
+function TimelineDot({ type, filled }: { type: NodeType; filled: boolean }) {
+  if (filled) {
+    // Completed state — filled dots
+    switch (type) {
+      case 'wave':
+        return <div className="w-5 h-5 rounded-full bg-primary border-2 border-primary" />
+      case 'complete':
+        return <div className="w-5 h-5 rounded-full bg-primary border-2 border-primary ring-2 ring-primary/20" />
+      case 'merge':
+        return <div className="w-3 h-3 rounded-full bg-muted-foreground/60 border-2 border-muted-foreground/60" />
+      default:
+        return <div className="w-3 h-3 rounded-full bg-muted-foreground/60 border-2 border-muted-foreground/60" />
+    }
+  }
+  // Pending state — hollow dots
   switch (type) {
     case 'wave':
-      return (
-        <div className="w-4 h-4 rounded-full bg-primary border-2 border-primary shadow-sm shadow-primary/30" />
-      )
-    case 'merge':
-      return (
-        <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40" />
-      )
+      return <div className="w-5 h-5 rounded-full border-2 border-primary" />
     case 'complete':
-      return (
-        <div className="w-4 h-4 rounded-full bg-primary border-2 border-primary ring-2 ring-primary/20" />
-      )
+      return <div className="w-5 h-5 rounded-full border-2 border-primary ring-2 ring-primary/20" />
+    case 'merge':
+      return <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40" />
     default:
-      return (
-        <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40" />
-      )
+      return <div className="w-3 h-3 rounded-full border-2 border-muted-foreground/40" />
   }
 }
 
 export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): JSX.Element {
   const sortedWaves = [...impl.waves].sort((a, b) => a.number - b.number)
+  const isComplete = impl.doc_status === 'COMPLETE'
 
   // Build timeline nodes
   const nodes: TimelineNode[] = []
@@ -92,13 +99,13 @@ export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): J
       <CardContent>
         <div className="relative pl-8">
           {/* Vertical rail */}
-          <div className="absolute left-[7px] top-2 bottom-2 w-px bg-border" />
+          <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
 
           {nodes.map((node, i) => (
             <div key={i} className={`relative ${i > 0 ? (node.type === 'wave' ? 'mt-6' : 'mt-4') : ''}`}>
               {/* Dot on rail */}
-              <div className="absolute -left-8 flex items-center justify-center" style={{ top: node.type === 'wave' ? 14 : 2, width: 16 }}>
-                <TimelineDot type={node.type} />
+              <div className="absolute -left-8 flex items-center justify-center w-5" style={{ top: node.type === 'wave' ? 14 : 2 }}>
+                <TimelineDot type={node.type} filled={isComplete} />
               </div>
 
               {node.type === 'wave' ? (

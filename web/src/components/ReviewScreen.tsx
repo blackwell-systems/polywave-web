@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { IMPLDocResponse } from '../types'
 import ActionButtons from './ActionButtons'
 import { Button } from './ui/button'
@@ -39,6 +39,19 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const [activePanels, setActivePanels] = useState<PanelKey[]>(
     ['wave-structure', 'dependency-graph']
   )
+  const [isStuck, setIsStuck] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsStuck(!entry.isIntersecting),
+      { threshold: 0 }
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const togglePanel = (key: PanelKey) => {
     setActivePanels(prev =>
@@ -64,7 +77,15 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
         {/* Toggle buttons - grayed out if NOT SUITABLE */}
         <div className={isNotSuitable ? 'opacity-40 pointer-events-none' : ''}>
-          <div className="sticky top-0 z-40 -mx-4 px-4 py-3 mb-6 bg-background/80 backdrop-blur-sm border-b border-border/50">
+          <div ref={sentinelRef} className="h-0" />
+          <div
+            className={`sticky top-0 z-40 py-3 mb-6 transition-colors duration-200 ${
+              isStuck
+                ? 'bg-muted/15 backdrop-blur-sm border-b border-border/50'
+                : ''
+            }`}
+            style={isStuck ? { marginLeft: 'calc(-50vw + 50%)', marginRight: 'calc(-50vw + 50%)', paddingLeft: 'calc(50vw - 50% + 1rem)', paddingRight: 'calc(50vw - 50% + 1rem)' } : {}}
+          >
             <div className="flex flex-wrap gap-2">
               {panels.map(panel => (
                 <Button

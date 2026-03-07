@@ -17,7 +17,8 @@ All notable changes to this project will be documented in this file.
 - **SVG dependency DAG** — interactive directed acyclic graph with bezier curve edges, arrow markers, colored wave column backgrounds, and high-contrast inverted tooltips on hover
 - **Custom scrollbar** — subtle green scrollbar (green-300 light, green-400 dark) for better immersion
 - **Click-ordered panels** — toggled panels render in click order, not fixed order
-- **Sticky toggle bar** — panel buttons pin to top on scroll with backdrop blur
+- **Sticky toggle bar** — panel buttons pin to top on scroll with full-width backdrop blur and subtle tint; activates only when scrolled (IntersectionObserver)
+- **Timeline status** — wave/merge/complete dots reflect IMPL doc_status: hollow when active, filled when complete
 
 **Markdown rendering**
 - **Full markdown in all panels** — shared `MarkdownContent` component renders proper markdown (headings, lists, bold, inline code) across Agent Prompts, Interface Contracts, Post-Merge Checklist, and Known Issues
