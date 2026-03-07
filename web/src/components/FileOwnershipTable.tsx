@@ -6,14 +6,14 @@ interface FileOwnershipTableProps {
 }
 
 const ROW_COLORS = [
-  'bg-blue-50',
-  'bg-purple-50',
-  'bg-orange-50',
-  'bg-teal-50',
-  'bg-pink-50',
+  { bg: 'bg-blue-50 dark:bg-blue-950', text: 'text-gray-800 dark:text-blue-200' },
+  { bg: 'bg-purple-50 dark:bg-purple-950', text: 'text-gray-800 dark:text-purple-200' },
+  { bg: 'bg-orange-50 dark:bg-orange-950', text: 'text-gray-800 dark:text-orange-200' },
+  { bg: 'bg-teal-50 dark:bg-teal-950', text: 'text-gray-800 dark:text-teal-200' },
+  { bg: 'bg-pink-50 dark:bg-pink-950', text: 'text-gray-800 dark:text-pink-200' },
 ]
 
-function getAgentColor(agentIndex: number): string {
+function getAgentColor(agentIndex: number): { bg: string; text: string } {
   return ROW_COLORS[agentIndex % ROW_COLORS.length]
 }
 
@@ -53,13 +53,13 @@ export default function FileOwnershipTable({ fileOwnership, col4Name }: FileOwne
           </thead>
           <tbody>
             {sorted.map((entry, idx) => {
-              const rowColor = agentColorMap.get(entry.agent) ?? 'bg-white'
+              const colors = agentColorMap.get(entry.agent) ?? { bg: 'bg-white dark:bg-gray-900', text: 'text-gray-800 dark:text-gray-100' }
               return (
-                <tr key={idx} className={`${rowColor} border-b border-gray-100 dark:border-gray-800 last:border-0`}>
-                  <td className="px-4 py-2 font-mono text-xs text-gray-800 dark:text-gray-100">{entry.file}</td>
-                  <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{entry.agent}</td>
-                  {hasWaves && <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{entry.wave || ''}</td>}
-                  {hasCol4 && <td className="px-4 py-2 text-gray-700 dark:text-gray-300 capitalize">{isCol4DependsOn ? (entry.depends_on || '') : (entry.action || '')}</td>}
+                <tr key={idx} className={`${colors.bg} border-b border-gray-100 dark:border-gray-800 last:border-0`}>
+                  <td className={`px-4 py-2 font-mono text-xs ${colors.text}`}>{entry.file}</td>
+                  <td className={`px-4 py-2 ${colors.text}`}>{entry.agent}</td>
+                  {hasWaves && <td className={`px-4 py-2 ${colors.text}`}>{entry.wave || ''}</td>}
+                  {hasCol4 && <td className={`px-4 py-2 ${colors.text} capitalize`}>{isCol4DependsOn ? (entry.depends_on || '') : (entry.action || '')}</td>}
                 </tr>
               )
             })}
