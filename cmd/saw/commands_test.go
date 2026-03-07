@@ -194,6 +194,93 @@ func TestRunScaffold_MissingImpl(t *testing.T) {
 	}
 }
 
+// TestRunWave_Auto_MultiWave_Integration verifies that when --auto is set,
+// runWave iterates all waves in a multi-wave IMPL doc without user prompting.
+// Uses the fake orchestrator seam (orchestratorNewFunc).
+func TestRunWave_Auto_MultiWave_Integration(t *testing.T) {
+	// Build a two-wave fake orchestrator.
+	fake := &fakeWaveOrch{
+		doc: &types.IMPLDoc{
+			FeatureName: "Integration Test Feature",
+			Waves: []types.Wave{
+				{
+					Number: 1,
+					Agents: []types.AgentSpec{{Letter: "A", Prompt: "wave1 work"}},
+				},
+				{
+					Number: 2,
+					Agents: []types.AgentSpec{{Letter: "B", Prompt: "wave2 work"}},
+				},
+			},
+			TestCommand: "go test ./...",
+		},
+		state: types.SuitabilityPending,
+	}
+
+	// Set up the temp dir with .git and IMPL doc file.
+	implPath, cleanup := setupRunWaveTest(t, fake)
+	defer cleanup()
+
+	// Run with --auto so no stdin prompt blocks between waves.
+	err := runWave([]string{"--impl", implPath, "--wave", "1", "--auto"})
+	if err != nil {
+		t.Fatalf("runWave returned unexpected error: %v", err)
+	}
+
+	// Both waves must have been executed via RunWave.
+	if len(fake.runWaveCalls) != 2 {
+		t.Fatalf("expected RunWave called twice (once per wave), got %d calls: %v",
+			len(fake.runWaveCalls), fake.runWaveCalls)
+	}
+	if fake.runWaveCalls[0] != 1 {
+		t.Errorf("expected first RunWave call for wave 1, got: %d", fake.runWaveCalls[0])
+	}
+	if fake.runWaveCalls[1] != 2 {
+		t.Errorf("expected second RunWave call for wave 2, got: %d", fake.runWaveCalls[1])
+	}
+
+	// Both waves must have been merged.
+	if len(fake.mergeWaveCalls) != 2 {
+		t.Errorf("expected MergeWave called twice, got %d calls: %v",
+			len(fake.mergeWaveCalls), fake.mergeWaveCalls)
+	}
+
+	// Verification ran for both waves.
+	if len(fake.runVerifCalls) != 2 {
+		t.Errorf("expected RunVerification called twice, got %d calls: %v",
+			len(fake.runVerifCalls), fake.runVerifCalls)
+	}
+
+	// Final state is Complete.
+	if fake.state != types.Complete {
+		t.Errorf("expected final state Complete, got: %s", fake.state)
+	}
+}
+
+// TestPrintUsage_IncludesMerge verifies that printUsage includes the merge
+// subcommand description after the merge dispatch was added to main.go.
+func TestPrintUsage_IncludesMerge(t *testing.T) {
+	var buf bytes.Buffer
+	printUsage(&buf)
+	output := buf.String()
+
+	if !strings.Contains(output, "merge") {
+		t.Errorf("printUsage output missing 'merge' subcommand; full output:\n%s", output)
+	}
+}
+
+// TestRunMerge_MissingImpl verifies that runMerge returns an error when --impl
+// is not provided.
+func TestRunMerge_MissingImpl(t *testing.T) {
+	err := runMerge([]string{})
+	if err == nil {
+		t.Fatal("expected error when --impl not provided, got nil")
+	}
+	if !strings.Contains(err.Error(), "--impl") {
+		t.Errorf("expected error to mention --impl, got: %v", err)
+	}
+}
+
 // TestRunWave_AutoFlag verifies that --auto parses without error.
 // We pass an invalid --impl path so runWave exits early after flag parse.
 func TestRunWave_AutoFlag(t *testing.T) {
