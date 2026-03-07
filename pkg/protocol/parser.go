@@ -209,6 +209,41 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 		return doc, fmt.Errorf("ParseIMPLDoc: %q: missing '# IMPL:' title", path)
 	}
 
+	// If no ## Wave N headers existed, all agents land in a single auto-created
+	// wave. Use the file ownership table's wave column to regroup them.
+	if len(doc.Waves) == 1 && len(doc.FileOwnership) > 0 {
+		// Build agent -> wave number from ownership table.
+		agentWave := make(map[string]int)
+		maxWave := 1
+		for _, info := range doc.FileOwnership {
+			if info.Wave > 0 {
+				if prev, ok := agentWave[info.Agent]; !ok || info.Wave < prev {
+					agentWave[info.Agent] = info.Wave
+				}
+				if info.Wave > maxWave {
+					maxWave = info.Wave
+				}
+			}
+		}
+		if maxWave > 1 {
+			origAgents := doc.Waves[0].Agents
+			waveMap := make(map[int][]types.AgentSpec)
+			for _, a := range origAgents {
+				wn := 1
+				if w, ok := agentWave[a.Letter]; ok {
+					wn = w
+				}
+				waveMap[wn] = append(waveMap[wn], a)
+			}
+			doc.Waves = nil
+			for wn := 1; wn <= maxWave; wn++ {
+				if agents, ok := waveMap[wn]; ok {
+					doc.Waves = append(doc.Waves, types.Wave{Number: wn, Agents: agents})
+				}
+			}
+		}
+	}
+
 	// Populate FilesOwned for each agent from the authoritative FileOwnership table.
 	for i := range doc.Waves {
 		for j := range doc.Waves[i].Agents {
