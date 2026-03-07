@@ -1,6 +1,49 @@
-## [0.12.0] - 2026-03-07
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [0.13.0] - 2026-03-07
 
 ### Added
+
+**Multi-select toggle panel interface**
+- **Toggle panels** — ReviewScreen refactored to use toggleable panel buttons; multiple panels can be active simultaneously and stack vertically
+- **Overview always visible** — Overview panel displayed at top by default, no toggle button needed
+- **Default panels** — Wave Structure and Dependency Graph pre-selected for immediate visibility
+
+**Enhanced visualizations**
+- **Pipeline wave structure** — horizontal lanes for each phase (Scout, Scaffold, Waves, Complete) with agents displayed inline
+- **Subtle agent badges** — 10% opacity backgrounds with colored borders instead of solid fills (supports A-K agents)
+- **Parsed dependency graph** — visual agent cards with color-coded dependencies, root/leaf indicators
+- **Custom scrollbar** — subtle green scrollbar (green-300 light, green-400 dark) for better immersion
+
+**Syntax highlighting**
+- **Code block highlighting** — Interface Contracts and Agent Prompts parse markdown fences with language-specific syntax highlighting (Go, TypeScript, Rust, etc.)
+- **Dark/light theme support** — VS Code Dark+/Light themes switch automatically
+
+**Parser extensions**
+- **5 new IMPL sections** — ParseIMPLDoc extracts: Known Issues, Scaffolds detail, Interface Contracts, Dependency Graph, Post-Merge Checklist
+- **New types** — KnownIssue and ScaffoldFile types in pkg/types/types.go
+- **Test coverage** — 6 new parser tests (24/24 passing)
+
+**API layer extensions**
+- **6 new response fields** — known_issues, scaffolds_detail, interface_contracts_text, dependency_graph_text, post_merge_checklist_text, agent_prompts
+- **3 new API types** — KnownIssueEntry, ScaffoldFileEntry, AgentPromptEntry with mapper functions
+
+**TypeScript types**
+- **Extended IMPLDocResponse** — 3 new interfaces in web/src/types.ts
+
+**Demo content**
+- **demo-complex IMPL** — complex 3-wave structure with 11 agents (A-K), scaffold step, rich dependencies for UI showcase
+
+**Strategic planning**
+- **ROADMAP.md** — documents SAW as provider-agnostic infrastructure; Phase 1 includes multi-provider backend (v0.14.0), UI polish (v0.15.0), demo/docs (v0.16.0)
+
+### Fixed
+
+- **Duplicate File Ownership header** — removed CardHeader from FileOwnershipPanel to avoid duplicate title
+
+---
 
 - **E15: IMPL doc completion lifecycle** — parser recognizes `<!-- SAW:COMPLETE YYYY-MM-DD -->` tag and populates `DocStatus`/`CompletedAt` on `IMPLDoc`
 - **API: `doc_status` field** — `GET /api/impl/{slug}` returns `doc_status: "ACTIVE" | "COMPLETE"` and `completed_at`
