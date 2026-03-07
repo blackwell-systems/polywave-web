@@ -1,16 +1,206 @@
 package orchestrator
 
 import (
+	"context"
+	"errors"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/worktree"
 )
 
 // makeOrch is a helper that returns a fresh Orchestrator backed by an
 // empty IMPLDoc so tests have no pkg/protocol dependency.
 func makeOrch() *Orchestrator {
 	return newFromDoc(&types.IMPLDoc{}, "/repo", "/repo/IMPL.md")
+}
+
+// makeOrchWithWave returns an Orchestrator whose IMPLDoc contains one wave
+// with the provided agents.
+func makeOrchWithWave(waveNum int, letters ...string) *Orchestrator {
+	agents := make([]types.AgentSpec, len(letters))
+	for i, l := range letters {
+		agents[i] = types.AgentSpec{Letter: l, Prompt: "do work"}
+	}
+	doc := &types.IMPLDoc{
+		Waves: []types.Wave{
+			{Number: waveNum, Agents: agents},
+		},
+	}
+	return newFromDoc(doc, "/repo", "/repo/IMPL.md")
+}
+
+// fakeToolSender is a Sender+ToolRunner that records calls and optionally
+// returns an error for a specific agent letter.
+type fakeToolSender struct {
+	mu         sync.Mutex
+	called     []string
+	failLetter string
+	// runFn, if non-nil, is called instead of the default behaviour.
+	runFn func(prompt string) (string, error)
+}
+
+func (f *fakeToolSender) SendMessage(_, _ string) (string, error) {
+	return "ok", nil
+}
+
+func (f *fakeToolSender) RunWithTools(_ context.Context, prompt string, _ []agent.Tool, _ int) (string, error) {
+	f.mu.Lock()
+	f.called = append(f.called, prompt)
+	fn := f.runFn
+	failLetter := f.failLetter
+	f.mu.Unlock()
+
+	if fn != nil {
+		return fn(prompt)
+	}
+	if failLetter != "" && prompt == failLetter {
+		return "", errors.New("simulated agent failure")
+	}
+	return "response", nil
+}
+
+// TestRunWave_WaveNotFound verifies that RunWave returns an error when the
+// requested wave number is absent from the IMPL doc.
+func TestRunWave_WaveNotFound(t *testing.T) {
+	o := makeOrchWithWave(1, "A", "B")
+	err := o.RunWave(99)
+	if err == nil {
+		t.Fatal("expected error for missing wave 99, got nil")
+	}
+	if !strings.Contains(err.Error(), "99") {
+		t.Errorf("error should mention wave number 99, got: %v", err)
+	}
+}
+
+// TestRunWave_LaunchesAllAgents verifies that RunWave calls ExecuteWithTools
+// for every agent in the wave, and does so concurrently (both goroutines are
+// in-flight at the same time, proven by an overlap barrier).
+func TestRunWave_LaunchesAllAgents(t *testing.T) {
+	// Use a barrier: each agent increments a counter then waits until both
+	// have arrived before proceeding. If RunWave were sequential, the second
+	// agent would never start until the first finished — but the first is
+	// blocking on the barrier, so the test would deadlock (caught by -timeout).
+	var inFlight int32
+	barrier := make(chan struct{})
+
+	fake := &fakeToolSender{}
+	fake.runFn = func(prompt string) (string, error) {
+		if atomic.AddInt32(&inFlight, 1) == 2 {
+			// Both goroutines have arrived — release the barrier.
+			close(barrier)
+		}
+		// Wait for the other goroutine to also arrive (proves overlap).
+		select {
+		case <-barrier:
+		case <-time.After(5 * time.Second):
+			return "", errors.New("barrier timeout: agents did not run concurrently")
+		}
+		return "response", nil
+	}
+
+	// Track worktree creations without real git.
+	var worktreeCount int32
+	origCreator := worktreeCreatorFunc
+	origWait := waitForCompletionFunc
+	t.Cleanup(func() {
+		worktreeCreatorFunc = origCreator
+		waitForCompletionFunc = origWait
+	})
+	worktreeCreatorFunc = func(_ *worktree.Manager, _ int, letter string) (string, error) {
+		atomic.AddInt32(&worktreeCount, 1)
+		return "/tmp/fake-wt-" + letter, nil
+	}
+	waitForCompletionFunc = func(_, _ string, _, _ time.Duration) (*types.CompletionReport, error) {
+		return &types.CompletionReport{Status: types.StatusComplete}, nil
+	}
+
+	doc := &types.IMPLDoc{
+		Waves: []types.Wave{
+			{
+				Number: 1,
+				Agents: []types.AgentSpec{
+					{Letter: "A", Prompt: "A"},
+					{Letter: "B", Prompt: "B"},
+				},
+			},
+		},
+	}
+	o := newFromDoc(doc, "/repo", "/repo/IMPL.md")
+
+	origNewRunner := newRunnerFunc
+	t.Cleanup(func() { newRunnerFunc = origNewRunner })
+	newRunnerFunc = func(wm *worktree.Manager) *agent.Runner {
+		return agent.NewRunner(fake, wm)
+	}
+
+	if err := o.RunWave(1); err != nil {
+		t.Fatalf("RunWave returned unexpected error: %v", err)
+	}
+
+	// Both worktrees were created.
+	if n := atomic.LoadInt32(&worktreeCount); n != 2 {
+		t.Errorf("expected 2 worktrees created, got %d", n)
+	}
+
+	// Both agents were called.
+	fake.mu.Lock()
+	calledCount := len(fake.called)
+	fake.mu.Unlock()
+	if calledCount != 2 {
+		t.Errorf("expected 2 ExecuteWithTools calls, got %d", calledCount)
+	}
+}
+
+// TestRunWave_ReturnsErrorOnAgentFailure verifies that RunWave propagates an
+// error when one agent's ExecuteWithTools call fails.
+func TestRunWave_ReturnsErrorOnAgentFailure(t *testing.T) {
+	fake := &fakeToolSender{failLetter: "B"}
+
+	origCreator := worktreeCreatorFunc
+	origWait := waitForCompletionFunc
+	t.Cleanup(func() {
+		worktreeCreatorFunc = origCreator
+		waitForCompletionFunc = origWait
+	})
+	worktreeCreatorFunc = func(_ *worktree.Manager, _ int, letter string) (string, error) {
+		return "/tmp/fake-wt-" + letter, nil
+	}
+	waitForCompletionFunc = func(_, _ string, _, _ time.Duration) (*types.CompletionReport, error) {
+		return &types.CompletionReport{Status: types.StatusComplete}, nil
+	}
+
+	doc := &types.IMPLDoc{
+		Waves: []types.Wave{
+			{
+				Number: 1,
+				Agents: []types.AgentSpec{
+					{Letter: "A", Prompt: "A"},
+					{Letter: "B", Prompt: "B"},
+				},
+			},
+		},
+	}
+	o := newFromDoc(doc, "/repo", "/repo/IMPL.md")
+
+	origNewRunner := newRunnerFunc
+	t.Cleanup(func() { newRunnerFunc = origNewRunner })
+	newRunnerFunc = func(wm *worktree.Manager) *agent.Runner {
+		return agent.NewRunner(fake, wm)
+	}
+
+	err := o.RunWave(1)
+	if err == nil {
+		t.Fatal("expected error when agent B fails, got nil")
+	}
+	if !strings.Contains(err.Error(), "simulated agent failure") {
+		t.Errorf("error should contain the agent failure message, got: %v", err)
+	}
 }
 
 // TestTransitionTo_ValidTransitions exercises every edge in the state graph.
