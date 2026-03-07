@@ -63,14 +63,14 @@ internal/
 
 Implements [SAW Protocol v0.8.0](https://github.com/blackwell-systems/scout-and-wave/tree/main/protocol):
 
-| Invariant | Description | Status |
-|-----------|-------------|--------|
-| I1 | Disjoint file ownership enforced pre-merge | ✅ |
-| I2 | Interface contracts precede parallel execution | ✅ |
-| I3 | Wave N+1 blocked until Wave N merged + verified | ✅ |
-| I4 | IMPL doc is single source of truth | ✅ |
-| I5 | Agents commit before reporting | ✅ (enforced by merge trip wire) |
-| I6 | Role separation: orchestrator does not do agent work | ✅ |
+| Invariant | Description |
+|-----------|-------------|
+| I1 | Disjoint file ownership enforced pre-merge |
+| I2 | Interface contracts precede parallel execution |
+| I3 | Wave N+1 blocked until Wave N merged + verified |
+| I4 | IMPL doc is single source of truth |
+| I5 | Agents commit before reporting (enforced by merge trip wire) |
+| I6 | Role separation: orchestrator does not do agent work |
 
 **10-state machine:**
 
