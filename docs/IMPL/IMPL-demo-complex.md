@@ -126,6 +126,8 @@ Cascade candidates (files that reference changed interfaces but are NOT in any a
 - `cmd/server/main.go` — wires together API server (Agent B), auth middleware (Agent C), and cache (Agent D)
 - `pkg/jobs/worker.go` — background job system that uses notification (Agent G) and analytics (Agent H) APIs
 
+---
+
 ### Interface Contracts
 
 #### Database Schema (Agent A produces, Wave 2 consumes)

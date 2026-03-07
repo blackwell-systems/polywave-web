@@ -438,21 +438,22 @@ func parseKnownIssuesSection(scanner *bufio.Scanner) []types.KnownIssue {
 		line := scanner.Text()
 		trimmed := strings.TrimSpace(line)
 
-		// Stop at next header
-		if strings.HasPrefix(trimmed, "### ") || strings.HasPrefix(trimmed, "## ") {
-			break
-		}
-		if strings.HasPrefix(trimmed, "---") && currentIssue.Len() == 0 {
-			// Horizontal rule signals end of section
-			break
-		}
-
 		// Track code fences
 		if strings.HasPrefix(trimmed, "```") {
 			inYAMLBlock = !inYAMLBlock
 		}
 
-		if inYAMLBlock || trimmed == "" || trimmed == "---" {
+		// Stop at next header
+		if !inYAMLBlock && (strings.HasPrefix(trimmed, "### ") || strings.HasPrefix(trimmed, "## ")) {
+			break
+		}
+
+		// Stop at horizontal rule between sections
+		if !inYAMLBlock && trimmed == "---" {
+			break
+		}
+
+		if inYAMLBlock || trimmed == "" {
 			continue
 		}
 
@@ -608,7 +609,7 @@ func parseDependencyGraphSection(scanner *bufio.Scanner) string {
 			break
 		}
 
-		// Stop at horizontal rule
+		// Stop at horizontal rule between sections
 		if !inYAMLBlock && trimmed == "---" {
 			break
 		}
