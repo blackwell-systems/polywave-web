@@ -1,0 +1,134 @@
+package api
+
+import (
+	"encoding/json"
+	"net/http"
+	"os"
+	"path/filepath"
+
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+)
+
+// handleGetImpl serves GET /api/impl/{slug}.
+// It locates the IMPL doc file at cfg.IMPLDir/IMPL-{slug}.md, parses it
+// via protocol.ParseIMPLDoc, and returns IMPLDocResponse as JSON.
+// 404 if the file does not exist; 500 on parse error.
+func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".md")
+
+	doc, err := protocol.ParseIMPLDoc(implPath)
+	if err != nil {
+		if isNotExistErr(err) {
+			http.Error(w, "IMPL doc not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "failed to parse IMPL doc", http.StatusInternalServerError)
+		return
+	}
+
+	// Map types.IMPLDoc -> IMPLDocResponse
+	resp := IMPLDocResponse{
+		Slug: slug,
+		Suitability: SuitabilityInfo{
+			Verdict:   suitabilityVerdict(doc.Status),
+			Rationale: "",
+		},
+		FileOwnership: mapFileOwnership(doc.FileOwnership),
+		Waves:         mapWaves(doc.Waves),
+		Scaffold: ScaffoldInfo{
+			Required:  false,
+			Files:     []string{},
+			Contracts: []ContractEntry{},
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		// Headers already written; nothing more we can do.
+		return
+	}
+}
+
+// handleApprove serves POST /api/impl/{slug}/approve.
+// Publishes a server-sent event to the slug's SSE broker and returns 202.
+func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	s.broker.Publish(slug, SSEEvent{Event: "plan_approved", Data: map[string]string{"slug": slug}})
+	w.WriteHeader(http.StatusAccepted)
+}
+
+// handleReject serves POST /api/impl/{slug}/reject.
+// Publishes a server-sent event to the slug's SSE broker and returns 202.
+func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	s.broker.Publish(slug, SSEEvent{Event: "plan_rejected", Data: map[string]string{"slug": slug}})
+	w.WriteHeader(http.StatusAccepted)
+}
+
+// isNotExistErr unwraps errors to check for os.ErrNotExist by checking
+// both direct and wrapped forms.
+func isNotExistErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if os.IsNotExist(err) {
+		return true
+	}
+	// ParseIMPLDoc wraps errors; check if underlying error is not-exist.
+	// Walk the error chain via errors.As alternative: check string heuristic.
+	// Since os.Open is the only source and ParseIMPLDoc wraps with %w, unwrap.
+	type unwrapper interface{ Unwrap() error }
+	for err != nil {
+		if os.IsNotExist(err) {
+			return true
+		}
+		u, ok := err.(unwrapper)
+		if !ok {
+			break
+		}
+		err = u.Unwrap()
+	}
+	return false
+}
+
+// suitabilityVerdict maps the parsed status string to a verdict.
+// Defaults to "UNKNOWN" if empty.
+func suitabilityVerdict(status string) string {
+	if status == "" {
+		return "UNKNOWN"
+	}
+	return status
+}
+
+// mapFileOwnership converts the file->agentLetter map to []FileOwnershipEntry.
+func mapFileOwnership(ownership map[string]string) []FileOwnershipEntry {
+	entries := make([]FileOwnershipEntry, 0, len(ownership))
+	for file, agent := range ownership {
+		entries = append(entries, FileOwnershipEntry{
+			File:   file,
+			Agent:  agent,
+			Wave:   0,
+			Action: "unknown",
+		})
+	}
+	return entries
+}
+
+// mapWaves converts []types.Wave to []WaveInfo.
+func mapWaves(waves []types.Wave) []WaveInfo {
+	result := make([]WaveInfo, 0, len(waves))
+	for _, w := range waves {
+		agents := make([]string, 0, len(w.Agents))
+		for _, a := range w.Agents {
+			agents = append(agents, a.Letter)
+		}
+		result = append(result, WaveInfo{
+			Number:       w.Number,
+			Agents:       agents,
+			Dependencies: []int{},
+		})
+	}
+	return result
+}
