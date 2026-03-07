@@ -403,6 +403,12 @@ func TestHandleApprove_PublishesEvent(t *testing.T) {
 // TestHandleWaveStart_Returns202 verifies that the start endpoint returns 202 Accepted
 // for a slug that is not currently active.
 func TestHandleWaveStart_Returns202(t *testing.T) {
+	// Inject a no-op loop so the background goroutine doesn't write to the
+	// temp dir after the test ends (which would cause TempDir cleanup to fail).
+	orig := runWaveLoopFunc
+	runWaveLoopFunc = func(implPath, slug, repoPath string, publish func(string, interface{})) {}
+	t.Cleanup(func() { runWaveLoopFunc = orig })
+
 	s, dir := makeTestServer(t)
 	writeIMPLDoc(t, dir, "my-feature", minimalIMPL)
 
