@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2026-03-07
+
+### Added
+
+**Backend interface abstraction (`pkg/agent/backend`)**
+- `backend.Backend` interface in `pkg/agent/backend/backend.go` — single abstraction for all LLM execution paths
+- `backend.Config` — backend-agnostic configuration (model, max tokens, max turns)
+- API backend (`pkg/agent/backend/api/`) — extracts existing Anthropic SDK client into a `Backend` implementation; behavior identical to prior releases
+- CLI backend (`pkg/agent/backend/cli/`) — shells out to `claude --print`; enables Claude Max plan users to run SAW without an API key
+- Runner refactored to accept `backend.Backend`; `Sender`/`ToolRunner` split removed from the public surface
+
+**`--backend` flag and `SAW_BACKEND` env var**
+- `saw scout` and `saw scaffold` accept `--backend <api|cli|auto>`
+- `SAW_BACKEND` env var provides a persistent default; flag takes precedence
+- `auto` mode: selects API backend when `ANTHROPIC_API_KEY` is set, CLI backend otherwise
+
+**Parser improvements**
+- File ownership table 4th-column detection — parser reads the header row to determine whether the column is `Action` or `Depends On` and populates the correct field on `FileOwnershipInfo`
+- Flexible agent header parsing: accepts both `###` and `####` heading levels, and both `:` and `—` as name separators
+- Auto-wave creation from agent headers when an explicit wave section is absent
+- `FileOwnershipInfo` enriched with `Agent`, `Wave`, `Action`, and `DependsOn` fields
+
+## [0.10.0] - 2026-03-07
+
+### Added
+
+**SSE bridge**
+- `OrchestratorEvent`, `EventPublisher`, and `SetEventPublisher` in `pkg/orchestrator/events.go` — event types emitted during wave execution with strongly-typed payloads (`AgentStartedPayload`, `AgentCompletePayload`, `AgentFailedPayload`, `WaveCompletePayload`, `RunCompletePayload`)
+- API layer maps orchestrator events to SSE without the orchestrator importing `pkg/api`
+
+**Wave start endpoint**
+- `POST /api/wave/{slug}/start` — triggers wave execution for a reviewed IMPL doc
+- Active-run guard via `sync.Map` prevents duplicate concurrent runs for the same slug
+
+**Web UI — dark mode**
+- `useDarkMode` hook — reads and persists preference to `localStorage`, applies `dark` class on `<html>`
+- `DarkModeToggle` component — sun/moon button wired to the hook; all web components updated for dark-mode compatibility via Tailwind `dark:` variants
+
+**Web UI — IMPL picker**
+- Home screen lists available IMPL docs; users select from the picker instead of typing a slug manually
+
+**Web UI — wave start wiring**
+- `startWave` call added to `App.tsx` after the user approves an IMPL doc; the UI transitions to the `WaveBoard` live dashboard automatically
+
 ## [0.2.0] - 2026-03-07
 
 ### Added

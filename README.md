@@ -4,7 +4,7 @@
 [![CI](https://github.com/blackwell-systems/scout-and-wave-go/actions/workflows/ci.yml/badge.svg)](https://github.com/blackwell-systems/scout-and-wave-go/actions/workflows/ci.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/blackwell-systems/scout-and-wave-go.svg)](https://pkg.go.dev/github.com/blackwell-systems/scout-and-wave-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/blackwell-systems/scout-and-wave-go)](https://goreportcard.com/report/github.com/blackwell-systems/scout-and-wave-go)
-![Version](https://img.shields.io/badge/version-0.2.0-blue)
+![Version](https://img.shields.io/badge/version-0.11.0-blue)
 [![Buy Me A Coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg)](https://buymeacoffee.com/blackwellsystems)
 
 Go implementation of the [Scout-and-Wave protocol](https://github.com/blackwell-systems/scout-and-wave) for parallel agent coordination.
@@ -42,21 +42,58 @@ saw status --impl docs/IMPL/IMPL-oauth.md
 saw status --impl docs/IMPL/IMPL-oauth.md --json
 saw status --impl docs/IMPL/IMPL-oauth.md --missing
 
+# Open the web UI (review IMPL docs + live wave dashboard)
+saw serve
+
 # Print version
 saw --version
 ```
 
+### Backend selection
+
+`saw scout` and `saw scaffold` support a `--backend` flag and `SAW_BACKEND` environment variable:
+
+| Value | Behavior |
+|-------|----------|
+| `api` | Calls the Anthropic API directly. Requires `ANTHROPIC_API_KEY`. |
+| `cli` | Shells out to `claude --print`. Works with Claude Max plan — no API key needed. |
+| `auto` | Uses `api` when `ANTHROPIC_API_KEY` is set, `cli` otherwise. **Default.** |
+
+```bash
+# Explicit flag
+saw scout --feature "add OAuth support" --backend cli
+
+# Persistent default via env var (flag takes precedence)
+export SAW_BACKEND=cli
+saw scout --feature "add OAuth support"
+```
+
+### Web UI (`saw serve`)
+
+`saw serve` starts a local HTTP server and opens the browser automatically on macOS and Linux.
+
+- **IMPL picker** — select any IMPL doc from the home screen; no manual slug entry required
+- **Review screen** — suitability badge, file ownership table, wave diagram, interface contracts, approve/reject buttons
+- **Wave dashboard** — live per-wave progress bars and agent cards (status, files, errors) streamed over SSE
+- **Dark mode** — toggle persisted to `localStorage`
+
+Flags: `--addr` (default `:8080`), `--impl-dir`, `--repo`, `--no-browser`
+
 ## Architecture
 
 ```
-cmd/saw/           # CLI entry point (wave, status, scout, scaffold, merge)
+cmd/saw/           # CLI entry point (wave, status, scout, scaffold, merge, serve)
 pkg/
-├── orchestrator/  # 10-state machine + wave coordination + merge procedure
+├── orchestrator/  # 10-state machine + wave coordination + merge procedure + SSE events
 ├── protocol/      # IMPL doc parser + completion report extraction
 ├── worktree/      # Git worktree create/remove/cleanup
-└── agent/         # Anthropic API client + agent runner + completion polling
+├── agent/
+│   ├── backend/   # Backend interface (api + cli implementations)
+│   └── ...        # Runner + completion polling
+└── api/           # HTTP server, SSE broker, REST endpoints
 internal/
 └── git/           # Git CLI wrappers (worktree, merge, diff, rev-parse)
+web/               # React + TypeScript + Tailwind (baked into binary via go:embed)
 ```
 
 ## Protocol Compliance
