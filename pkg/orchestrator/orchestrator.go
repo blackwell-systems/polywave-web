@@ -1,10 +1,23 @@
 package orchestrator
 
 import (
+	"context"
 	"fmt"
+	"time"
 
+	"golang.org/x/sync/errgroup"
+
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/worktree"
 )
+
+// defaultAgentTimeout is the maximum time RunWave waits per agent for a
+// completion report. Package-level so tests can lower it.
+var defaultAgentTimeout = 30 * time.Minute
+
+// defaultAgentPollInterval is how often RunWave polls for completion reports.
+var defaultAgentPollInterval = 10 * time.Second
 
 // parseIMPLDocFunc is replaced at runtime by pkg/protocol once that package
 // is compiled. The default no-op implementation returns an empty IMPLDoc so
@@ -31,6 +44,24 @@ var mergeWaveFunc = func(o *Orchestrator, waveNum int) error { return nil }
 // runVerificationFunc is replaced by Agent F (Wave 3) in verification.go via init().
 // Default no-op for Wave 1 compilation.
 var runVerificationFunc = func(o *Orchestrator, testCommand string) error { return nil }
+
+// worktreeCreatorFunc is a seam for tests: it creates a worktree for wave/agent
+// and returns the worktree path. Tests can replace this to avoid real git ops.
+var worktreeCreatorFunc = func(wm *worktree.Manager, waveNum int, agentLetter string) (string, error) {
+	return wm.Create(waveNum, agentLetter)
+}
+
+// waitForCompletionFunc is a seam for tests: wraps agent.WaitForCompletion.
+var waitForCompletionFunc = func(implDocPath, agentLetter string, timeout, pollInterval time.Duration) (*types.CompletionReport, error) {
+	return agent.WaitForCompletion(implDocPath, agentLetter, timeout, pollInterval)
+}
+
+// newRunnerFunc is a seam for tests: constructs the agent.Runner used by RunWave.
+// Tests can replace this to inject a fake Sender without real API calls.
+var newRunnerFunc = func(wm *worktree.Manager) *agent.Runner {
+	client := agent.NewClient("") // reads ANTHROPIC_API_KEY from environment
+	return agent.NewRunner(client, wm)
+}
 
 // Orchestrator drives SAW protocol wave coordination.
 // State mutations must go through TransitionTo — never set o.state directly.
@@ -96,9 +127,9 @@ func (o *Orchestrator) TransitionTo(newState types.State) error {
 	return nil
 }
 
-// RunWave executes wave waveNum. In Wave 1 this is a stub that validates
-// the wave number exists in the IMPL doc. Full implementation is added in
-// Wave 3 by the Orchestrator agent.
+// RunWave executes all agents in wave waveNum concurrently. Each agent receives
+// its own git worktree and is given full file/shell tool access via ExecuteWithTools.
+// RunWave blocks until all agents complete (or one fails), then returns.
 func (o *Orchestrator) RunWave(waveNum int) error {
 	if o.implDoc == nil {
 		return fmt.Errorf("orchestrator.RunWave: no IMPL doc loaded")
@@ -107,18 +138,69 @@ func (o *Orchestrator) RunWave(waveNum int) error {
 	if err := validateInvariantsFunc(o.implDoc); err != nil {
 		return fmt.Errorf("orchestrator.RunWave: invariant violation: %w", err)
 	}
-	// Validate the wave number exists in the document.
-	found := false
-	for _, w := range o.implDoc.Waves {
-		if w.Number == waveNum {
-			found = true
+	// Find the wave in the doc.
+	var wave *types.Wave
+	for i := range o.implDoc.Waves {
+		if o.implDoc.Waves[i].Number == waveNum {
+			wave = &o.implDoc.Waves[i]
 			break
 		}
 	}
-	if !found && len(o.implDoc.Waves) > 0 {
+	if wave == nil && len(o.implDoc.Waves) > 0 {
 		return fmt.Errorf("orchestrator.RunWave: wave %d not found in IMPL doc", waveNum)
 	}
 	o.currentWave = waveNum
+
+	// Nothing to do if there are no waves defined.
+	if wave == nil {
+		return nil
+	}
+
+	// Build the worktree manager and agent runner.
+	wm := worktree.New(o.repoPath)
+	runner := newRunnerFunc(wm)
+
+	// Launch all agents concurrently and collect the first error.
+	eg, ctx := errgroup.WithContext(context.Background())
+
+	for _, spec := range wave.Agents {
+		agentSpec := spec // capture loop variable
+		eg.Go(func() error {
+			return o.launchAgent(ctx, runner, wm, waveNum, agentSpec)
+		})
+	}
+
+	return eg.Wait()
+}
+
+// launchAgent creates a worktree for one agent, calls ExecuteWithTools, then
+// polls WaitForCompletion. Returns the first non-nil error encountered.
+func (o *Orchestrator) launchAgent(
+	ctx context.Context,
+	runner *agent.Runner,
+	wm *worktree.Manager,
+	waveNum int,
+	agentSpec types.AgentSpec,
+) error {
+	// a. Create the worktree.
+	wtPath, err := worktreeCreatorFunc(wm, waveNum, agentSpec.Letter)
+	if err != nil {
+		return fmt.Errorf("orchestrator: agent %s: create worktree: %w", agentSpec.Letter, err)
+	}
+
+	// b. Build the standard tool set scoped to the worktree.
+	tools := agent.StandardTools(wtPath)
+
+	// c. Execute the agent with tools.
+	if _, err := runner.ExecuteWithTools(ctx, &agentSpec, wtPath, tools, 50); err != nil {
+		return fmt.Errorf("orchestrator: agent %s: ExecuteWithTools: %w", agentSpec.Letter, err)
+	}
+
+	// d. Poll for the completion report.
+	if _, err := waitForCompletionFunc(o.implDocPath, agentSpec.Letter, defaultAgentTimeout, defaultAgentPollInterval); err != nil {
+		return fmt.Errorf("orchestrator: agent %s: %w", agentSpec.Letter, err)
+	}
+
 	return nil
 }
 
