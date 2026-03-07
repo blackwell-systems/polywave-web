@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -159,9 +160,16 @@ func runWave(args []string) error {
 }
 
 // runStatus prints current state of an IMPL doc.
+// Flags:
+//
+//	--impl    <path>  Path to IMPL doc (required)
+//	--json           Output JSON instead of human-readable text (default: false)
+//	--missing        List agents missing completion reports (human-readable only)
 func runStatus(args []string) error {
 	fs := flag.NewFlagSet("status", flag.ContinueOnError)
 	implPath := fs.String("impl", "", "Path to IMPL doc (required)")
+	jsonOut := fs.Bool("json", false, "Output JSON instead of human-readable text (default: false)")
+	showMissing := fs.Bool("missing", false, "List agents missing completion reports (default: false)")
 
 	if err := fs.Parse(args); err != nil {
 		return fmt.Errorf("status: %w", err)
@@ -176,21 +184,125 @@ func runStatus(args []string) error {
 		return fmt.Errorf("status: %w", err)
 	}
 
+	// Local structs for JSON output shape.
+	type jsonAgent struct {
+		Letter string `json:"letter"`
+		Status string `json:"status"`
+	}
+	type jsonWave struct {
+		Number int         `json:"number"`
+		Agents []jsonAgent `json:"agents"`
+	}
+	type jsonSummary struct {
+		Total   int `json:"total"`
+		Complete int `json:"complete"`
+		Partial  int `json:"partial"`
+		Blocked  int `json:"blocked"`
+		Pending  int `json:"pending"`
+	}
+	type jsonOutput struct {
+		Feature string      `json:"feature"`
+		Waves   []jsonWave  `json:"waves"`
+		Summary jsonSummary `json:"summary"`
+	}
+
+	// Collect per-wave agent statuses.
+	type agentResult struct {
+		waveNum int
+		letter  string
+		status  string // "complete", "partial", "blocked", "pending", or "error: ..."
+		missing bool
+	}
+
+	var results []agentResult
+	for _, wave := range doc.Waves {
+		for _, ag := range wave.Agents {
+			r := agentResult{waveNum: wave.Number, letter: ag.Letter}
+			report, rptErr := protocol.ParseCompletionReport(*implPath, ag.Letter)
+			if rptErr != nil {
+				if errors.Is(rptErr, protocol.ErrReportNotFound) {
+					r.status = "pending"
+					r.missing = true
+				} else {
+					r.status = fmt.Sprintf("error: %v", rptErr)
+				}
+			} else {
+				r.status = string(report.Status)
+			}
+			results = append(results, r)
+		}
+	}
+
+	// Compute summary counts.
+	var total, complete, partial, blocked, pending int
+	for _, r := range results {
+		total++
+		switch r.status {
+		case "complete":
+			complete++
+		case "partial":
+			partial++
+		case "blocked":
+			blocked++
+		default:
+			pending++
+		}
+	}
+
+	if *jsonOut {
+		// Build structured JSON output.
+		out := jsonOutput{
+			Feature: doc.FeatureName,
+			Summary: jsonSummary{
+				Total:    total,
+				Complete: complete,
+				Partial:  partial,
+				Blocked:  blocked,
+				Pending:  pending,
+			},
+		}
+		for _, wave := range doc.Waves {
+			jw := jsonWave{Number: wave.Number}
+			for _, r := range results {
+				if r.waveNum == wave.Number {
+					jw.Agents = append(jw.Agents, jsonAgent{Letter: r.letter, Status: r.status})
+				}
+			}
+			out.Waves = append(out.Waves, jw)
+		}
+		data, merr := json.MarshalIndent(out, "", "  ")
+		if merr != nil {
+			return fmt.Errorf("status: failed to marshal JSON: %w", merr)
+		}
+		fmt.Println(string(data))
+		return nil
+	}
+
+	// Human-readable output.
 	fmt.Printf("IMPL: %s\n", doc.FeatureName)
+	fmt.Printf("Agents: %d complete, %d pending, %d blocked\n", complete, pending, blocked)
 
 	for _, wave := range doc.Waves {
 		fmt.Printf("\nWave %d:\n", wave.Number)
-		for _, agent := range wave.Agents {
-			report, err := protocol.ParseCompletionReport(*implPath, agent.Letter)
-			if err != nil {
-				if errors.Is(err, protocol.ErrReportNotFound) {
-					fmt.Printf("  Agent %s: pending\n", agent.Letter)
-				} else {
-					fmt.Printf("  Agent %s: error reading report: %v\n", agent.Letter, err)
-				}
-				continue
+		for _, r := range results {
+			if r.waveNum == wave.Number {
+				fmt.Printf("  Agent %s: %s\n", r.letter, r.status)
 			}
-			fmt.Printf("  Agent %s: %s\n", agent.Letter, report.Status)
+		}
+	}
+
+	if *showMissing {
+		var missing []agentResult
+		for _, r := range results {
+			if r.missing {
+				missing = append(missing, r)
+			}
+		}
+		if len(missing) > 0 {
+			fmt.Printf("\nMissing reports:\n")
+			for _, r := range missing {
+				fmt.Printf("  Agent %s (wave %d)\n", r.letter, r.waveNum)
+			}
 		}
 	}
 
