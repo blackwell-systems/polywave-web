@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.12.0] - 2026-03-07
+
+### Added
+
+- **E15: IMPL doc completion lifecycle** — parser recognizes `<!-- SAW:COMPLETE YYYY-MM-DD -->` tag and populates `DocStatus`/`CompletedAt` on `IMPLDoc`
+- **API: `doc_status` field** — `GET /api/impl/{slug}` returns `doc_status: "ACTIVE" | "COMPLETE"` and `completed_at`
+- **API: rich list endpoint** — `GET /api/impl` returns `[{slug, doc_status}]` instead of bare strings; enables picker filtering without full parse
+- **Web UI: active/complete picker grouping** — active IMPL docs appear first; completed docs grouped under a muted "Completed" divider
+
+### Fixed
+
+- **Wave structure diagram showing only 1 wave** — parser now regroups agents using file ownership table wave numbers when IMPL doc lacks `## Wave N` headers
+- **Cold-start audit findings (P0-P3)** — port mismatch in README (`:8080` → `localhost:7432`), prerequisites section, IMPL doc/jargon definitions, quickstart workflow, `--help` exit code, missing-flag usage hints, build-from-source docs, sample IMPL doc, protocol repo relationship, changelog version gap note
+
+---
+
 ## [0.11.0] - 2026-03-07
 
 ### Added
