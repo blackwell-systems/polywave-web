@@ -21,8 +21,26 @@ func init() {
 	orchestrator.SetValidateInvariantsFunc(protocol.ValidateInvariants)
 }
 
+// waveOrchestrator is the minimal interface runWave needs from an Orchestrator.
+// Using an interface enables tests to inject a fake without real git/API calls.
+type waveOrchestrator interface {
+	TransitionTo(newState types.State) error
+	RunWave(waveNum int) error
+	MergeWave(waveNum int) error
+	RunVerification(testCommand string) error
+	IMPLDoc() *types.IMPLDoc
+}
+
+// orchestratorNewFunc is a seam for tests: creates a waveOrchestrator from a
+// repo path and IMPL doc path. Tests can replace this to inject a fake.
+var orchestratorNewFunc = func(repoPath, implPath string) (waveOrchestrator, error) {
+	return orchestrator.New(repoPath, implPath)
+}
+
 // runWave executes a wave from an IMPL doc.
 // Args: ["--impl", "<path>", "--wave", "<n>", "--auto"] (or subsets).
+// When --auto is set, iterates through all waves in the IMPL doc sequentially
+// starting from --wave (default 1), without user prompts between waves.
 func runWave(args []string) error {
 	fs := flag.NewFlagSet("wave", flag.ContinueOnError)
 	implPath := fs.String("impl", "", "Path to IMPL doc (required)")
@@ -42,7 +60,7 @@ func runWave(args []string) error {
 		return fmt.Errorf("wave: %w", err)
 	}
 
-	o, err := orchestrator.New(repoPath, *implPath)
+	o, err := orchestratorNewFunc(repoPath, *implPath)
 	if err != nil {
 		return fmt.Errorf("wave: %w", err)
 	}
@@ -55,41 +73,82 @@ func runWave(args []string) error {
 		return fmt.Errorf("wave: %w", err)
 	}
 
-	// Run agents for the wave (stub: prints progress message).
-	fmt.Printf("Wave %d agents running...\n", *waveNum)
-	if err := o.RunWave(*waveNum); err != nil {
+	// Build the ordered list of waves to execute, starting from *waveNum.
+	// Waves are iterated in the order they appear in the IMPL doc (sorted by Number).
+	waves := o.IMPLDoc().Waves
+	// Find the index of the first wave with Number >= *waveNum.
+	startIdx := len(waves)
+	for i, w := range waves {
+		if w.Number >= *waveNum {
+			startIdx = i
+			break
+		}
+	}
+
+	// If no waves qualify, return immediately with no iterations.
+	if startIdx == len(waves) {
+		return nil
+	}
+
+	// Execute each wave in sequence.
+	for idx := startIdx; idx < len(waves); idx++ {
+		currentWaveNum := waves[idx].Number
+
+		// For subsequent waves (after the first), transition back to WavePending.
+		if idx > startIdx {
+			if err := o.TransitionTo(types.WavePending); err != nil {
+				return fmt.Errorf("wave: %w", err)
+			}
+		}
+
+		// Run agents for the current wave.
+		fmt.Printf("Wave %d agents running...\n", currentWaveNum)
+		if err := o.RunWave(currentWaveNum); err != nil {
+			return fmt.Errorf("wave: %w", err)
+		}
+
+		if err := o.TransitionTo(types.WaveExecuting); err != nil {
+			return fmt.Errorf("wave: %w", err)
+		}
+
+		// Merge worktrees for this wave.
+		if err := o.MergeWave(currentWaveNum); err != nil {
+			return fmt.Errorf("wave: merge failed: %w", err)
+		}
+
+		// Run post-merge verification using command from IMPL doc (fallback to go test).
+		testCmd := o.IMPLDoc().TestCommand
+		if testCmd == "" {
+			testCmd = "go test ./..."
+		}
+		if err := o.RunVerification(testCmd); err != nil {
+			return fmt.Errorf("wave: verification failed: %w", err)
+		}
+
+		if err := o.TransitionTo(types.WaveVerified); err != nil {
+			return fmt.Errorf("wave: %w", err)
+		}
+
+		fmt.Printf("Wave %d complete.\n", currentWaveNum)
+
+		// Check whether more waves remain.
+		hasNext := idx+1 < len(waves)
+		if hasNext {
+			if !*auto {
+				nextWaveNum := waves[idx+1].Number
+				fmt.Printf("Wave %d complete. Press Enter to proceed to wave %d...", currentWaveNum, nextWaveNum)
+				bufio.NewReader(os.Stdin).ReadString('\n') //nolint:errcheck
+			} else {
+				fmt.Println("Wave complete. Proceeding...")
+			}
+		}
+	}
+
+	// All waves executed — transition to Complete.
+	if err := o.TransitionTo(types.Complete); err != nil {
 		return fmt.Errorf("wave: %w", err)
 	}
-
-	if err := o.TransitionTo(types.WaveExecuting); err != nil {
-		return fmt.Errorf("wave: %w", err)
-	}
-
-	// Merge worktrees for this wave.
-	if err := o.MergeWave(*waveNum); err != nil {
-		return fmt.Errorf("wave: merge failed: %w", err)
-	}
-
-	// Run post-merge verification using command from IMPL doc (fallback to go test).
-	testCmd := o.IMPLDoc().TestCommand
-	if testCmd == "" {
-		testCmd = "go test ./..."
-	}
-	if err := o.RunVerification(testCmd); err != nil {
-		return fmt.Errorf("wave: verification failed: %w", err)
-	}
-
-	if err := o.TransitionTo(types.WaveVerified); err != nil {
-		return fmt.Errorf("wave: %w", err)
-	}
-
-	fmt.Printf("Wave %d complete.\n", *waveNum)
-	if !*auto {
-		fmt.Print("Wave complete. Press Enter to proceed...")
-		bufio.NewReader(os.Stdin).ReadString('\n') //nolint:errcheck
-	} else {
-		fmt.Println("Wave complete. Proceeding...")
-	}
+	fmt.Println("All waves complete.")
 	return nil
 }
 
