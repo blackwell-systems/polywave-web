@@ -54,6 +54,107 @@ saw wave --impl docs/IMPL/IMPL-add-caching-layer.md --auto
 
 See `examples/sample-impl.md` for a sample IMPL doc showing the format that `saw scout` produces.
 
+## New User Walkthrough
+
+This is what using SAW looks like end-to-end on a real project.
+
+### Scenario
+
+You have a Go REST API and want to add rate limiting, response caching, and a metrics endpoint. Three concerns with overlapping infrastructure — a good candidate for parallel agents.
+
+### Step 1 — Install
+
+```bash
+go install github.com/blackwell-systems/scout-and-wave-go/cmd/saw@latest
+saw --version
+# saw v0.13.0
+```
+
+### Step 2 — Scout your codebase
+
+```bash
+cd ~/code/my-api
+saw scout --feature "add rate limiting, response caching, and a /metrics endpoint"
+```
+
+The Scout agent reads your codebase, runs a suitability check, and writes `docs/IMPL/IMPL-rate-limiting-caching-metrics.md`. You'll see:
+
+```
+saw scout: analyzing codebase...
+saw scout: suitability gate passed — 3 agents, 2 waves
+saw scout: IMPL doc written → docs/IMPL/IMPL-rate-limiting-caching-metrics.md
+```
+
+### Step 3 — Review in the web UI
+
+```bash
+saw serve
+# Opening http://localhost:7432
+```
+
+The browser opens to the IMPL picker. Click your IMPL doc to open the review screen:
+
+- **Overview** — suitability verdict, estimated complexity, wave count
+- **Wave Structure** — timeline showing Wave 1 (Agent A: rate limiter, Agent B: cache layer) running in parallel, then Wave 2 (Agent C: metrics endpoint, depends on A+B)
+- **Dependency Graph** — DAG showing C → A, C → B
+- **File Ownership** — which agent owns which files; no overlaps
+- **Interface Contracts** — the `RateLimiter` and `CacheClient` interfaces defined before any agent runs
+- **Agent Prompts** — full prompt each agent will receive
+
+If anything looks wrong, edit `docs/IMPL/IMPL-*.md` directly and refresh. The IMPL doc is plain markdown — the source of truth.
+
+### Step 4 — Run the waves
+
+```bash
+saw wave --impl docs/IMPL/IMPL-rate-limiting-caching-metrics.md --auto
+```
+
+SAW creates isolated git worktrees for Wave 1 agents and launches them in parallel:
+
+```
+[wave 1] creating worktrees...
+  saw/wave1-agent-A  (branch: saw/wave1-agent-A)
+  saw/wave1-agent-B  (branch: saw/wave1-agent-B)
+[wave 1] launching agents A, B in parallel...
+[wave 1] agent A: running  (pkg/middleware/ratelimit.go)
+[wave 1] agent B: running  (pkg/cache/client.go, pkg/cache/lru.go)
+```
+
+While agents run, check live progress in `saw serve` → Wave Dashboard tab: per-agent status cards update in real time.
+
+When both complete:
+
+```
+[wave 1] agent A: complete  ✓ all tests pass
+[wave 1] agent B: complete  ✓ all tests pass
+[wave 1] merging...
+[wave 1] conflict check: clean
+[wave 1] merged agent-A → main
+[wave 1] merged agent-B → main
+[wave 1] post-merge: go build ./... ✓  go test ./... ✓
+[wave 1] complete — proceeding to wave 2
+```
+
+Wave 2 then starts with Agent C, which depends on the interfaces committed in Wave 1.
+
+### Step 5 — Done
+
+```
+[wave 2] agent C: complete  ✓
+[wave 2] merged → main
+[wave 2] post-merge: go build ./... ✓  go test ./... ✓
+saw: all waves complete
+```
+
+Your feature is implemented, merged, and verified. The IMPL doc in `docs/IMPL/` is the permanent record of what was built, by which agent, and in what order.
+
+### What just happened
+
+- **No merge conflicts** — I1 (disjoint file ownership) guaranteed it
+- **No interface mismatches** — I2 (scaffold contracts committed before agents ran) guaranteed it
+- **No broken build** — I3 (wave sequencing) and post-merge verification caught any issues before the next wave
+- **Full audit trail** — completion reports, file ownership, and decisions are in the IMPL doc, not scattered across chat logs
+
 ## Installation
 
 ```bash
