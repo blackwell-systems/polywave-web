@@ -37,7 +37,7 @@ func runMerge(args []string) error {
 		return fmt.Errorf("merge: %w", err)
 	}
 
-	// Advance state machine: SuitabilityPending -> Reviewed -> WavePending -> WaveExecuting -> WaveMerging
+	// Advance state machine: ScoutPending -> Reviewed -> WavePending -> WaveExecuting -> WaveMerging
 	for _, state := range []types.State{types.Reviewed, types.WavePending, types.WaveExecuting, types.WaveMerging} {
 		if err := o.TransitionTo(state); err != nil {
 			return fmt.Errorf("merge: %w", err)

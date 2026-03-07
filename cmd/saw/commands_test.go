@@ -215,7 +215,7 @@ func TestRunWave_Auto_MultiWave_Integration(t *testing.T) {
 			},
 			TestCommand: "go test ./...",
 		},
-		state: types.SuitabilityPending,
+		state: types.ScoutPending,
 	}
 
 	// Set up the temp dir with .git and IMPL doc file.

@@ -76,14 +76,14 @@ type Orchestrator struct {
 }
 
 // New creates an Orchestrator by loading the IMPL doc at implDocPath.
-// Initial state is SuitabilityPending.
+// Initial state is ScoutPending.
 func New(repoPath string, implDocPath string) (*Orchestrator, error) {
 	doc, err := parseIMPLDocFunc(implDocPath)
 	if err != nil {
 		return nil, fmt.Errorf("orchestrator.New: failed to parse IMPL doc %q: %w", implDocPath, err)
 	}
 	return &Orchestrator{
-		state:       types.SuitabilityPending,
+		state:       types.ScoutPending,
 		implDoc:     doc,
 		repoPath:    repoPath,
 		implDocPath: implDocPath,
@@ -94,7 +94,7 @@ func New(repoPath string, implDocPath string) (*Orchestrator, error) {
 // Used in tests to avoid the pkg/protocol dependency.
 func newFromDoc(doc *types.IMPLDoc, repoPath, implDocPath string) *Orchestrator {
 	return &Orchestrator{
-		state:       types.SuitabilityPending,
+		state:       types.ScoutPending,
 		implDoc:     doc,
 		repoPath:    repoPath,
 		implDocPath: implDocPath,

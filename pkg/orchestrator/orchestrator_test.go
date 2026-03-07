@@ -209,8 +209,8 @@ func TestTransitionTo_ValidTransitions(t *testing.T) {
 		from types.State
 		to   types.State
 	}{
-		{types.SuitabilityPending, types.Reviewed},
-		{types.SuitabilityPending, types.NotSuitable},
+		{types.ScoutPending, types.Reviewed},
+		{types.ScoutPending, types.NotSuitable},
 		{types.Reviewed, types.WavePending},
 		{types.WavePending, types.WaveExecuting},
 		{types.WaveExecuting, types.WaveVerified},
@@ -235,22 +235,22 @@ func TestTransitionTo_ValidTransitions(t *testing.T) {
 }
 
 // TestTransitionTo_InvalidTransition verifies that an illegal transition
-// (SuitabilityPending -> Complete) returns an error.
+// (ScoutPending -> Complete) returns an error.
 func TestTransitionTo_InvalidTransition(t *testing.T) {
 	o := makeOrch()
-	// Initial state is SuitabilityPending.
+	// Initial state is ScoutPending.
 	err := o.TransitionTo(types.Complete)
 	if err == nil {
-		t.Fatal("expected error for SuitabilityPending -> Complete, got nil")
+		t.Fatal("expected error for ScoutPending -> Complete, got nil")
 	}
-	if !strings.Contains(err.Error(), "SuitabilityPending") {
-		t.Errorf("error should mention source state SuitabilityPending, got: %v", err)
+	if !strings.Contains(err.Error(), "ScoutPending") {
+		t.Errorf("error should mention source state ScoutPending, got: %v", err)
 	}
 	if !strings.Contains(err.Error(), "Complete") {
 		t.Errorf("error should mention target state Complete, got: %v", err)
 	}
 	// State must remain unchanged after a rejected transition.
-	if o.State() != types.SuitabilityPending {
+	if o.State() != types.ScoutPending {
 		t.Errorf("state changed after invalid transition: got %s", o.State())
 	}
 }
@@ -261,7 +261,7 @@ func TestTransitionTo_TerminalState(t *testing.T) {
 	terminalStates := []types.State{types.NotSuitable, types.Complete}
 	// Every other state is a candidate target.
 	allStates := []types.State{
-		types.SuitabilityPending,
+		types.ScoutPending,
 		types.Reviewed,
 		types.WavePending,
 		types.WaveExecuting,
@@ -286,8 +286,8 @@ func TestTransitionTo_TerminalState(t *testing.T) {
 // TestIsValidTransition unit-tests the guard function directly.
 func TestIsValidTransition(t *testing.T) {
 	valid := []struct{ from, to types.State }{
-		{types.SuitabilityPending, types.Reviewed},
-		{types.SuitabilityPending, types.NotSuitable},
+		{types.ScoutPending, types.Reviewed},
+		{types.ScoutPending, types.NotSuitable},
 		{types.Reviewed, types.WavePending},
 		{types.WavePending, types.WaveExecuting},
 		{types.WaveExecuting, types.WaveVerified},
@@ -301,8 +301,8 @@ func TestIsValidTransition(t *testing.T) {
 	}
 
 	invalid := []struct{ from, to types.State }{
-		{types.SuitabilityPending, types.Complete},
-		{types.SuitabilityPending, types.WaveExecuting},
+		{types.ScoutPending, types.Complete},
+		{types.ScoutPending, types.WaveExecuting},
 		{types.Reviewed, types.Complete},
 		{types.NotSuitable, types.Reviewed},
 		{types.Complete, types.WavePending},
@@ -323,8 +323,8 @@ func TestNewFromDoc(t *testing.T) {
 	}
 	o := newFromDoc(doc, "/some/repo", "/some/repo/IMPL.md")
 
-	if o.State() != types.SuitabilityPending {
-		t.Errorf("initial state: got %s, want SuitabilityPending", o.State())
+	if o.State() != types.ScoutPending {
+		t.Errorf("initial state: got %s, want ScoutPending", o.State())
 	}
 	if o.IMPLDoc() != doc {
 		t.Error("IMPLDoc() did not return the same pointer passed to newFromDoc")
@@ -345,7 +345,7 @@ func TestState_String(t *testing.T) {
 		state types.State
 		want  string
 	}{
-		{types.SuitabilityPending, "SuitabilityPending"},
+		{types.ScoutPending, "ScoutPending"},
 		{types.NotSuitable, "NotSuitable"},
 		{types.Reviewed, "Reviewed"},
 		{types.WavePending, "WavePending"},

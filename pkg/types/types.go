@@ -4,23 +4,23 @@ package types
 type State int
 
 const (
-	SuitabilityPending State = iota // keep first for backward compat
+	ScoutPending State = iota // initial state: Scout agent running (SCOUT_PENDING)
 	NotSuitable
 	Reviewed
-	ScaffoldPending // NEW — scaffold agent running
+	ScaffoldPending // Scaffold agent creating type scaffold files
 	WavePending
 	WaveExecuting
-	WaveMerging // NEW — merge in progress
+	WaveMerging // Orchestrator merging worktrees
 	WaveVerified
-	Blocked // NEW — agent failure / recovery
+	Blocked // Agent failure or verification failure; requires resolution
 	Complete
 )
 
 // String returns the string representation of the State
 func (s State) String() string {
 	switch s {
-	case SuitabilityPending:
-		return "SuitabilityPending"
+	case ScoutPending:
+		return "ScoutPending"
 	case NotSuitable:
 		return "NotSuitable"
 	case Reviewed:

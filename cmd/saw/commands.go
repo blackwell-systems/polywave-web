@@ -67,7 +67,7 @@ func runWave(args []string) error {
 		return fmt.Errorf("wave: %w", err)
 	}
 
-	// Advance through state machine: SuitabilityPending -> Reviewed -> WavePending
+	// Advance through state machine: ScoutPending -> Reviewed -> WavePending
 	if err := o.TransitionTo(types.Reviewed); err != nil {
 		return fmt.Errorf("wave: %w", err)
 	}
