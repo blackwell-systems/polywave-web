@@ -65,6 +65,87 @@ func (f *fakeToolSender) RunWithTools(_ context.Context, prompt string, _ []agen
 	return "response", nil
 }
 
+// TestNew_LoadsDoc verifies that New returns a non-nil Orchestrator in
+// ScoutPending state when parseIMPLDocFunc succeeds.
+func TestNew_LoadsDoc(t *testing.T) {
+	orig := parseIMPLDocFunc
+	t.Cleanup(func() { parseIMPLDocFunc = orig })
+	parseIMPLDocFunc = func(_ string) (*types.IMPLDoc, error) {
+		return &types.IMPLDoc{FeatureName: "test"}, nil
+	}
+
+	o, err := New("/repo", "/repo/IMPL.md")
+	if err != nil {
+		t.Fatalf("New returned error: %v", err)
+	}
+	if o == nil {
+		t.Fatal("New returned nil orchestrator")
+	}
+	if o.State() != types.ScoutPending {
+		t.Errorf("initial state = %s, want ScoutPending", o.State())
+	}
+	if o.IMPLDoc().FeatureName != "test" {
+		t.Errorf("FeatureName = %q, want %q", o.IMPLDoc().FeatureName, "test")
+	}
+}
+
+// TestSetValidateInvariantsFunc verifies the func is replaced and called.
+func TestSetValidateInvariantsFunc(t *testing.T) {
+	orig := validateInvariantsFunc
+	t.Cleanup(func() { validateInvariantsFunc = orig })
+
+	called := false
+	SetValidateInvariantsFunc(func(_ *types.IMPLDoc) error {
+		called = true
+		return nil
+	})
+	_ = validateInvariantsFunc(nil)
+	if !called {
+		t.Error("SetValidateInvariantsFunc: replacement was not called")
+	}
+}
+
+// TestMergeWave_DelegatesTo_mergeWaveFunc verifies that MergeWave delegates
+// to mergeWaveFunc and propagates its return value.
+func TestMergeWave_DelegatesTo_mergeWaveFunc(t *testing.T) {
+	orig := mergeWaveFunc
+	t.Cleanup(func() { mergeWaveFunc = orig })
+
+	var gotWave int
+	mergeWaveFunc = func(_ *Orchestrator, waveNum int) error {
+		gotWave = waveNum
+		return nil
+	}
+
+	o := makeOrch()
+	if err := o.MergeWave(3); err != nil {
+		t.Fatalf("MergeWave returned error: %v", err)
+	}
+	if gotWave != 3 {
+		t.Errorf("mergeWaveFunc called with wave %d, want 3", gotWave)
+	}
+}
+
+// TestRunVerification_DelegatesTo_runVerificationFunc verifies delegation.
+func TestRunVerification_DelegatesTo_runVerificationFunc(t *testing.T) {
+	orig := runVerificationFunc
+	t.Cleanup(func() { runVerificationFunc = orig })
+
+	var gotCmd string
+	runVerificationFunc = func(_ *Orchestrator, cmd string) error {
+		gotCmd = cmd
+		return nil
+	}
+
+	o := makeOrch()
+	if err := o.RunVerification("go test ./..."); err != nil {
+		t.Fatalf("RunVerification returned error: %v", err)
+	}
+	if gotCmd != "go test ./..." {
+		t.Errorf("runVerificationFunc called with %q, want %q", gotCmd, "go test ./...")
+	}
+}
+
 // TestRunWave_WaveNotFound verifies that RunWave returns an error when the
 // requested wave number is absent from the IMPL doc.
 func TestRunWave_WaveNotFound(t *testing.T) {

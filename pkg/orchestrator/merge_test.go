@@ -114,7 +114,39 @@ func TestExecuteMergeWave_BlockedAgent(t *testing.T) {
 	}
 }
 
+// ── verifyAgentCommits tests ──────────────────────────────────────────────────
+
+func TestVerifyAgentCommits_EmptyBranch(t *testing.T) {
+	reports := map[string]*types.CompletionReport{
+		"A": {Status: types.StatusComplete, Branch: ""},
+	}
+	err := verifyAgentCommits("/repo", "abc123", reports)
+	if err == nil {
+		t.Fatal("expected error for empty branch field, got nil")
+	}
+}
+
+func TestVerifyAgentCommits_SkipsNonComplete(t *testing.T) {
+	// Agents with non-complete status are skipped — no git calls needed.
+	reports := map[string]*types.CompletionReport{
+		"A": {Status: types.StatusPartial, Branch: "wave1-agent-A"},
+		"B": {Status: types.StatusBlocked, Branch: "wave1-agent-B"},
+	}
+	// Should return nil without touching git (branches don't exist).
+	if err := verifyAgentCommits(t.TempDir(), "abc123", reports); err != nil {
+		t.Errorf("expected nil for non-complete agents, got: %v", err)
+	}
+}
+
 // ── runVerification tests ─────────────────────────────────────────────────────
+
+func TestRunVerification_EmptyCommand(t *testing.T) {
+	o := newFromDoc(&types.IMPLDoc{}, t.TempDir(), "")
+	err := runVerification(o, "")
+	if err == nil {
+		t.Fatal("expected error for empty test command, got nil")
+	}
+}
 
 func TestRunVerification_Success(t *testing.T) {
 	o := newFromDoc(&types.IMPLDoc{}, t.TempDir(), "")

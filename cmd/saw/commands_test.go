@@ -258,6 +258,70 @@ func TestRunWave_Auto_MultiWave_Integration(t *testing.T) {
 	}
 }
 
+// TestLocatePromptFile_FoundViaSAWRepo verifies that locatePromptFile returns
+// the correct path when SAW_REPO points to a directory containing the file.
+func TestLocatePromptFile_FoundViaSAWRepo(t *testing.T) {
+	sawRepo := t.TempDir()
+	promptsDir := filepath.Join(sawRepo, "prompts")
+	if err := os.MkdirAll(promptsDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(promptsDir, "scout.md"), []byte("# Scout"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	t.Setenv("SAW_REPO", sawRepo)
+
+	got, err := locatePromptFile(filepath.Join("prompts", "scout.md"))
+	if err != nil {
+		t.Fatalf("locatePromptFile returned error: %v", err)
+	}
+	if got == "" {
+		t.Error("locatePromptFile returned empty path")
+	}
+}
+
+// TestLocatePromptFile_NotFound verifies an error is returned when the file
+// does not exist under SAW_REPO.
+func TestLocatePromptFile_NotFound(t *testing.T) {
+	t.Setenv("SAW_REPO", t.TempDir()) // empty dir, no prompts/
+	_, err := locatePromptFile(filepath.Join("prompts", "scout.md"))
+	if err == nil {
+		t.Fatal("expected error when prompt file not found, got nil")
+	}
+}
+
+// TestRunScout_PromptFileMissing verifies runScout returns an error when
+// SAW_REPO is set but the scout.md file does not exist.
+func TestRunScout_PromptFileMissing(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
+	t.Setenv("SAW_REPO", t.TempDir()) // no prompts/ dir
+	err := runScout([]string{"--feature", "add thing", "--repo", dir})
+	if err == nil {
+		t.Fatal("expected error when scout.md missing, got nil")
+	}
+}
+
+// TestRunScaffold_PromptFileMissing verifies runScaffold returns an error when
+// SAW_REPO is set but scaffold-agent.md does not exist.
+func TestRunScaffold_PromptFileMissing(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(dir, ".git"), 0o755); err != nil {
+		t.Fatalf("mkdir .git: %v", err)
+	}
+	implFile := filepath.Join(dir, "IMPL-test.md")
+	if err := os.WriteFile(implFile, []byte(minimalIMPLDoc), 0o644); err != nil {
+		t.Fatalf("write impl: %v", err)
+	}
+	t.Setenv("SAW_REPO", t.TempDir()) // no scaffold-agent.md
+	err := runScaffold([]string{"--impl", implFile, "--repo", dir})
+	if err == nil {
+		t.Fatal("expected error when scaffold-agent.md missing, got nil")
+	}
+}
+
 // TestPrintUsage_IncludesMerge verifies that printUsage includes the merge
 // subcommand description after the merge dispatch was added to main.go.
 func TestPrintUsage_IncludesMerge(t *testing.T) {

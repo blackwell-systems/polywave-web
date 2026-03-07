@@ -7,6 +7,22 @@ import (
 	"testing"
 )
 
+func TestStandardTools_ReturnsFour(t *testing.T) {
+	tools := StandardTools(t.TempDir())
+	if len(tools) != 4 {
+		t.Errorf("StandardTools returned %d tools, want 4", len(tools))
+	}
+	names := map[string]bool{}
+	for _, tool := range tools {
+		names[tool.Name] = true
+	}
+	for _, want := range []string{"read_file", "write_file", "list_directory", "bash"} {
+		if !names[want] {
+			t.Errorf("StandardTools missing tool %q", want)
+		}
+	}
+}
+
 func TestReadFileTool(t *testing.T) {
 	t.Parallel()
 	workDir := t.TempDir()

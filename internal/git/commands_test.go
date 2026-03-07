@@ -106,6 +106,71 @@ func TestWorktreeAdd_Remove(t *testing.T) {
 	}
 }
 
+func TestMergeNoFF_Success(t *testing.T) {
+	dir := initTestRepo(t)
+
+	// Create a branch with a commit to merge.
+	branch := "test-merge-branch"
+	cmds := [][]string{
+		{"checkout", "-b", branch},
+		{"commit", "--allow-empty", "-m", "branch commit"},
+		{"checkout", "master"},
+	}
+	// Try main if master doesn't exist.
+	for _, args := range cmds {
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			// Retry with "main" as default branch name.
+			if args[0] == "checkout" && args[1] == "master" {
+				args[1] = "main"
+				cmd = exec.Command("git", append([]string{"-C", dir}, args...)...)
+				out, err = cmd.CombinedOutput()
+			}
+			if err != nil {
+				t.Fatalf("git %v failed: %v\n%s", args, err, out)
+			}
+		}
+	}
+
+	if err := MergeNoFF(dir, branch, "merge test-merge-branch"); err != nil {
+		t.Fatalf("MergeNoFF returned error: %v", err)
+	}
+}
+
+func TestDeleteBranch_Success(t *testing.T) {
+	dir := initTestRepo(t)
+
+	// Create and immediately merge a branch so it can be deleted with -d.
+	branch := "test-delete-branch"
+	cmds := [][]string{
+		{"checkout", "-b", branch},
+		{"commit", "--allow-empty", "-m", "delete me"},
+		{"checkout", "-"},
+	}
+	for _, args := range cmds {
+		cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v\n%s", args, err, out)
+		}
+	}
+	if err := MergeNoFF(dir, branch, "merge for delete test"); err != nil {
+		t.Fatalf("MergeNoFF setup failed: %v", err)
+	}
+
+	if err := DeleteBranch(dir, branch); err != nil {
+		t.Fatalf("DeleteBranch returned error: %v", err)
+	}
+}
+
+func TestDeleteBranch_NonExistent(t *testing.T) {
+	dir := initTestRepo(t)
+	err := DeleteBranch(dir, "no-such-branch")
+	if err == nil {
+		t.Fatal("expected error deleting non-existent branch, got nil")
+	}
+}
+
 func TestDiffNameOnly_NoChanges(t *testing.T) {
 	dir := initTestRepo(t)
 

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -148,6 +149,48 @@ verification: PASS
 		t.Fatalf("failed to write test IMPL doc: %v", err)
 	}
 	return path
+}
+
+// TestExecuteWithTools_NilToolRunner verifies that ExecuteWithTools returns an
+// error when the client does not implement ToolRunner.
+func TestExecuteWithTools_NilToolRunner(t *testing.T) {
+	t.Parallel()
+	sender := &mockSender{responseToSend: "ok"}
+	r := NewRunner(sender, worktree.New(t.TempDir()))
+	spec := &types.AgentSpec{Letter: "A", Prompt: "do work"}
+	_, err := r.ExecuteWithTools(context.Background(), spec, t.TempDir(), nil, 1)
+	if err == nil {
+		t.Fatal("expected error when client has no ToolRunner, got nil")
+	}
+}
+
+// TestRunner_ParseCompletionReport_Found verifies that ParseCompletionReport
+// returns a report when the section exists in the IMPL doc.
+func TestRunner_ParseCompletionReport_Found(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	implPath := implDocWithReport(t, dir, "A")
+	r := NewRunner(&mockSender{}, worktree.New(dir))
+	report, err := r.ParseCompletionReport(implPath, "A")
+	if err != nil {
+		t.Fatalf("ParseCompletionReport returned error: %v", err)
+	}
+	if report.Status != types.StatusComplete {
+		t.Errorf("status = %q, want complete", report.Status)
+	}
+}
+
+// TestRunner_ParseCompletionReport_NotFound verifies ErrReportNotFound is
+// returned when the agent section is absent.
+func TestRunner_ParseCompletionReport_NotFound(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	implPath := implDocWithReport(t, dir, "A")
+	r := NewRunner(&mockSender{}, worktree.New(dir))
+	_, err := r.ParseCompletionReport(implPath, "Z")
+	if err == nil {
+		t.Fatal("expected error for missing agent Z, got nil")
+	}
 }
 
 // TestWaitForCompletion_FoundImmediately verifies that WaitForCompletion

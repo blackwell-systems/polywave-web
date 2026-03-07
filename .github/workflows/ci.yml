@@ -34,8 +34,3 @@ jobs:
       - name: Coverage report
         run: go tool cover -func=coverage.out
 
-      - name: Upload coverage
-        uses: codecov/codecov-action@v5
-        with:
-          files: coverage.out
-          fail_ci_if_error: false
