@@ -2,12 +2,14 @@ package orchestrator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/worktree"
 )
@@ -214,4 +216,47 @@ func (o *Orchestrator) MergeWave(waveNum int) error {
 // Implementation is provided by Agent F (Wave 3) via runVerificationFunc.
 func (o *Orchestrator) RunVerification(testCommand string) error {
 	return runVerificationFunc(o, testCommand)
+}
+
+// UpdateIMPLStatus ticks the Status table checkboxes in the IMPL doc for all
+// agents in waveNum that reported status: complete. Non-fatal: returns nil
+// if no Status section found. Returns error only on file I/O failure.
+func (o *Orchestrator) UpdateIMPLStatus(waveNum int) error {
+	// 1. Find wave in o.implDoc.Waves by waveNum. If not found, return nil.
+	var wave *types.Wave
+	for i := range o.implDoc.Waves {
+		if o.implDoc.Waves[i].Number == waveNum {
+			wave = &o.implDoc.Waves[i]
+			break
+		}
+	}
+	if wave == nil {
+		return nil
+	}
+
+	// 2. For each agent in the wave, call protocol.ParseCompletionReport.
+	//    If ErrReportNotFound or status != StatusComplete, skip.
+	var completedLetters []string
+	for _, agentSpec := range wave.Agents {
+		report, err := protocol.ParseCompletionReport(o.implDocPath, agentSpec.Letter)
+		if err != nil {
+			if errors.Is(err, protocol.ErrReportNotFound) {
+				continue
+			}
+			// Non-fatal: skip agents whose reports cannot be parsed.
+			continue
+		}
+		if report.Status != types.StatusComplete {
+			continue
+		}
+		completedLetters = append(completedLetters, agentSpec.Letter)
+	}
+
+	// 4. If no complete agents, return nil.
+	if len(completedLetters) == 0 {
+		return nil
+	}
+
+	// 5. Call protocol.UpdateIMPLStatus to tick checkboxes.
+	return protocol.UpdateIMPLStatus(o.implDocPath, completedLetters)
 }

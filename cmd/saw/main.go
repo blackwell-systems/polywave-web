@@ -32,6 +32,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "merge":
+		if err := runMerge(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "--version", "-version":
 		fmt.Println("saw v0.1.0")
 	case "--help", "-help", "help":
@@ -52,6 +57,7 @@ Commands:
   status    Show current wave/agent status from an IMPL doc
   scout     Run a Scout agent to generate an IMPL doc for a feature
   scaffold  Run a Scaffold agent to set up worktrees from an IMPL doc
+  merge     Merge agent worktrees for a completed wave
 
 Flags:
   --impl <path>   Path to IMPL doc (required)
