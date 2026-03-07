@@ -99,7 +99,6 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name }: FileO
         {groupedByWave.map((group, groupIdx) => {
           const waveColor = getWaveColor(group.wave)
           const isScaffoldGroup = group.wave === 0
-
           return (
             <div key={groupIdx} className={`rounded-lg border-2 ${waveColor.border} overflow-hidden`}>
               <Table>
@@ -107,7 +106,7 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name }: FileO
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[50%]">File</TableHead>
                     <TableHead>Agent</TableHead>
-                    {hasWaves && <TableHead className={`w-[80px] ${isScaffoldGroup ? 'opacity-0' : ''}`}>Wave</TableHead>}
+                    {hasWaves && <TableHead className="w-[80px]">Wave</TableHead>}
                     {hasCol4 && <TableHead>{col4Label}</TableHead>}
                   </TableRow>
                 </TableHeader>

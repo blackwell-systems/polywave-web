@@ -4,6 +4,8 @@ import { IMPLDocResponse, IMPLListEntry } from './types'
 import ReviewScreen from './components/ReviewScreen'
 import WaveBoard from './components/WaveBoard'
 import DarkModeToggle from './components/DarkModeToggle'
+import { Button } from './components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './components/ui/card'
 
 type Screen = 'input' | 'review' | 'wave'
 
@@ -103,76 +105,77 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="fixed top-4 right-4 z-50">
         <DarkModeToggle />
       </div>
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-md p-8 w-full max-w-md">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Scout and Wave</h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6">Select a plan to review.</p>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Scout and Wave</CardTitle>
+          <p className="text-sm text-muted-foreground">Select a plan to review.</p>
+        </CardHeader>
+        <CardContent>
+          {entries.length > 0 && (() => {
+            const active = entries.filter(e => e.doc_status !== 'COMPLETE')
+            const completed = entries.filter(e => e.doc_status === 'COMPLETE')
+            return (
+              <div className="space-y-2 mb-6">
+                {active.map(e => (
+                  <Button
+                    key={e.slug}
+                    onClick={() => handleSelect(e.slug)}
+                    disabled={loading}
+                    variant="outline"
+                    className="w-full justify-start hover:bg-accent"
+                  >
+                    {e.slug}
+                  </Button>
+                ))}
+                {completed.length > 0 && (
+                  <>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground pt-2">Completed</p>
+                    {completed.map(e => (
+                      <Button
+                        key={e.slug}
+                        onClick={() => handleSelect(e.slug)}
+                        disabled={loading}
+                        variant="ghost"
+                        className="w-full justify-start text-muted-foreground"
+                      >
+                        {e.slug}
+                      </Button>
+                    ))}
+                  </>
+                )}
+              </div>
+            )
+          })()}
 
-        {entries.length > 0 && (() => {
-          const active = entries.filter(e => e.doc_status !== 'COMPLETE')
-          const completed = entries.filter(e => e.doc_status === 'COMPLETE')
-          return (
-            <div className="space-y-2 mb-6">
-              {active.map(e => (
-                <button
-                  key={e.slug}
-                  onClick={() => handleSelect(e.slug)}
-                  disabled={loading}
-                  className="w-full text-left border border-gray-200 dark:border-gray-700 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 rounded-lg px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors disabled:opacity-50"
-                >
-                  {e.slug}
-                </button>
-              ))}
-              {completed.length > 0 && (
-                <>
-                  <p className="text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 pt-2">Completed</p>
-                  {completed.map(e => (
-                    <button
-                      key={e.slug}
-                      onClick={() => handleSelect(e.slug)}
-                      disabled={loading}
-                      className="w-full text-left border border-gray-100 dark:border-gray-800 rounded-lg px-4 py-3 text-sm text-gray-400 dark:text-gray-500 transition-colors disabled:opacity-50 hover:border-gray-300 dark:hover:border-gray-600"
-                    >
-                      {e.slug}
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-          )
-        })()}
+          {entries.length === 0 && (
+            <p className="text-muted-foreground text-sm mb-6">No IMPL docs found. Run <code className="bg-muted px-1 rounded">saw scout</code> first.</p>
+          )}
 
-        {entries.length === 0 && (
-          <p className="text-gray-400 dark:text-gray-500 text-sm mb-6">No IMPL docs found. Run <code className="bg-gray-100 dark:bg-gray-800 px-1 rounded">saw scout</code> first.</p>
-        )}
+          <div className="border-t pt-4">
+            <p className="text-muted-foreground text-xs mb-2">Or enter a slug manually:</p>
+            <form onSubmit={handleLoad} className="flex gap-2">
+              <input
+                type="text"
+                value={slug}
+                onChange={e => setSlug(e.target.value)}
+                placeholder="e.g. caching-layer"
+                className="flex-1 border border-input bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                required
+              />
+              <Button type="submit" disabled={loading}>
+                {loading ? '...' : 'Go'}
+              </Button>
+            </form>
+          </div>
 
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <p className="text-gray-400 dark:text-gray-500 text-xs mb-2">Or enter a slug manually:</p>
-          <form onSubmit={handleLoad} className="flex gap-2">
-            <input
-              type="text"
-              value={slug}
-              onChange={e => setSlug(e.target.value)}
-              placeholder="e.g. caching-layer"
-              className="flex-1 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors"
-            >
-              {loading ? '...' : 'Go'}
-            </button>
-          </form>
-        </div>
-
-        {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
-        {rejected && <p className="text-orange-600 text-sm mt-3">Plan rejected.</p>}
-      </div>
+          {error && <p className="text-destructive text-sm mt-3">{error}</p>}
+          {rejected && <p className="text-orange-600 text-sm mt-3">Plan rejected.</p>}
+        </CardContent>
+      </Card>
     </div>
   )
 }
