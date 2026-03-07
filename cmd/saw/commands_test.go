@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -351,5 +352,153 @@ func TestRunScout_PromptIncludesFeature(t *testing.T) {
 	}
 	if !strings.Contains(spec.Prompt, "Scout Agent Prompt") {
 		t.Errorf("expected prompt to contain scout.md content, got:\n%s", spec.Prompt)
+	}
+}
+
+// captureRunStatus is a helper that redirects os.Stdout, calls runStatus with
+// the provided args, restores os.Stdout, and returns the captured output and
+// any error returned by runStatus.
+func captureRunStatus(t *testing.T, args []string) (string, error) {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("captureRunStatus: failed to create pipe: %v", err)
+	}
+	os.Stdout = w
+
+	runErr := runStatus(args)
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	if _, err := buf.ReadFrom(r); err != nil {
+		t.Fatalf("captureRunStatus: failed to read captured output: %v", err)
+	}
+	return buf.String(), runErr
+}
+
+// minimalIMPLDocWithReport is an IMPL doc that includes a completion report
+// for Agent A with status "complete", so TestRunStatus_JSONOutput and
+// TestRunStatus_SummaryLine can verify counts reliably.
+// Agent B is listed in the wave section (no completion report) so it appears
+// as "pending". Completion reports are appended after the wave definition,
+// which is how the SAW protocol structures IMPL docs.
+const minimalIMPLDocWithReport = `# IMPL: JSON Test Feature
+
+## Wave 1
+
+### Agent A: First agent
+Implements pkg/a/a.go.
+
+### Agent B: Second agent
+Implements pkg/b/b.go.
+
+## Completion Reports
+
+### Agent A - Completion Report
+
+` + "```yaml" + `
+status: complete
+worktree: /tmp/worktree-a
+branch: saw/wave1-agent-a
+commit: abc1234
+` + "```" + `
+`
+
+// TestRunStatus_JSONOutput calls runStatus with --json, captures stdout, and
+// verifies the output is valid JSON with the correct feature name and
+// summary.total count.
+func TestRunStatus_JSONOutput(t *testing.T) {
+	dir := t.TempDir()
+	implFile := filepath.Join(dir, "IMPL-json-test.md")
+	if err := os.WriteFile(implFile, []byte(minimalIMPLDocWithReport), 0o644); err != nil {
+		t.Fatalf("failed to write IMPL doc: %v", err)
+	}
+
+	output, runErr := captureRunStatus(t, []string{"--impl", implFile, "--json"})
+	if runErr != nil {
+		t.Fatalf("runStatus --json returned unexpected error: %v", runErr)
+	}
+
+	// Parse the JSON output.
+	var result struct {
+		Feature string `json:"feature"`
+		Waves   []struct {
+			Number int `json:"number"`
+			Agents []struct {
+				Letter string `json:"letter"`
+				Status string `json:"status"`
+			} `json:"agents"`
+		} `json:"waves"`
+		Summary struct {
+			Total    int `json:"total"`
+			Complete int `json:"complete"`
+			Pending  int `json:"pending"`
+		} `json:"summary"`
+	}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("runStatus --json output is not valid JSON: %v\noutput:\n%s", err, output)
+	}
+
+	if result.Feature != "JSON Test Feature" {
+		t.Errorf("JSON feature = %q, want %q", result.Feature, "JSON Test Feature")
+	}
+	if result.Summary.Total != 2 {
+		t.Errorf("JSON summary.total = %d, want 2", result.Summary.Total)
+	}
+	if result.Summary.Complete != 1 {
+		t.Errorf("JSON summary.complete = %d, want 1", result.Summary.Complete)
+	}
+	if result.Summary.Pending != 1 {
+		t.Errorf("JSON summary.pending = %d, want 1", result.Summary.Pending)
+	}
+}
+
+// TestRunStatus_MissingFlag calls runStatus with --missing and verifies that
+// a "Missing reports:" section appears in the output for agents without reports.
+func TestRunStatus_MissingFlag(t *testing.T) {
+	dir := t.TempDir()
+	implFile := filepath.Join(dir, "IMPL-missing-test.md")
+	// Use the minimal doc (no completion reports) so both agents appear as missing.
+	if err := os.WriteFile(implFile, []byte(minimalIMPLDoc), 0o644); err != nil {
+		t.Fatalf("failed to write IMPL doc: %v", err)
+	}
+
+	output, runErr := captureRunStatus(t, []string{"--impl", implFile, "--missing"})
+	if runErr != nil {
+		t.Fatalf("runStatus --missing returned unexpected error: %v", runErr)
+	}
+
+	if !strings.Contains(output, "Missing reports:") {
+		t.Errorf("output missing 'Missing reports:' section; got:\n%s", output)
+	}
+	if !strings.Contains(output, "Agent A (wave 1)") {
+		t.Errorf("output should list 'Agent A (wave 1)' as missing; got:\n%s", output)
+	}
+	if !strings.Contains(output, "Agent B (wave 1)") {
+		t.Errorf("output should list 'Agent B (wave 1)' as missing; got:\n%s", output)
+	}
+}
+
+// TestRunStatus_SummaryLine calls runStatus in default (human-readable) mode
+// and verifies the "Agents: X complete, Y pending, Z blocked" summary line.
+func TestRunStatus_SummaryLine(t *testing.T) {
+	dir := t.TempDir()
+	implFile := filepath.Join(dir, "IMPL-summary-test.md")
+	// Use the doc with one complete report (Agent A) and one pending (Agent B).
+	if err := os.WriteFile(implFile, []byte(minimalIMPLDocWithReport), 0o644); err != nil {
+		t.Fatalf("failed to write IMPL doc: %v", err)
+	}
+
+	output, runErr := captureRunStatus(t, []string{"--impl", implFile})
+	if runErr != nil {
+		t.Fatalf("runStatus returned unexpected error: %v", runErr)
+	}
+
+	// Expect the summary line with accurate counts.
+	if !strings.Contains(output, "Agents: 1 complete, 1 pending, 0 blocked") {
+		t.Errorf("output missing expected summary line; got:\n%s", output)
 	}
 }
