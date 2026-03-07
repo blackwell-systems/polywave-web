@@ -48,7 +48,11 @@
   /* Custom scrollbar styling */
   * {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--muted)) hsl(var(--background));
+    scrollbar-color: rgb(134, 239, 172) hsl(var(--background));
+  }
+
+  .dark * {
+    scrollbar-color: rgb(74, 222, 128) hsl(var(--background));
   }
 
   /* Webkit browsers (Chrome, Safari, Edge) */
@@ -62,12 +66,20 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: hsl(var(--muted));
+    background: rgb(134, 239, 172);
     border-radius: 0.5rem;
     border: 2px solid hsl(var(--background));
   }
 
+  .dark *::-webkit-scrollbar-thumb {
+    background: rgb(74, 222, 128);
+  }
+
   *::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
+    background: rgb(74, 222, 128);
+  }
+
+  .dark *::-webkit-scrollbar-thumb:hover {
+    background: rgb(134, 239, 172);
   }
 }
