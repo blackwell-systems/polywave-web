@@ -13,21 +13,8 @@ const ROW_COLORS = [
   { bg: 'bg-pink-100 dark:bg-pink-950', text: 'text-gray-800 dark:text-pink-200' },
 ]
 
-const WAVE_BORDER_COLORS = [
-  'border-l-green-500',
-  'border-l-amber-500',
-  'border-l-cyan-500',
-  'border-l-rose-500',
-  'border-l-indigo-500',
-]
-
 function getAgentColor(agentIndex: number): { bg: string; text: string } {
   return ROW_COLORS[agentIndex % ROW_COLORS.length]
-}
-
-function getWaveBorderColor(wave: number): string {
-  if (wave === 0) return 'border-l-gray-400' // Scaffold (wave 0)
-  return WAVE_BORDER_COLORS[(wave - 1) % WAVE_BORDER_COLORS.length]
 }
 
 export default function FileOwnershipTable({ fileOwnership, col4Name }: FileOwnershipTableProps): JSX.Element {
@@ -79,9 +66,18 @@ export default function FileOwnershipTable({ fileOwnership, col4Name }: FileOwne
           <tbody>
             {sorted.map((entry, idx) => {
               const colors = agentColorMap.get(entry.agent) ?? { bg: 'bg-white dark:bg-gray-900', text: 'text-gray-800 dark:text-gray-100' }
-              const waveBorder = hasWaves ? getWaveBorderColor(entry.wave || 0) : ''
+              const wave = entry.wave || 0
+              let borderClass = ''
+              if (hasWaves) {
+                if (wave === 0) borderClass = 'border-l-4 border-l-gray-400'
+                else if (wave === 1) borderClass = 'border-l-4 border-l-green-500'
+                else if (wave === 2) borderClass = 'border-l-4 border-l-amber-500'
+                else if (wave === 3) borderClass = 'border-l-4 border-l-cyan-500'
+                else if (wave === 4) borderClass = 'border-l-4 border-l-rose-500'
+                else borderClass = 'border-l-4 border-l-indigo-500'
+              }
               return (
-                <tr key={idx} className={`${colors.bg} border-b border-gray-100 dark:border-gray-800 last:border-0 border-l-4 ${waveBorder}`}>
+                <tr key={idx} className={`${colors.bg} border-b border-gray-100 dark:border-gray-800 last:border-0 ${borderClass}`}>
                   <td className={`px-4 py-2 font-mono text-xs ${colors.text}`}>{entry.file}</td>
                   <td className={`px-4 py-2 ${colors.text}`}>{entry.agent}</td>
                   {hasWaves && <td className={`px-4 py-2 ${colors.text}`}>{entry.wave || ''}</td>}
