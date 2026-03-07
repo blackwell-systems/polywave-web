@@ -65,6 +65,10 @@ func (f *fakeWaveOrch) RunVerification(testCommand string) error {
 	return nil
 }
 
+func (f *fakeWaveOrch) UpdateIMPLStatus(waveNum int) error {
+	return nil
+}
+
 func (f *fakeWaveOrch) IMPLDoc() *types.IMPLDoc {
 	return f.doc
 }

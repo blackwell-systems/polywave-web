@@ -28,6 +28,7 @@ type waveOrchestrator interface {
 	RunWave(waveNum int) error
 	MergeWave(waveNum int) error
 	RunVerification(testCommand string) error
+	UpdateIMPLStatus(waveNum int) error
 	IMPLDoc() *types.IMPLDoc
 }
 
@@ -123,6 +124,11 @@ func runWave(args []string) error {
 		}
 		if err := o.RunVerification(testCmd); err != nil {
 			return fmt.Errorf("wave: verification failed: %w", err)
+		}
+
+		// Tick IMPL doc status checkboxes for completed agents (non-fatal).
+		if err := o.UpdateIMPLStatus(currentWaveNum); err != nil {
+			fmt.Fprintf(os.Stderr, "wave: warning: UpdateIMPLStatus: %v\n", err)
 		}
 
 		if err := o.TransitionTo(types.WaveVerified); err != nil {
