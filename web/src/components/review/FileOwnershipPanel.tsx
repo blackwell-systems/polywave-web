@@ -1,5 +1,5 @@
 import { IMPLDocResponse } from '../../types'
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { Card, CardContent } from '../ui/card'
 import FileOwnershipTable from '../FileOwnershipTable'
 
 interface FileOwnershipPanelProps {
@@ -9,10 +9,7 @@ interface FileOwnershipPanelProps {
 export default function FileOwnershipPanel({ impl }: FileOwnershipPanelProps): JSX.Element {
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>File Ownership</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <FileOwnershipTable
           fileOwnership={impl.file_ownership}
           col4Name={impl.file_ownership_col4_name}

@@ -19,10 +19,9 @@ interface ReviewScreenProps {
   onReject: () => void
 }
 
-type PanelKey = 'overview' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist'
+type PanelKey = 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist'
 
 const panels: Array<{ key: PanelKey; label: string }> = [
-  { key: 'overview', label: 'Overview' },
   { key: 'file-ownership', label: 'File Ownership' },
   { key: 'wave-structure', label: 'Wave Structure' },
   { key: 'agent-prompts', label: 'Agent Prompts' },
@@ -38,7 +37,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const isNotSuitable = impl.suitability.verdict === 'NOT SUITABLE'
 
   const [activePanels, setActivePanels] = useState<Set<PanelKey>>(
-    new Set(['overview', 'wave-structure', 'dependency-graph'])
+    new Set(['wave-structure', 'dependency-graph'])
   )
 
   const togglePanel = (key: PanelKey) => {
@@ -60,6 +59,11 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Plan Review</h1>
           <p className="text-sm text-muted-foreground mt-1 font-mono">{slug}</p>
+        </div>
+
+        {/* Overview - always visible */}
+        <div className={`mb-6 ${isNotSuitable ? 'opacity-40 pointer-events-none' : ''}`}>
+          <OverviewPanel impl={impl} />
         </div>
 
         {/* Toggle buttons - grayed out if NOT SUITABLE */}
@@ -84,10 +88,6 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
           {/* Active panels stacked vertically */}
           <div className="space-y-6">
-            {activePanels.has('overview') && (
-              <OverviewPanel impl={impl} />
-            )}
-
             {activePanels.has('file-ownership') && (
               <FileOwnershipPanel impl={impl} />
             )}
