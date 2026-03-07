@@ -1,6 +1,7 @@
+import { useState } from 'react'
 import { IMPLDocResponse } from '../types'
 import ActionButtons from './ActionButtons'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Button } from './ui/button'
 import OverviewPanel from './review/OverviewPanel'
 import FileOwnershipPanel from './review/FileOwnershipPanel'
 import WaveStructurePanel from './review/WaveStructurePanel'
@@ -18,9 +19,37 @@ interface ReviewScreenProps {
   onReject: () => void
 }
 
+type PanelKey = 'overview' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist'
+
+const panels: Array<{ key: PanelKey; label: string }> = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'file-ownership', label: 'File Ownership' },
+  { key: 'wave-structure', label: 'Wave Structure' },
+  { key: 'agent-prompts', label: 'Agent Prompts' },
+  { key: 'interface-contracts', label: 'Interface Contracts' },
+  { key: 'scaffolds', label: 'Scaffolds' },
+  { key: 'dependency-graph', label: 'Dependency Graph' },
+  { key: 'known-issues', label: 'Known Issues' },
+  { key: 'post-merge-checklist', label: 'Post-Merge' },
+]
+
 export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const { slug, impl, onApprove, onReject } = props
   const isNotSuitable = impl.suitability.verdict === 'NOT SUITABLE'
+
+  const [activePanels, setActivePanels] = useState<Set<PanelKey>>(new Set(['overview']))
+
+  const togglePanel = (key: PanelKey) => {
+    setActivePanels(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+      }
+      return next
+    })
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,75 +60,60 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
           <p className="text-sm text-muted-foreground mt-1 font-mono">{slug}</p>
         </div>
 
-        {/* Tabbed content - grayed out if NOT SUITABLE */}
+        {/* Toggle buttons - grayed out if NOT SUITABLE */}
         <div className={isNotSuitable ? 'opacity-40 pointer-events-none' : ''}>
-          <Tabs defaultValue="overview" className="w-full">
-            <TabsList className="grid w-full grid-cols-9 h-auto">
-              <TabsTrigger value="overview" className="text-xs px-2 py-2">
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="file-ownership" className="text-xs px-2 py-2">
-                File Ownership
-              </TabsTrigger>
-              <TabsTrigger value="wave-structure" className="text-xs px-2 py-2">
-                Wave Structure
-              </TabsTrigger>
-              <TabsTrigger value="agent-prompts" className="text-xs px-2 py-2">
-                Agent Prompts
-              </TabsTrigger>
-              <TabsTrigger value="interface-contracts" className="text-xs px-2 py-2">
-                Interface Contracts
-              </TabsTrigger>
-              <TabsTrigger value="scaffolds" className="text-xs px-2 py-2">
-                Scaffolds
-              </TabsTrigger>
-              <TabsTrigger value="dependency-graph" className="text-xs px-2 py-2">
-                Dependency Graph
-              </TabsTrigger>
-              <TabsTrigger value="known-issues" className="text-xs px-2 py-2">
-                Known Issues
-              </TabsTrigger>
-              <TabsTrigger value="post-merge-checklist" className="text-xs px-2 py-2">
-                Post-Merge
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {panels.map(panel => (
+              <Button
+                key={panel.key}
+                onClick={() => togglePanel(panel.key)}
+                variant={activePanels.has(panel.key) ? 'default' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                {panel.label}
+              </Button>
+            ))}
+          </div>
 
-            <TabsContent value="overview" className="mt-6">
+          {/* Active panels stacked vertically */}
+          <div className="space-y-6">
+            {activePanels.has('overview') && (
               <OverviewPanel impl={impl} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="file-ownership" className="mt-6">
+            {activePanels.has('file-ownership') && (
               <FileOwnershipPanel impl={impl} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="wave-structure" className="mt-6">
+            {activePanels.has('wave-structure') && (
               <WaveStructurePanel impl={impl} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="agent-prompts" className="mt-6">
+            {activePanels.has('agent-prompts') && (
               <AgentPromptsPanel agentPrompts={(impl as any).agent_prompts} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="interface-contracts" className="mt-6">
+            {activePanels.has('interface-contracts') && (
               <InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="scaffolds" className="mt-6">
+            {activePanels.has('scaffolds') && (
               <ScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="dependency-graph" className="mt-6">
+            {activePanels.has('dependency-graph') && (
               <DependencyGraphPanel dependencyGraphText={(impl as any).dependency_graph_text} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="known-issues" className="mt-6">
+            {activePanels.has('known-issues') && (
               <KnownIssuesPanel knownIssues={(impl as any).known_issues} />
-            </TabsContent>
+            )}
 
-            <TabsContent value="post-merge-checklist" className="mt-6">
+            {activePanels.has('post-merge-checklist') && (
               <PostMergeChecklistPanel checklistText={(impl as any).post_merge_checklist_text} />
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         </div>
 
         {/* Action buttons - always interactive, fixed at bottom */}
