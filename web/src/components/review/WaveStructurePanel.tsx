@@ -28,7 +28,7 @@ export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): J
         <CardTitle>Wave Structure</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Scout phase */}
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-20 h-10 bg-green-500/10 border-2 border-green-500/30 rounded text-sm font-semibold text-green-700 dark:text-green-300">
@@ -47,38 +47,38 @@ export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): J
             </div>
           )}
 
-          {/* Waves */}
-          {sortedWaves.map(wave => (
-            <div key={wave.number} className="space-y-3">
-              {/* Wave header */}
-              <div className="flex items-center gap-3 ml-4">
-                <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Wave {wave.number}
-                </div>
-                <div className="flex-1 h-px bg-border" />
-              </div>
+          {/* Waves - each progressively indented */}
+          {sortedWaves.map((wave, idx) => {
+            const indent = 8 + (idx * 4) // 8px base + 4px per wave for progressive indent
 
-              {/* Agent cards in horizontal row */}
-              <div className="flex flex-wrap gap-3 ml-8">
-                {wave.agents.map(agentLetter => (
-                  <div
-                    key={agentLetter}
-                    className={`flex items-center justify-center w-12 h-12 rounded-lg font-semibold text-base ${
-                      AGENT_COLORS[agentLetter] || 'bg-gray-500/10 border-2 border-gray-500/30 text-gray-700 dark:text-gray-300'
-                    }`}
-                  >
-                    {agentLetter}
+            return (
+              <div key={wave.number} className="space-y-2">
+                {/* Wave header */}
+                <div className="flex items-center gap-3" style={{ marginLeft: `${indent}px` }}>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground min-w-[60px]">
+                    Wave {wave.number}
                   </div>
-                ))}
-              </div>
+                  <div className="flex flex-wrap gap-2">
+                    {wave.agents.map(agentLetter => (
+                      <div
+                        key={agentLetter}
+                        className={`flex items-center justify-center w-10 h-10 rounded-lg font-semibold text-sm ${
+                          AGENT_COLORS[agentLetter] || 'bg-gray-500/10 border-2 border-gray-500/30 text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        {agentLetter}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-              {/* Merge indicator */}
-              <div className="flex items-center gap-3 ml-4">
-                <div className="text-xs text-muted-foreground">→ merge & verify</div>
-                <div className="flex-1 h-px bg-border" />
+                {/* Merge line */}
+                <div className="flex items-center gap-2" style={{ marginLeft: `${indent}px` }}>
+                  <div className="text-[10px] text-muted-foreground">↓ merge & verify</div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
 
           {/* Complete */}
           <div className="flex items-center gap-3">
