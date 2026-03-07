@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { IMPLDocResponse } from '../../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 
@@ -30,47 +31,51 @@ interface TimelineNode {
 }
 
 const JEWEL_CONFIGS: Record<NodeType, { size: number; colors: [string, string, string] }> = {
-  wave: { size: 20, colors: ['#60a5fa', '#3b82f6', '#1d4ed8'] },
-  complete: { size: 20, colors: ['#a78bfa', '#7c3aed', '#5b21b6'] },
-  merge: { size: 12, colors: ['#94a3b8', '#64748b', '#475569'] },
-  orchestrator: { size: 12, colors: ['#94a3b8', '#64748b', '#475569'] },
+  wave: { size: 20, colors: ['#93c5fd', '#3b82f6', '#1e40af'] },
+  complete: { size: 20, colors: ['#c4b5fd', '#7c3aed', '#4c1d95'] },
+  merge: { size: 12, colors: ['#cbd5e1', '#64748b', '#334155'] },
+  orchestrator: { size: 12, colors: ['#cbd5e1', '#64748b', '#334155'] },
 }
 
+let jewelCounter = 0
+
 function Jewel({ type, filled }: { type: NodeType; filled: boolean }) {
+  const [uid] = useState(() => `jewel-${++jewelCounter}`)
   const config = JEWEL_CONFIGS[type]
   const { size, colors } = config
-  const id = `jewel-${type}-${filled ? 'f' : 'h'}`
   const r = size / 2
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="flex-shrink-0">
       <defs>
-        <radialGradient id={`${id}-grad`} cx="35%" cy="35%" r="65%">
-          <stop offset="0%" stopColor={filled ? colors[0] : colors[1]} stopOpacity={filled ? 0.9 : 0.3} />
-          <stop offset="60%" stopColor={colors[1]} stopOpacity={filled ? 0.7 : 0.15} />
-          <stop offset="100%" stopColor={colors[2]} stopOpacity={filled ? 0.5 : 0.05} />
+        <radialGradient id={`${uid}-grad`} cx="35%" cy="35%" r="65%">
+          <stop offset="0%" stopColor={colors[0]} stopOpacity={filled ? 1 : 0.6} />
+          <stop offset="50%" stopColor={colors[1]} stopOpacity={filled ? 0.85 : 0.4} />
+          <stop offset="100%" stopColor={colors[2]} stopOpacity={filled ? 0.7 : 0.2} />
         </radialGradient>
-        <radialGradient id={`${id}-highlight`} cx="30%" cy="25%" r="40%">
-          <stop offset="0%" stopColor="white" stopOpacity={filled ? 0.6 : 0.3} />
+        <radialGradient id={`${uid}-hl`} cx="30%" cy="25%" r="35%">
+          <stop offset="0%" stopColor="white" stopOpacity={filled ? 0.7 : 0.4} />
           <stop offset="100%" stopColor="white" stopOpacity="0" />
         </radialGradient>
-        <filter id={`${id}-glow`}>
-          <feGaussianBlur stdDeviation={filled ? 2 : 1} result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
+        {filled && (
+          <filter id={`${uid}-glow`}>
+            <feGaussianBlur stdDeviation="2" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        )}
       </defs>
-      {/* Outer glow */}
-      <circle cx={r} cy={r} r={r - 1} fill={colors[1]} opacity={filled ? 0.2 : 0.08} filter={`url(#${id}-glow)`} />
+      {/* Outer glow — only when filled */}
+      {filled && <circle cx={r} cy={r} r={r - 0.5} fill={colors[1]} opacity={0.25} filter={`url(#${uid}-glow)`} />}
       {/* Body */}
-      <circle cx={r} cy={r} r={r - 1.5} fill={`url(#${id}-grad)`} stroke={colors[1]} strokeWidth={filled ? 1 : 0.75} strokeOpacity={filled ? 0.6 : 0.4} />
-      {/* Inner highlight */}
-      <circle cx={r} cy={r} r={r - 2.5} fill={`url(#${id}-highlight)`} />
+      <circle cx={r} cy={r} r={r - 1.5} fill={`url(#${uid}-grad)`} stroke={colors[1]} strokeWidth={1} strokeOpacity={filled ? 0.7 : 0.5} />
+      {/* Inner highlight — glassy reflection */}
+      <circle cx={r} cy={r} r={r - 2.5} fill={`url(#${uid}-hl)`} />
       {/* Ring for complete type */}
       {type === 'complete' && (
-        <circle cx={r} cy={r} r={r - 0.5} fill="none" stroke={colors[0]} strokeWidth="0.5" strokeOpacity={filled ? 0.4 : 0.2} />
+        <circle cx={r} cy={r} r={r - 0.5} fill="none" stroke={colors[0]} strokeWidth="0.75" strokeOpacity={filled ? 0.5 : 0.3} />
       )}
     </svg>
   )
