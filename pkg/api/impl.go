@@ -70,6 +70,14 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 	if doc.DocStatus == "COMPLETE" {
 		docStatus = "COMPLETE"
 	}
+	// Detect scaffold files from file ownership table
+	scaffoldFiles := []string{}
+	for file, info := range doc.FileOwnership {
+		if strings.ToLower(info.Agent) == "scaffold" {
+			scaffoldFiles = append(scaffoldFiles, file)
+		}
+	}
+
 	resp := IMPLDocResponse{
 		Slug:        slug,
 		DocStatus:   docStatus,
@@ -82,9 +90,9 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 		FileOwnershipCol4Name: doc.FileOwnershipCol4,
 		Waves:                 mapWaves(doc.Waves),
 		Scaffold: ScaffoldInfo{
-			Required:  false,
-			Files:     []string{},
-			Contracts: []ContractEntry{},
+			Required:  len(scaffoldFiles) > 0,
+			Files:     scaffoldFiles,
+			Contracts: []ContractEntry{}, // Contracts not parsed yet - would need scaffolds section parsing
 		},
 	}
 
