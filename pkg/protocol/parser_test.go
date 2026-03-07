@@ -96,8 +96,8 @@ func TestParseIMPLDoc_FileOwnership(t *testing.T) {
 			t.Errorf("FileOwnership[%q] not found", tc.file)
 			continue
 		}
-		if got != tc.agent {
-			t.Errorf("FileOwnership[%q] = %q; want %q", tc.file, got, tc.agent)
+		if got.Agent != tc.agent {
+			t.Errorf("FileOwnership[%q].Agent = %q; want %q", tc.file, got.Agent, tc.agent)
 		}
 	}
 }

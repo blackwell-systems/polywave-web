@@ -29,7 +29,7 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 	defer f.Close()
 
 	doc := &types.IMPLDoc{
-		FileOwnership: make(map[string]string),
+		FileOwnership: make(map[string]types.FileOwnershipInfo),
 	}
 
 	type parserState int
@@ -96,6 +96,11 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 			doc.FeatureName = strings.TrimSpace(strings.TrimPrefix(line, "# IMPL:"))
 			state = stateTop
 
+		// ── Suitability verdict: Verdict: SUITABLE / NOT SUITABLE
+		case state == stateTop && strings.HasPrefix(trimmed, "Verdict:"):
+			val := strings.TrimSpace(strings.TrimPrefix(trimmed, "Verdict:"))
+			doc.Status = val
+
 		// ── Metadata: **Test Command:** go test ./...  (or without bold)
 		case state == stateTop && (strings.HasPrefix(trimmed, "**Test Command:**") ||
 			strings.HasPrefix(trimmed, "Test Command:")):
@@ -148,11 +153,15 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 			flushAgent()
 			state = stateFileOwner
 
-		// ── Agent subsection: ### Agent X: Description  (within a wave, or
-		//    switching to a new agent while already inside one).
+		// ── Agent subsection: ### Agent X: Description  or  #### Agent X — Description
+		//    Accepted in any state (wave, agent, or top-level). If no ## Wave N
+		//    section is active, auto-create wave 1.
 		//    Completion-report headers are handled above and are excluded here.
-		case (state == stateWave || state == stateAgent) && isAgentHeader(line) && !isCompletionReportHeader(line):
+		case isAgentHeader(line) && !isCompletionReportHeader(line):
 			flushAgent()
+			if currentWave == nil {
+				currentWave = &types.Wave{Number: 1}
+			}
 			letter := extractAgentLetter(line)
 			currentAgent = &types.AgentSpec{Letter: letter}
 			agentPromptLines = nil
@@ -166,8 +175,15 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 		case state == stateFileOwner && strings.HasPrefix(line, "|"):
 			parseFileOwnershipRow(line, doc.FileOwnership)
 
-		// ── Accumulate agent prompt text
+		// ── Accumulate agent prompt text; extract **wave:** N metadata
 		case state == stateAgent:
+			if strings.HasPrefix(trimmed, "**wave:**") {
+				waveVal := strings.TrimSpace(strings.TrimPrefix(trimmed, "**wave:**"))
+				var n int
+				if _, err2 := fmt.Sscanf(waveVal, "%d", &n); err2 == nil && currentWave != nil {
+					currentWave.Number = n
+				}
+			}
 			agentPromptLines = append(agentPromptLines, line)
 		}
 	}
@@ -187,8 +203,8 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 		for j := range doc.Waves[i].Agents {
 			agent := &doc.Waves[i].Agents[j]
 			agent.FilesOwned = nil
-			for file, letter := range doc.FileOwnership {
-				if letter == agent.Letter {
+			for file, info := range doc.FileOwnership {
+				if info.Agent == agent.Letter {
 					agent.FilesOwned = append(agent.FilesOwned, file)
 				}
 			}
@@ -336,24 +352,29 @@ done:
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-// isAgentHeader returns true for lines like "### Agent A: Description".
+// isAgentHeader returns true for lines like "### Agent A: Description"
+// or "#### Agent A — Description".
 func isAgentHeader(line string) bool {
-	if !strings.HasPrefix(line, "### Agent ") {
+	rest := ""
+	switch {
+	case strings.HasPrefix(line, "#### Agent "):
+		rest = strings.TrimPrefix(line, "#### Agent ")
+	case strings.HasPrefix(line, "### Agent "):
+		rest = strings.TrimPrefix(line, "### Agent ")
+	default:
 		return false
 	}
-	rest := strings.TrimPrefix(line, "### Agent ")
 	if len(rest) == 0 {
 		return false
 	}
-	// Must be a single uppercase letter followed by ':' or end-of-string.
-	letter := string(rest[0])
-	if letter < "A" || letter > "Z" {
+	letter := rest[0]
+	if letter < 'A' || letter > 'Z' {
 		return false
 	}
 	if len(rest) == 1 {
 		return true
 	}
-	return rest[1] == ':' || rest[1] == ' '
+	return rest[1] == ':' || rest[1] == ' ' || rest[1] == 0xE2 // '—' starts with 0xE2 in UTF-8
 }
 
 // isCompletionReportHeader returns true for lines like
@@ -366,9 +387,15 @@ func isCompletionReportHeader(line string) bool {
 }
 
 // extractAgentLetter returns the single uppercase letter from a header like
-// "### Agent A: ..." or "### Agent A - Completion Report".
+// "### Agent A: ...", "#### Agent A — ...", or "### Agent A - Completion Report".
 func extractAgentLetter(line string) string {
-	rest := strings.TrimPrefix(line, "### Agent ")
+	var rest string
+	switch {
+	case strings.HasPrefix(line, "#### Agent "):
+		rest = strings.TrimPrefix(line, "#### Agent ")
+	case strings.HasPrefix(line, "### Agent "):
+		rest = strings.TrimPrefix(line, "### Agent ")
+	}
 	if len(rest) == 0 {
 		return ""
 	}
@@ -379,8 +406,8 @@ func extractAgentLetter(line string) string {
 //
 //	| pkg/protocol/parser.go | A | 1 | — |
 //
-// and populates the ownership map (file -> agentLetter).
-func parseFileOwnershipRow(line string, ownership map[string]string) {
+// and populates the ownership map (file -> FileOwnershipInfo).
+func parseFileOwnershipRow(line string, ownership map[string]types.FileOwnershipInfo) {
 	// Split on "|" and trim whitespace from each cell.
 	parts := strings.Split(line, "|")
 	// A valid data row has at least 4 cells (leading empty + 3+ columns).
@@ -399,10 +426,59 @@ func parseFileOwnershipRow(line string, ownership map[string]string) {
 		return
 	}
 
-	// Normalise backtick-wrapped paths: `pkg/protocol/parser.go` -> pkg/protocol/parser.go
-	file = strings.Trim(file, "`")
-	agent = strings.Trim(agent, "`")
+	agent = strings.Trim(agent, "` ")
 
-	ownership[file] = agent
+	info := types.FileOwnershipInfo{Agent: agent}
+
+	// Infer action from file path annotations like "(new)" or "(modify)" before
+	// stripping backticks, since annotations appear outside the backtick-wrapped path.
+	fileLower := strings.ToLower(file)
+	switch {
+	case strings.Contains(fileLower, "(new)"):
+		info.Action = "new"
+		file = strings.Replace(file, "(new)", "", 1)
+		file = strings.Replace(file, "(New)", "", 1)
+	case strings.Contains(fileLower, "(create)"):
+		info.Action = "new"
+		file = strings.Replace(file, "(create)", "", 1)
+		file = strings.Replace(file, "(Create)", "", 1)
+	case strings.Contains(fileLower, "(modify)"):
+		info.Action = "modify"
+		file = strings.Replace(file, "(modify)", "", 1)
+		file = strings.Replace(file, "(Modify)", "", 1)
+	}
+
+	// Normalise backtick-wrapped paths: `pkg/protocol/parser.go` -> pkg/protocol/parser.go
+	file = strings.Trim(strings.TrimSpace(file), "` ")
+
+	// Parse wave number from 3rd column if present.
+	if len(parts) >= 5 {
+		waveStr := strings.TrimSpace(parts[3])
+		var n int
+		if _, err := fmt.Sscanf(waveStr, "%d", &n); err == nil {
+			info.Wave = n
+		}
+	}
+
+	// Parse action from 4th column if present (e.g. "new", "modify", "—").
+	if info.Action == "" && len(parts) >= 6 {
+		action := strings.TrimSpace(parts[4])
+		action = strings.Trim(action, "`")
+		action = strings.ToLower(action)
+		if action != "" && action != "—" && action != "-" {
+			switch {
+			case strings.HasPrefix(action, "new") || strings.HasPrefix(action, "create"):
+				info.Action = "new"
+			case strings.HasPrefix(action, "mod") || strings.HasPrefix(action, "edit"):
+				info.Action = "modify"
+			case strings.HasPrefix(action, "del") || strings.HasPrefix(action, "remove"):
+				info.Action = "delete"
+			default:
+				info.Action = action
+			}
+		}
+	}
+
+	ownership[file] = info
 }
 

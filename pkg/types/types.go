@@ -64,7 +64,14 @@ type IMPLDoc struct {
 	TestCommand   string            // post-merge verification command (e.g. "go test ./...")
 	LintCommand   string            // check-mode lint command (e.g. "go vet ./...")
 	Waves         []Wave
-	FileOwnership map[string]string // file path -> agent letter
+	FileOwnership map[string]FileOwnershipInfo // file path -> ownership info
+}
+
+// FileOwnershipInfo holds parsed data for one row of the file ownership table.
+type FileOwnershipInfo struct {
+	Agent  string // agent letter (e.g. "A")
+	Wave   int    // wave number (0 if not specified)
+	Action string // "new", "modify", "delete", or "" if not specified
 }
 
 // Wave represents one wave of parallel agents

@@ -5,10 +5,34 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
 )
+
+// handleListImpls serves GET /api/impl and returns a JSON array of available slugs.
+func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
+	entries, err := os.ReadDir(s.cfg.IMPLDir)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]string{})
+		return
+	}
+	var slugs []string
+	for _, e := range entries {
+		name := e.Name()
+		if strings.HasPrefix(name, "IMPL-") && strings.HasSuffix(name, ".md") {
+			slug := strings.TrimSuffix(strings.TrimPrefix(name, "IMPL-"), ".md")
+			slugs = append(slugs, slug)
+		}
+	}
+	if slugs == nil {
+		slugs = []string{}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(slugs)
+}
 
 // handleGetImpl serves GET /api/impl/{slug}.
 // It locates the IMPL doc file at cfg.IMPLDir/IMPL-{slug}.md, parses it
@@ -102,15 +126,15 @@ func suitabilityVerdict(status string) string {
 	return status
 }
 
-// mapFileOwnership converts the file->agentLetter map to []FileOwnershipEntry.
-func mapFileOwnership(ownership map[string]string) []FileOwnershipEntry {
+// mapFileOwnership converts the file->FileOwnershipInfo map to []FileOwnershipEntry.
+func mapFileOwnership(ownership map[string]types.FileOwnershipInfo) []FileOwnershipEntry {
 	entries := make([]FileOwnershipEntry, 0, len(ownership))
-	for file, agent := range ownership {
+	for file, info := range ownership {
 		entries = append(entries, FileOwnershipEntry{
 			File:   file,
-			Agent:  agent,
-			Wave:   0,
-			Action: "unknown",
+			Agent:  info.Agent,
+			Wave:   info.Wave,
+			Action: info.Action,
 		})
 	}
 	return entries

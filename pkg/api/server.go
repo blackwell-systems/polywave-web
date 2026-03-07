@@ -32,6 +32,7 @@ func New(cfg Config) *Server {
 		},
 	}
 
+	s.mux.HandleFunc("GET /api/impl", s.handleListImpls)
 	s.mux.HandleFunc("GET /api/impl/{slug}", s.handleGetImpl)
 	s.mux.HandleFunc("POST /api/impl/{slug}/approve", s.handleApprove)
 	s.mux.HandleFunc("POST /api/impl/{slug}/reject", s.handleReject)

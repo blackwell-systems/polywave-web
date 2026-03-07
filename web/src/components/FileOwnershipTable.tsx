@@ -21,6 +21,9 @@ export default function FileOwnershipTable({ fileOwnership }: FileOwnershipTable
   const agents = Array.from(new Set(fileOwnership.map(e => e.agent))).sort()
   const agentColorMap = new Map(agents.map((agent, i) => [agent, getAgentColor(i)]))
 
+  const hasWaves = fileOwnership.some(e => e.wave > 0)
+  const hasActions = fileOwnership.some(e => e.action && e.action !== 'unknown')
+
   // Sort by agent letter, then wave
   const sorted = [...fileOwnership].sort((a, b) => {
     if (a.agent < b.agent) return -1
@@ -37,8 +40,8 @@ export default function FileOwnershipTable({ fileOwnership }: FileOwnershipTable
             <tr className="bg-gray-50 border-b border-gray-200">
               <th className="px-4 py-3 text-left font-medium text-gray-600">File</th>
               <th className="px-4 py-3 text-left font-medium text-gray-600">Agent</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600">Wave</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-600">Action</th>
+              {hasWaves && <th className="px-4 py-3 text-left font-medium text-gray-600">Wave</th>}
+              {hasActions && <th className="px-4 py-3 text-left font-medium text-gray-600">Action</th>}
             </tr>
           </thead>
           <tbody>
@@ -48,8 +51,8 @@ export default function FileOwnershipTable({ fileOwnership }: FileOwnershipTable
                 <tr key={idx} className={`${rowColor} border-b border-gray-100 last:border-0`}>
                   <td className="px-4 py-2 font-mono text-xs text-gray-800">{entry.file}</td>
                   <td className="px-4 py-2 text-gray-700">{entry.agent}</td>
-                  <td className="px-4 py-2 text-gray-700">{entry.wave}</td>
-                  <td className="px-4 py-2 text-gray-700 capitalize">{entry.action}</td>
+                  {hasWaves && <td className="px-4 py-2 text-gray-700">{entry.wave || ''}</td>}
+                  {hasActions && <td className="px-4 py-2 text-gray-700 capitalize">{entry.action || ''}</td>}
                 </tr>
               )
             })}
