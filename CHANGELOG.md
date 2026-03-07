@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-03-07
+
+### Added
+
+**Web UI backend (`saw serve`)**
+- `saw serve` — start a local HTTP server for reviewing IMPL docs and monitoring wave execution
+- `pkg/api/server.go` — HTTP server with graceful shutdown, stdlib `net/http` only
+- `pkg/api/impl.go` — `GET /api/impl/{slug}` returns parsed IMPL doc as structured JSON; `POST /api/impl/{slug}/approve` and `/reject` publish SSE events
+- `pkg/api/wave.go` — SSE broker with per-slug pub/sub; `GET /api/wave/{slug}/events` streams agent status updates
+- `pkg/api/types.go` — shared response types (`IMPLDocResponse`, `SSEEvent`, etc.)
+- CLI flags: `--addr`, `--impl-dir`, `--repo`, `--no-browser`
+- Auto-opens browser on macOS/Linux
+
 ## [0.1.1] - 2026-03-06
 
 ### Added
