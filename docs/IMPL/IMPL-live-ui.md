@@ -1,27 +1,37 @@
-### Agent B - Completion Report
+# IMPL: live-ui
 
-```yaml
-status: complete
-worktree: /Users/dayna.blackwell/code/scout-and-wave-go/.claude/worktrees/wave1-agent-B
-branch: wave1-agent-B
-files_changed:
-  - pkg/api/wave_runner.go (created)
-  - pkg/api/server.go (modified)
-  - pkg/api/server_test.go (modified)
-  - web/dist/.gitkeep (created - stub for embed.FS; web/dist was absent, breaking go build ./...)
-interface_deviations: none
-notes: |
-  POST /api/wave/{slug}/start is implemented with a sync.Map active-run guard
-  (409 on duplicate, 202 on success). The background goroutine is a placeholder
-  that publishes a single "run_started" SSE event; the full orchestration loop
-  will be wired in after Agent A's SetEventPublisher/EventPublisher work is
-  merged. makePublisher is defined as specified.
+Verdict: SUITABLE
 
-  The web/dist directory was missing (frontend not built), causing go build ./...
-  to fail on the embed.FS directive. A stub web/dist/.gitkeep was created so the
-  embed compiles. This is a pre-existing environment issue not in Agent B's owned
-  files; the orchestrator post-merge step should ensure the frontend is built or
-  the embed is guarded appropriately.
+## Summary
 
-  All 6 tests in pkg/api pass (including the 2 new wave-start tests).
-```
+SSE bridge from orchestrator to web UI, `saw serve` + wave unification,
+and dark mode across all components.
+
+## Wave 1 (complete)
+
+### Agent A — SSE Bridge
+- `pkg/orchestrator/events.go` (created): OrchestratorEvent, EventPublisher, 5 payload types
+- `pkg/orchestrator/orchestrator.go` (modified): eventPublisher field, publish() helper, event hooks
+- Status: **merged** (443bd39)
+
+### Agent B — Wave Start Endpoint
+- `pkg/api/wave_runner.go` (created): handleWaveStart, makePublisher, active run guard via sync.Map
+- `pkg/api/server.go` (modified): POST /api/wave/{slug}/start route, activeRuns field
+- `pkg/api/server_test.go` (modified): 2 new wave-start tests
+- Status: **merged** (af1effb)
+
+### Agent C — Dark Mode + Frontend Wiring
+- `web/src/hooks/useDarkMode.ts` (created): localStorage + prefers-color-scheme
+- `web/src/components/DarkModeToggle.tsx` (created): sun/moon toggle
+- `web/src/App.tsx` (modified): startWave wiring, DarkModeToggle placement
+- All component files: dark: Tailwind variants
+- Status: **merged** (7b5070d)
+
+## Post-merge verification
+
+- `go build ./...` — pass
+- `go vet ./...` — pass
+- `go test ./...` — all 8 packages pass
+- `npm run build` — 44 modules, built successfully
+
+## Status: COMPLETE
