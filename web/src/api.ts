@@ -57,3 +57,17 @@ export async function runScout(feature: string, repo?: string): Promise<{ runId:
 export function subscribeScoutEvents(runId: string): EventSource {
   return new EventSource(`/api/scout/${encodeURIComponent(runId)}/events`)
 }
+
+export async function proceedWaveGate(slug: string): Promise<void> {
+  const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/gate/proceed`, { method: 'POST' })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+}
+
+export async function rerunAgent(slug: string, wave: number, agentLetter: string): Promise<void> {
+  const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/agent/${encodeURIComponent(agentLetter)}/rerun`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wave }),
+  })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+}
