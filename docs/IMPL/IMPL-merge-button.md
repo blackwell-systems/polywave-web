@@ -1,4 +1,5 @@
 # IMPL: Merge Wave Button + Post-Merge Test Runner
+<!-- SAW:COMPLETE 2026-03-08 -->
 
 ## Suitability Assessment
 
@@ -695,7 +696,88 @@ After wave 1 completes:
 
 | Wave | Agent | Description | Status |
 |------|-------|-------------|--------|
-| 1 | A | Backend: merge + test SSE handlers + route registration | TO-DO |
-| 1 | B | Frontend hook: merge/test SSE state management | TO-DO |
-| 1 | C | Frontend UI: WaveBoard merge button + test runner buttons + api.ts | TO-DO |
+| 1 | A | Backend: merge + test SSE handlers + route registration | DONE |
+| 1 | B | Frontend hook: merge/test SSE state management | DONE |
+| 1 | C | Frontend UI: WaveBoard merge button + test runner buttons + api.ts | DONE |
 | — | Orch | Post-merge: rebuild binary, restart server, smoke test | TO-DO |
+
+---
+
+### Agent B - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claire/worktrees/wave1-agent-B
+branch: wave1-agent-B
+commit: 71e722b0011e13ffd98fe309701602a174ddfa47
+files_changed:
+  - web/src/hooks/useWaveEvents.ts
+files_created: []
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: PASS (npm run build — tsc + vite, zero errors)
+```
+
+`WaveMergeState` and `WaveTestState` are exported from `useWaveEvents.ts` and ready for Agent C to import. `AppWaveState` now includes `wavesMergeState: Map<number, WaveMergeState>` and `wavesTestState: Map<number, WaveTestState>`, both initialized to empty Maps. All 8 SSE event listeners are wired. Each setState call creates a new Map reference — no mutation of existing Maps. The worktree `web/` dir lacked `node_modules`; ran `npm install --prefer-offline` to install before build verification. Build passed with zero TypeScript errors.
+
+---
+
+### Agent C - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claire/worktrees/wave1-agent-C
+branch: wave1-agent-C
+commit: aaa289a
+files_changed:
+  - web/src/components/WaveBoard.tsx
+  - web/src/api.ts
+files_created: []
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: PASS (tsc --noEmit + vite build, zero errors)
+```
+
+`mergeWave()` and `runWaveTests()` added to `api.ts` matching the specified contracts exactly. WaveBoard gains `handleMergeWave`/`handleRunTests` handlers and the full merge/test UI block inside the per-wave loop — positioned after the agents row, before the wave gate banner.
+
+`hasGate` field name: the existing code already uses `state.waveGate?.wave === wave.wave` — matched exactly. `waveComplete`/`waveTotal` reused from the existing loop locals, no recomputation needed.
+
+Local stubs for `WaveMergeState`/`WaveTestState` were defined in `WaveBoard.tsx` because Agent B's branch was not yet merged into this worktree. The stub shapes match Agent B's exported interfaces exactly. At merge time, the orchestrator can optionally replace the local stubs with imports from `useWaveEvents` — or leave them as-is since they are structurally identical. The cast `(state as AppWaveState & { wavesMergeState?: ...; wavesTestState?: ... })` uses optional chaining throughout so it degrades gracefully if the fields are absent at runtime.
+
+The worktree lacked `node_modules`; symlinked from the main repo (`web/node_modules`) to run verification. This symlink is not committed.
+
+---
+
+### Agent A - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claire/worktrees/wave1-agent-A
+branch: wave1-agent-A
+commit: 371d1ab95e725c34e3f578b8bbdfa184ddd41d03
+files_changed:
+  - pkg/api/server.go
+files_created:
+  - pkg/api/merge_test_handlers.go
+  - pkg/api/merge_test_handlers_test.go
+interface_deviations: []
+out_of_scope_deps: []
+tests_added:
+  - TestHandleWaveMerge_Returns409WhenAlreadyMerging
+  - TestHandleWaveMerge_Returns202
+  - TestHandleWaveMerge_PublishesMergeComplete
+  - TestHandleWaveTest_Returns409WhenAlreadyTesting
+  - TestHandleWaveTest_Returns202
+  - TestHandleWaveTest_PublishesTestFailed_WhenNoTestCommand
+verification: PASS (go build ./... && go vet ./... && go test ./pkg/api/... -run "TestHandleWaveMerge|TestHandleWaveTest" -v -timeout 30s)
+```
+
+SSE event names match the contract exactly: `merge_started`, `merge_output`, `merge_complete`, `merge_failed`, `test_started`, `test_output`, `test_complete`, `test_failed` — all published on the slug broker key.
+
+`mergeWaveFunc` seam variable follows the `runWaveLoopFunc` pattern from `wave_runner.go` so tests can inject a no-op without real git calls.
+
+`handleWaveTest` uses `io.Pipe` with `cmd.Stdout = pw` / `cmd.Stderr = pw` and a waiter goroutine that closes the pipe write-end on `cmd.Wait()`, giving clean line-by-line streaming to the scanner. Test command is run via `sh -c` to handle compound commands like the one in this IMPL doc.
+
+Agent C's `WaveBoard.tsx` local stubs for `WaveMergeState`/`WaveTestState` are structurally identical to what Agent A publishes — no downstream action required. All three agents can be merged in any order.
