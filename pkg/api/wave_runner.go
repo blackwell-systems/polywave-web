@@ -4,40 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/orchestrator"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
-
-func init() {
-	// Wire the real IMPL doc parser and invariant validator so that
-	// orchestrator.New parses IMPL docs and validates disjoint file ownership.
-	// This mirrors the wiring done in cmd/saw/commands.go for the CLI binary.
-	orchestrator.SetParseIMPLDocFunc(protocol.ParseIMPLDoc)
-	orchestrator.SetValidateInvariantsFunc(protocol.ValidateInvariants)
-}
 
 // gateChannels stores per-slug gate channels used to pause runWaveLoop
 // between waves. Keys are slugs (string), values are chan bool (buffered 1).
 var gateChannels sync.Map
-
-// waveOrchestrator is the interface needed by runWaveLoop.
-// Matches pkg/orchestrator.Orchestrator methods.
-type waveOrchestrator interface {
-	RunWave(waveNum int) error
-	MergeWave(waveNum int) error
-	RunVerification(testCommand string) error
-	UpdateIMPLStatus(waveNum int) error
-	IMPLDoc() *types.IMPLDoc
-}
 
 // runWaveLoopFunc is the seam used by handleWaveStart. Tests can replace this
 // to inject a no-op and avoid real git/API calls in unit tests.
@@ -55,7 +30,7 @@ func (s *Server) handleWaveStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".md")
+	implPath := s.cfg.IMPLDir + "/IMPL-" + slug + ".md"
 	publish := s.makePublisher(slug)
 
 	go func() {
@@ -66,70 +41,86 @@ func (s *Server) handleWaveStart(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// runWaveLoop is the background goroutine body. It creates an orchestrator,
-// wires the SSE event publisher, and executes all waves defined in the IMPL
-// doc in order: RunWave → MergeWave → RunVerification → UpdateIMPLStatus.
-//
-// Between waves, runWaveLoop publishes a "wave_gate_pending" SSE event and
-// blocks for up to 30 minutes waiting for a proceed signal via gateChannels.
-// If the gate times out or receives false, it publishes "run_failed" and
-// returns. If it receives true, it publishes "wave_gate_resolved" and
-// continues to the next wave.
+// runWaveLoop is the background goroutine body. It uses the engine package to
+// parse the IMPL doc, then executes waves one at a time. Between waves it
+// publishes a "wave_gate_pending" SSE event and blocks for up to 30 minutes
+// waiting for a proceed signal via gateChannels.
 //
 // On any error the function publishes "run_failed" and returns.
 // On success it publishes "run_complete".
 func runWaveLoop(implPath, slug, repoPath string, publish func(event string, data interface{})) {
 	publish("run_started", map[string]string{"slug": slug, "impl_path": implPath})
 
-	// Create the orchestrator; New parses the IMPL doc via parseIMPLDocFunc
-	// (wired to protocol.ParseIMPLDoc by this package's init()).
-	orch, err := orchestrator.New(repoPath, implPath)
+	// Parse the IMPL doc via the engine to get wave structure.
+	doc, err := engine.ParseIMPLDoc(implPath)
 	if err != nil {
 		publish("run_failed", map[string]string{"error": err.Error()})
 		return
 	}
+	if doc == nil {
+		publish("run_failed", map[string]string{"error": "failed to parse IMPL doc: " + implPath})
+		return
+	}
 
-	// Inject the SSE event publisher so orchestrator events are forwarded
-	// to the browser's SSE stream.
-	orch.SetEventPublisher(func(ev orchestrator.OrchestratorEvent) {
+	ctx := context.Background()
+
+	// Run scaffold agent if needed (engine handles the check internally).
+	if err := engine.RunScaffold(ctx, implPath, repoPath, "", func(ev engine.Event) {
 		publish(ev.Event, ev.Data)
-	})
-
-	// Run scaffold agent if any scaffold files are pending.
-	if err := runScaffoldIfNeeded(implPath, repoPath, orch.IMPLDoc().ScaffoldsDetail, publish); err != nil {
+	}); err != nil {
 		publish("run_failed", map[string]string{"error": err.Error()})
 		return
 	}
 
-	// Execute all waves in the order they appear in the IMPL doc.
-	waves := orch.IMPLDoc().Waves
+	waves := doc.Waves
 	totalAgents := 0
 	for _, w := range waves {
 		totalAgents += len(w.Agents)
 	}
 
+	// Execute all waves one at a time, pausing at gates between them.
 	for i, wave := range waves {
 		waveNum := wave.Number
 
-		if err := orch.RunWave(waveNum); err != nil {
+		opts := engine.RunWaveOpts{
+			IMPLPath: implPath,
+			RepoPath: repoPath,
+			Slug:     slug,
+		}
+
+		enginePublisher := func(ev engine.Event) {
+			publish(ev.Event, ev.Data)
+		}
+		if err := engine.RunSingleWave(ctx, opts, waveNum, enginePublisher); err != nil {
 			publish("run_failed", map[string]string{"error": err.Error()})
 			return
 		}
 
-		if err := orch.MergeWave(waveNum); err != nil {
+		if err := engine.MergeWave(ctx, engine.RunMergeOpts{
+			IMPLPath: implPath,
+			RepoPath: repoPath,
+			WaveNum:  waveNum,
+		}); err != nil {
 			publish("run_failed", map[string]string{"error": err.Error()})
 			return
 		}
 
-		testCmd := orch.IMPLDoc().TestCommand
+		testCmd := doc.TestCommand
 		if testCmd != "" {
-			if err := orch.RunVerification(testCmd); err != nil {
+			if err := engine.RunVerification(ctx, engine.RunVerificationOpts{
+				RepoPath:    repoPath,
+				TestCommand: testCmd,
+			}); err != nil {
 				publish("run_failed", map[string]string{"error": err.Error()})
 				return
 			}
 		}
 
-		if err := orch.UpdateIMPLStatus(waveNum); err != nil {
+		completedLetters := make([]string, 0, len(wave.Agents))
+		for _, ag := range wave.Agents {
+			completedLetters = append(completedLetters, ag.Letter)
+		}
+		if err := engine.UpdateIMPLStatus(implPath, completedLetters); err != nil {
 			// Non-fatal: mirrors the CLI behaviour (warning, not abort).
 			publish("update_status_failed", map[string]string{
 				"wave":  slug,
@@ -177,69 +168,11 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 		}
 	}
 
-	publish("run_complete", orchestrator.RunCompletePayload{
-		Status: "success",
-		Waves:  len(waves),
-		Agents: totalAgents,
+	publish("run_complete", map[string]interface{}{
+		"status": "success",
+		"waves":  len(waves),
+		"agents": totalAgents,
 	})
-}
-
-// runScaffoldIfNeeded checks if the IMPL doc has scaffold files that have not yet
-// been created on disk. If any are missing, launches a Scaffold Agent via the CLI
-// backend and streams output as SSE events.
-func runScaffoldIfNeeded(implPath, repoPath string, scaffolds []types.ScaffoldFile, publish func(string, interface{})) error {
-	if len(scaffolds) == 0 {
-		return nil
-	}
-
-	// If all scaffold files already exist, skip.
-	allExist := true
-	for _, sf := range scaffolds {
-		absPath := sf.FilePath
-		if !filepath.IsAbs(absPath) {
-			absPath = filepath.Join(repoPath, absPath)
-		}
-		if _, err := os.Stat(absPath); os.IsNotExist(err) {
-			allExist = false
-			break
-		}
-	}
-	if allExist {
-		return nil
-	}
-
-	publish("scaffold_started", map[string]string{"impl_path": implPath})
-
-	// Locate scaffold-agent.md prompt.
-	sawRepo := os.Getenv("SAW_REPO")
-	if sawRepo == "" {
-		home, _ := os.UserHomeDir()
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
-	}
-	scaffoldMdPath := filepath.Join(sawRepo, "prompts", "scaffold-agent.md")
-	scaffoldMdBytes, err := os.ReadFile(scaffoldMdPath)
-	if err != nil {
-		scaffoldMdBytes = []byte("You are a Scaffold Agent. Create the stub files defined in the IMPL doc Scaffolds section.")
-	}
-
-	prompt := fmt.Sprintf("%s\n\n## IMPL Doc Path\n%s\n", string(scaffoldMdBytes), implPath)
-
-	b := cli.New("", backend.Config{})
-	runner := agent.NewRunner(b, nil)
-	spec := &types.AgentSpec{Letter: "scaffold", Prompt: prompt}
-
-	ctx := context.Background()
-	onChunk := func(chunk string) {
-		publish("scaffold_output", map[string]string{"chunk": chunk})
-	}
-
-	if _, execErr := runner.ExecuteStreaming(ctx, spec, repoPath, onChunk); execErr != nil {
-		publish("scaffold_failed", map[string]string{"error": execErr.Error()})
-		return fmt.Errorf("scaffold agent failed: %w", execErr)
-	}
-
-	publish("scaffold_complete", map[string]string{"impl_path": implPath})
-	return nil
 }
 
 // handleWaveGateProceed handles POST /api/wave/{slug}/gate/proceed.
@@ -290,5 +223,12 @@ func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request) {
 func (s *Server) makePublisher(slug string) func(event string, data interface{}) {
 	return func(event string, data interface{}) {
 		s.broker.Publish(slug, SSEEvent{Event: event, Data: data})
+	}
+}
+
+// makeEnginePublisher converts engine.Event to api.SSEEvent and publishes to the broker.
+func (s *Server) makeEnginePublisher(slug string) func(engine.Event) {
+	return func(ev engine.Event) {
+		s.broker.Publish(slug, SSEEvent{Event: ev.Event, Data: ev.Data})
 	}
 }

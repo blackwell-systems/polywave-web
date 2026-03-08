@@ -1,18 +1,19 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
+	"os"
 	"path/filepath"
 
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/orchestrator"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
 
-// runMerge parses --impl and --wave flags, constructs an Orchestrator,
-// and runs MergeWave for the given wave number.
-// It does NOT run verification (that is runWave's responsibility).
+// runMerge parses --impl and --wave flags and merges the given wave number
+// using the engine package. It does NOT run verification (that is runWave's
+// responsibility).
 // Flags: --impl <path> (required), --wave <n> (default: 1)
 func runMerge(args []string) error {
 	fs := flag.NewFlagSet("merge", flag.ContinueOnError)
@@ -30,25 +31,22 @@ func runMerge(args []string) error {
 		return fmt.Errorf("merge: --impl flag is required\nRun 'saw merge --help' for usage.")
 	}
 
+	// Validate the IMPL path exists before calling the engine.
+	if _, statErr := os.Stat(*implPath); statErr != nil {
+		return fmt.Errorf("merge: IMPL doc not found: %s", *implPath)
+	}
+
 	repoPath, err := findRepoRoot(filepath.Dir(*implPath))
 	if err != nil {
 		// Fall back to the directory containing the IMPL doc.
 		repoPath = filepath.Dir(*implPath)
 	}
 
-	o, err := orchestrator.New(repoPath, *implPath)
-	if err != nil {
-		return fmt.Errorf("merge: %w", err)
-	}
-
-	// Advance state machine: ScoutPending -> Reviewed -> WavePending -> WaveExecuting -> WaveMerging
-	for _, state := range []types.State{types.Reviewed, types.WavePending, types.WaveExecuting, types.WaveMerging} {
-		if err := o.TransitionTo(state); err != nil {
-			return fmt.Errorf("merge: %w", err)
-		}
-	}
-
-	if err := o.MergeWave(*waveNum); err != nil {
+	if err := engine.MergeWave(context.Background(), engine.RunMergeOpts{
+		IMPLPath: *implPath,
+		RepoPath: repoPath,
+		WaveNum:  *waveNum,
+	}); err != nil {
 		return fmt.Errorf("merge: %w", err)
 	}
 

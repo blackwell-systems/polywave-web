@@ -11,10 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
 
 // ScoutRunRequest is the JSON body for POST /api/scout/run.
@@ -136,7 +133,7 @@ func (s *Server) runScoutAgent(ctx context.Context, runID, feature, repoOverride
 	slug := scoutSlugify(feature)
 	implOut := filepath.Join(repoRoot, "docs", "IMPL", "IMPL-"+slug+".md")
 
-	// Locate scout.md prompt.
+	// Locate SAW repo for prompt files.
 	sawRepo := os.Getenv("SAW_REPO")
 	if sawRepo == "" {
 		home, err := os.UserHomeDir()
@@ -150,21 +147,6 @@ func (s *Server) runScoutAgent(ctx context.Context, runID, feature, repoOverride
 		sawRepo = filepath.Join(home, "code", "scout-and-wave")
 	}
 
-	scoutMdPath := filepath.Join(sawRepo, "prompts", "scout.md")
-	scoutMdBytes, err := os.ReadFile(scoutMdPath)
-	if err != nil {
-		// Fall back to an inline prompt if scout.md is not found.
-		scoutMdBytes = []byte("You are a Scout agent. Analyze the codebase and produce an IMPL doc.")
-	}
-
-	prompt := fmt.Sprintf("%s\n\n## Feature\n%s\n\n## IMPL Output Path\n%s\n",
-		string(scoutMdBytes), feature, implOut)
-
-	// Build CLI backend with --dangerously-skip-permissions.
-	b := cli.New("", backend.Config{})
-	runner := agent.NewRunner(b, nil)
-	spec := &types.AgentSpec{Letter: "scout", Prompt: prompt}
-
 	onChunk := func(chunk string) {
 		publish("scout_output", map[string]string{
 			"run_id": runID,
@@ -172,7 +154,13 @@ func (s *Server) runScoutAgent(ctx context.Context, runID, feature, repoOverride
 		})
 	}
 
-	_, execErr := runner.ExecuteStreaming(ctx, spec, repoRoot, onChunk) //nolint:contextcheck
+	execErr := engine.RunScout(ctx, engine.RunScoutOpts{
+		Feature:     feature,
+		RepoPath:    repoRoot,
+		SAWRepoPath: sawRepo,
+		IMPLOutPath: implOut,
+	}, onChunk)
+
 	if execErr != nil {
 		if ctx.Err() != nil {
 			publish("scout_cancelled", map[string]string{"run_id": runID})
