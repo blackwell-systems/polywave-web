@@ -6,7 +6,7 @@ import { Button } from './ui/button'
 import OverviewPanel from './review/OverviewPanel'
 import FileOwnershipPanel from './review/FileOwnershipPanel'
 import WaveStructurePanel from './review/WaveStructurePanel'
-import AgentPromptsPanel from './review/AgentPromptsPanel'
+import AgentContextPanel from './review/AgentContextPanel'
 import InterfaceContractsPanel from './review/InterfaceContractsPanel'
 import ScaffoldsPanel from './review/ScaffoldsPanel'
 import DependencyGraphPanel from './review/DependencyGraphPanel'
@@ -193,7 +193,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                       ? 'grid-cols-1 md:grid-cols-2'
                       : 'grid-cols-1'
                   }`}>
-                    {activePanels.includes('agent-prompts') && <AgentPromptsPanel agentPrompts={(impl as any).agent_prompts} />}
+                    {activePanels.includes('agent-prompts') && <AgentContextPanel impl={impl} slug={slug} />}
                     {activePanels.includes('scaffolds') && <ScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} />}
                   </div>
                 )}
