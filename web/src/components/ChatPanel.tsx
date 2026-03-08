@@ -47,8 +47,8 @@ export default function ChatPanel({ slug, onClose }: ChatPanelProps): JSX.Elemen
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 shadow-xl rounded-lg w-full max-w-2xl flex flex-col" style={{ maxHeight: '80vh' }}>
+    <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
+      <div className="pointer-events-auto bg-white dark:bg-gray-900 shadow-xl border-l border-gray-200 dark:border-gray-700 w-full max-w-md flex flex-col h-full overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-sm font-semibold">Ask Claude about this IMPL</h2>

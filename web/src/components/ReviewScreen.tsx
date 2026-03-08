@@ -218,9 +218,8 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
             </div>
 
             {/* Action buttons - always interactive, fixed at bottom */}
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} />
-              <button onClick={() => setShowChat(true)} className="text-sm border rounded px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-800">Ask Claude</button>
+            <div className="mt-8">
+              <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} onAskClaude={() => setShowChat(true)} />
             </div>
           </>
         )}
