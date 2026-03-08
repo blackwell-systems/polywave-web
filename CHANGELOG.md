@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.1] - 2026-03-08
+
+### Fixed
+
+- **React Error #321 (Invalid hook call)** — `EntryRow` was defined inside the `ImplList` function body; React saw a new component type on every render, corrupting the fiber reconciler and causing downstream `TypeError: Cannot destructure property 'onClose' of 'undefined'` when the settings portal rendered. Fixed by extracting `EntryRow` to module level with an explicit `EntryRowProps` interface.
+- **SettingsScreen crash on open** — `getConfig()` response omits the `repos` field (server uses legacy `repo` singular); `setConfig(c)` was replacing state wholesale, leaving `config.repos` as `undefined`; `config.repos.map()` then threw on render. Fixed with a deep-merge of API response into initial defaults (`repos: c.repos ?? prev.repos`, nested object spread for `agent`/`quality`/`appearance`). Also preserves `appearance.theme` default (`'system'`) when the server returns an empty string.
+- **WaveStructurePanel null crash** — Go nil slices serialize as JSON `null`; `impl.scaffold.files.length` and `wave.agents.length` threw `TypeError: Cannot read properties of undefined`. Fixed with `?.length ?? 0` and `wave.agents ?? []`.
+- **Sidebar default width** — Sidebar initialized to 180 px regardless of viewport; now defaults to `window.innerWidth * 0.15` (the configured maximum), so the sidebar opens at full width instead of narrow.
+- **"multi" badge label** — Renamed to `"multirepo"` for clarity to new users unfamiliar with the cross-repo workflow abbreviation.
+
+---
+
 ## [0.19.0] - 2026-03-08
 
 ### Added
