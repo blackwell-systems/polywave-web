@@ -155,9 +155,9 @@ export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): J
                     <div
                       className="flex items-center justify-center w-12 h-12 rounded-lg font-semibold text-base border-2"
                       style={{
-                        backgroundColor: 'rgba(245,158,11,0.1)',
-                        borderColor: 'rgba(245,158,11,0.4)',
-                        color: '#d97706',
+                        backgroundColor: 'rgba(100,116,139,0.08)',
+                        borderColor: 'rgba(100,116,139,0.3)',
+                        color: '#64748b',
                       }}
                     >
                       S
