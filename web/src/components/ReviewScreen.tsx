@@ -100,11 +100,8 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
           <div ref={sentinelRef} className="h-px -mt-px" />
           <div
             className={`sticky top-0 z-40 py-3 mb-6 transition-colors duration-200 ${
-              isStuck
-                ? 'bg-muted/15 backdrop-blur-sm border-b border-border/50'
-                : ''
+              isStuck ? 'bg-muted/15 backdrop-blur-sm border-b border-border/50' : ''
             }`}
-            style={isStuck ? { marginLeft: 'calc(-50vw + 50%)', marginRight: 'calc(-50vw + 50%)', paddingLeft: 'calc(50vw - 50% + 1rem)', paddingRight: 'calc(50vw - 50% + 1rem)' } : {}}
           >
             <div className="flex flex-wrap gap-2">
               {panels.map(panel => (
@@ -125,32 +122,53 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
             </div>
           </div>
 
-          {/* Active panels in click order */}
+          {/* Active panels — fixed layout grid */}
           <div className="space-y-6">
-            {activePanels.map(key => {
-              switch (key) {
-                case 'pre-mortem':
-                  return <PreMortemPanel key={key} preMortem={impl.pre_mortem} />
-                case 'stub-report':
-                  return <StubReportPanel key={key} stubReportText={impl.stub_report_text} />
-                case 'file-ownership':
-                  return <FileOwnershipPanel key={key} impl={impl} />
-                case 'wave-structure':
-                  return <WaveStructurePanel key={key} impl={impl} />
-                case 'agent-prompts':
-                  return <AgentPromptsPanel key={key} agentPrompts={(impl as any).agent_prompts} />
-                case 'interface-contracts':
-                  return <InterfaceContractsPanel key={key} contractsText={(impl as any).interface_contracts_text} />
-                case 'scaffolds':
-                  return <ScaffoldsPanel key={key} scaffoldsDetail={(impl as any).scaffolds_detail} />
-                case 'dependency-graph':
-                  return <DependencyGraphPanel key={key} dependencyGraphText={(impl as any).dependency_graph_text} />
-                case 'known-issues':
-                  return <KnownIssuesPanel key={key} knownIssues={(impl as any).known_issues} />
-                case 'post-merge-checklist':
-                  return <PostMergeChecklistPanel key={key} checklistText={(impl as any).post_merge_checklist_text} />
-              }
-            })}
+            {/* Wave Structure — full width */}
+            {activePanels.includes('wave-structure') && (
+              <div className="col-span-2"><WaveStructurePanel impl={impl} /></div>
+            )}
+
+            {/* File Ownership + Dependency Graph pair */}
+            {(activePanels.includes('file-ownership') || activePanels.includes('dependency-graph')) && (
+              <div className={`grid gap-6 ${
+                activePanels.includes('file-ownership') && activePanels.includes('dependency-graph')
+                  ? 'grid-cols-1 md:grid-cols-2'
+                  : 'grid-cols-1'
+              }`}>
+                {activePanels.includes('file-ownership') && <FileOwnershipPanel impl={impl} />}
+                {activePanels.includes('dependency-graph') && <DependencyGraphPanel dependencyGraphText={(impl as any).dependency_graph_text} />}
+              </div>
+            )}
+
+            {/* Interface Contracts — full width */}
+            {activePanels.includes('interface-contracts') && (
+              <InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} />
+            )}
+
+            {/* Agent Prompts + Scaffolds pair */}
+            {(activePanels.includes('agent-prompts') || activePanels.includes('scaffolds')) && (
+              <div className={`grid gap-6 ${
+                activePanels.includes('agent-prompts') && activePanels.includes('scaffolds')
+                  ? 'grid-cols-1 md:grid-cols-2'
+                  : 'grid-cols-1'
+              }`}>
+                {activePanels.includes('agent-prompts') && <AgentPromptsPanel agentPrompts={(impl as any).agent_prompts} />}
+                {activePanels.includes('scaffolds') && <ScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} />}
+              </div>
+            )}
+
+            {/* Pre-Mortem — full width */}
+            {activePanels.includes('pre-mortem') && <PreMortemPanel preMortem={impl.pre_mortem} />}
+
+            {/* Known Issues — full width */}
+            {activePanels.includes('known-issues') && <KnownIssuesPanel knownIssues={(impl as any).known_issues} />}
+
+            {/* Stub Report — full width */}
+            {activePanels.includes('stub-report') && <StubReportPanel stubReportText={impl.stub_report_text} />}
+
+            {/* Post-Merge Checklist — full width */}
+            {activePanels.includes('post-merge-checklist') && <PostMergeChecklistPanel checklistText={(impl as any).post_merge_checklist_text} />}
           </div>
         </div>
 
