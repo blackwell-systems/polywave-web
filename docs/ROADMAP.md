@@ -11,9 +11,9 @@ Competitive positioning:
 
 Distribution strategy: `/saw` skill + subagents for orchestration (already works, zero setup); Wails desktop app for rich wave monitoring with native OS distribution.
 
-**Repo structure (target):**
+**Repo structure:**
 ```
-scout-and-wave-go/       github.com/blackwell-systems/scout-and-wave-go (engine repo)
+scout-and-wave-go/       github.com/blackwell-systems/scout-and-wave-go (engine)
   pkg/engine/            wave runner, scout runner, merge, worktree mgmt
   pkg/protocol/          IMPL doc parser
   internal/git/          git commands
@@ -30,7 +30,7 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ---
 
-## Current Status (v0.17.0)
+## Current Status (v0.19.0)
 
 ### ✅ Shipped
 
@@ -39,6 +39,8 @@ scout-and-wave-app/      Wails desktop app (future)
 - Go orchestration engine (worktrees, merge, state machine)
 - E16 IMPL doc validator (required blocks, typed-block dispatch, dep graph detection)
 - Scaffold Agent gap detection in wave runner (`runScaffoldIfNeeded`)
+- **Engine extraction complete** — `scout-and-wave-go` is a standalone Go module; `scout-and-wave-web` imports it via `replace` directive. All wave runner, parser, git, worktree, and agent packages live in the engine repo.
+- Cross-repo wave support (protocol v0.11.0): multi-repo worktree coordination, `Repo` column in file ownership, updated isolation layers
 
 **Web UI**
 - 3-column persistent layout: sidebar | review | LiveRail
@@ -212,33 +214,7 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ---
 
-## Phase 3: Native App (v0.19.0+)
-
-### v0.19.0 — Engine Extraction + Repo Split
-
-**Why:** Before the Wails app can exist, the engine needs to be a standalone Go module that both the web server and the desktop app can import. Currently the engine logic (wave runner, scout runner, merge, worktree management) is tangled inside `pkg/api/` alongside HTTP handlers. This is the prerequisite for everything else in Phase 3.
-
-**This is a SAW job.** The engine extraction will be planned and executed using SAW itself — eating our own cooking for the third time.
-
-**Scope:**
-- Create `scout-and-wave-engine` repo: extract `pkg/engine/`, `pkg/protocol/`, `internal/git/` from current repo
-- Define clean engine API: `engine.RunScout(ctx, feature, opts, onChunk)`, `engine.StartWave(slug, onEvent)`, `engine.RunMerge(slug)` etc.
-- Streaming via callback interface — no HTTP, no SSE, transport-agnostic
-- Rename current repo (`scout-and-wave-go`) to `scout-and-wave-web`
-- Rewire `pkg/api/` HTTP handlers to call engine module via `require` + `replace` directive during dev
-- All existing behaviour preserved, no user-visible changes
-
-**Wave structure (expected):**
-- Agent A: extract engine package + define interfaces
-- Agent B: rewire HTTP adapter to call engine
-- Agent C: update go.mod, replace directives, CI
-
-**Success criteria:**
-- Engine builds and tests pass independently
-- Web server imports engine as a Go module, all existing API endpoints work
-- `replace` directive in web go.mod for local dev workflow
-
----
+## Phase 3: Native App (v0.19.5+)
 
 ### v0.19.5 — Wails Desktop App
 
@@ -287,18 +263,15 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 
 - **Visual IMPL Builder** — drag-and-drop wave/agent definition, visual dep graph editor
 - **Agent Marketplace** — publish custom agent prompts, community IMPL templates
-- **Multi-repo coordination** — SAW orchestrates across multiple repositories, cross-repo interface contracts
 
 ---
 
 ## Current Focus
 
-**Next:** v0.17.0 — close the GUI loop. Merge button first (biggest impact), then test runner, diff viewer, cancel, worktree manager.
+**Next:** v0.17.0 — close the GUI loop. Merge button first (biggest impact), then test runner, diff viewer, worktree manager.
 
-**After that:** v0.18.0 — deepen the intelligence. Scout context, chat-with-Claude, notifications, settings.
+**After that:** v0.18.0 — deepen the intelligence. Scout context, chat-with-Claude, settings screen.
 
-**Then:** v0.19.0 — engine extraction. Use SAW to plan and execute the repo split. Extract pure engine from `pkg/api/`, publish as standalone Go module, rewire web server as a thin HTTP adapter. Third time SAW builds itself.
-
-**Then:** v0.19.5 — Wails desktop app. Import the extracted engine, replace HTTP + SSE with Wails bindings and events, React frontend carries over unchanged. Ships as a native cross-platform app.
+**Then:** v0.19.5 — Wails desktop app. Engine extraction is done — import `scout-and-wave-go`, replace HTTP + SSE with Wails bindings and events, React frontend carries over unchanged. Ships as a native cross-platform app.
 
 **Goal:** By v0.19.5, SAW is installable in one command on Mac, Windows, and Linux with no server to run and full OS integration.
