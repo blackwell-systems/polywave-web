@@ -12,6 +12,7 @@ import { Badge } from './ui/badge'
 interface FileOwnershipTableProps {
   fileOwnership: FileOwnershipEntry[]
   col4Name?: string
+  onFileClick?: (file: string, agent: string, wave: number) => void
 }
 
 // Agent-level colors (background) - inner hierarchy
@@ -41,7 +42,7 @@ function getWaveColor(wave: number) {
   return WAVE_COLORS[4]
 }
 
-export default function FileOwnershipTableNew({ fileOwnership, col4Name }: FileOwnershipTableProps): JSX.Element {
+export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileClick: _onFileClick }: FileOwnershipTableProps): JSX.Element {
   // Build agent color map (excluding Scaffold which gets grey)
   const agents = Array.from(new Set(fileOwnership.map(e => e.agent))).sort()
   const nonScaffoldAgents = agents.filter(a => a.toLowerCase() !== 'scaffold')
