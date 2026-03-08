@@ -264,6 +264,265 @@ scout-and-wave/skills/
 
 ---
 
+### v0.15.4 - Visual Execution Dashboard
+**Why:** SAW's demo shows static diagrams (dependency graph, wave timeline) but doesn't visually convey *live parallel execution*. When compared to Maestro (which shows 4 terminals working simultaneously with git commits appearing in real-time), SAW feels less dynamic. Visual impact = attention = users.
+
+**Problem:** Current WaveBoard only shows:
+- Agent status badges (pending/running/complete) - boring
+- File lists (static text)
+- Error messages (only on failure)
+
+No visual proof that agents are working in parallel. No git activity. No live output. The demo doesn't *show* the power of parallel execution—it just tells you about it.
+
+**Proposed:** Transform WaveBoard into a visually compelling execution dashboard that proves parallel work is happening.
+
+**Core Components:**
+
+**1. Git Activity Sidebar**
+
+Animated branch visualization showing real-time commits and merge order:
+
+```
+Main ━━━━━━━━━━━━━━━━━━━━━━━━━━●━━━━━━━●━━━━━
+                                  ↑         ↑
+Agent A (blue)   ●━━●━━●━━●━━━━━━┘         │
+                 └── 4 commits             │
+                                           │
+Agent B (green)  ●━━━●━━●━━●━━━━━━━━━━━━━━┘
+                 └── 3 commits
+                 └── Merging... ⏳
+
+Agent C (orange) ●━━●━━━━●━━━━━━━━━━━━━━━━●
+                 └── 3 commits             ⚙️ running
+                 └── "Update API types"
+
+Agent D (purple) ●
+                 └── waiting for merge gate...
+```
+
+**Implementation:**
+- Horizontal lane per agent with SVG rendering
+- Poll `git log --oneline wave1-agent-*` every 5s
+- Commit dots appear in real-time as agents work
+- Lines connect to main when merged
+- Agent color coding (A=blue, B=green, C=orange, D=purple)
+- Hover over commit → show message + files changed
+- Click commit → modal with full diff
+
+**Visual elements:**
+- Lane background: subtle gradient matching agent color
+- Commit dots: filled circles with agent color
+- Active commits: pulsing animation
+- Merge lines: bezier curves connecting branch to main
+- Status icons: ⏳ (merging), ⚙️ (running), ✓ (complete), ✗ (failed)
+
+**Benefits:**
+- **Visual proof of parallelism** - See 4 branches with commits appearing simultaneously
+- **Merge order transparency** - Visual representation of dependency-driven merge sequence
+- **Demo appeal** - 10-second clip shows parallel work better than any text description
+
+**2. Agent Color Coding**
+
+Consistent color scheme across entire UI:
+
+```
+Agent A → Blue (#3b82f6)
+Agent B → Green (#22c55e)
+Agent C → Orange (#f97316)
+Agent D → Purple (#a855f7)
+Agent E → Pink (#ec4899)
+Agent F → Cyan (#06b6d4)
+... continues through K
+```
+
+**Apply colors to:**
+- Agent cards (border + header background)
+- Git activity lanes
+- Dependency graph nodes
+- Wave timeline dots
+- Status badges
+
+**Implementation:**
+```tsx
+// lib/agentColors.ts
+export const getAgentColor = (agent: string): string => {
+  const colors = {
+    'A': '#3b82f6', 'B': '#22c55e', 'C': '#f97316', 'D': '#a855f7',
+    'E': '#ec4899', 'F': '#06b6d4', 'G': '#f59e0b', 'H': '#8b5cf6',
+    'I': '#10b981', 'J': '#ef4444', 'K': '#6366f1'
+  }
+  return colors[agent] || '#6b7280'
+}
+
+// Use everywhere:
+<AgentCard agent="A" style={{ borderColor: getAgentColor('A') }} />
+<BranchLane agent="B" color={getAgentColor('B')} />
+<DagNode agent="C" fill={getAgentColor('C')} />
+```
+
+**Benefits:**
+- **Visual continuity** - Same color across all views reinforces agent identity
+- **Quick scanning** - "Blue branch merged" matches "Agent A card turned green"
+- **Professional polish** - Consistent design language
+
+**3. Live Output Stream (Optional)**
+
+Stream agent stdout/stderr to UI in real-time:
+
+```tsx
+<AgentCard agent="A" status="running">
+  <LiveOutput>
+    <OutputLine type="stdout">Reading src/types.ts...</OutputLine>
+    <OutputLine type="stdout">Analyzing PreMortem structure...</OutputLine>
+    <OutputLine type="tool">Tool: Read(file_path="src/types.ts")</OutputLine>
+    <OutputLine type="stdout">Writing PreMortem type definition...</OutputLine>
+    <OutputLine type="tool">Tool: Write(file_path="src/types.ts", ...)</OutputLine>
+  </LiveOutput>
+</AgentCard>
+```
+
+**Implementation:**
+- Capture subprocess stdout/stderr when running agents
+- Stream to SSE endpoint `/api/wave/{slug}/agent/{agent}/output`
+- Frontend subscribes per agent, displays in expandable section
+- Auto-scroll to bottom, syntax highlighting for tool calls
+- Collapsible (default: collapsed, expand to see detail)
+
+**Benefits:**
+- **Transparency** - Users can see exactly what agents are thinking/doing
+- **Debugging** - When agent fails, scroll back through its output
+- **Trust building** - Watching the agent work builds confidence in the system
+
+**Technical considerations:**
+- Output can be verbose (10k+ lines) - virtualized scrolling required
+- Needs filtering (show only tool calls, hide LLM thinking)
+- Privacy: some users may not want to see LLM reasoning tokens
+
+**Deferred to later:** This adds complexity (subprocess piping, SSE per-agent channels, virtualized rendering). Git activity + color coding delivers 80% of visual impact for 40% of effort. Add output streaming only if users request it.
+
+---
+
+**Success Criteria:**
+
+**For demo recording:**
+- Can show 4 agents starting simultaneously
+- Git lanes show commits appearing in parallel
+- Merge order visually follows dependency graph
+- Entire execution visible in one screen (no scrolling)
+- Color-coded consistently throughout UI
+
+**For user understanding:**
+- First-time user can watch WaveBoard and understand:
+  - Agents are working in parallel (git lanes prove it)
+  - Merge order follows dependencies (visual connection clear)
+  - No conflicts occurred (clean merge lines)
+
+**For shareability:**
+- 10-second screen recording demonstrates parallel execution
+- Twitter/HN viewers immediately understand the value
+- Looks as polished as Maestro/Linear/Vercel
+
+---
+
+**Implementation Plan:**
+
+**Phase A: Git Activity Visualization (2-3 days)**
+```
+Day 1:
+- `pkg/git/activity.go` - poll git log, parse commits
+- `pkg/api/git.go` - SSE endpoint streaming git activity
+- Data structures: Commit, Branch, Activity
+
+Day 2:
+- `web/src/components/git/GitActivitySidebar.tsx` - branch lanes SVG
+- `web/src/components/git/BranchLane.tsx` - single lane with commits
+- `web/src/components/git/CommitDot.tsx` - animated commit marker
+
+Day 3:
+- Merge animations (bezier curves connecting to main)
+- Hover tooltips (commit message + files)
+- Click handler (show diff modal)
+- Polish: timing, colors, smoothness
+```
+
+**Phase B: Agent Color Coding (1 day)**
+```
+- `web/src/lib/agentColors.ts` - color mapping
+- Update AgentCard borders + headers
+- Update GitActivitySidebar lane colors
+- Update DependencyGraphPanel node fills
+- Update WaveStructurePanel dot colors
+- Ensure consistent across light/dark themes
+```
+
+**Phase C: Integration (0.5 day)**
+```
+- Add GitActivitySidebar to WaveBoard layout
+- Position: right side, 30% width, resizable
+- Connect SSE git activity stream
+- Test with 4+ agents running
+```
+
+**Total Effort:** 3.5-4 days
+
+---
+
+**Layout Change:**
+
+**Before (current WaveBoard):**
+```
+┌─────────────────────────────────────────────┐
+│ Wave Board: demo-complex                    │
+├─────────────────────────────────────────────┤
+│                                             │
+│  [Agent A Card] [Agent B Card]              │
+│  [Agent C Card] [Agent D Card]              │
+│                                             │
+│  ... more agents below ...                  │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+**After (with git activity):**
+```
+┌────────────────────────┬────────────────────┐
+│ Wave Board             │ Git Activity       │
+├────────────────────────┤                    │
+│ [Agent A Card]         │ main ━━━●━━━●━━━  │
+│  Status: Complete ✓    │        ↑     ↑    │
+│  Files: types.go       │ A ●━●━●┘     │    │
+│  Commits: 4            │              │    │
+│                        │ B ●━━●━━━━━━━┘    │
+│ [Agent B Card]         │                    │
+│  Status: Merging... ⏳  │ C ●━●━━━●━━━━●    │
+│  Files: parser.go      │   ⚙️ running       │
+│  Commits: 3            │                    │
+│                        │ D ●                │
+│ [Agent C Card]         │   waiting...       │
+│  Status: Running ⚙️     │                    │
+│  Files: api.go         │                    │
+│  Commits: 3            │                    │
+│                        │                    │
+│ [Agent D Card]         │                    │
+│  Status: Pending       │                    │
+│                        │                    │
+└────────────────────────┴────────────────────┘
+```
+
+**Alternative layout:** Git activity as a horizontal banner above agent cards (takes less width, more mobile-friendly).
+
+---
+
+**After This:**
+
+Your demo becomes:
+
+> "Scout analyzed the codebase—here's the IMPL doc with dependency graph [show ReviewScreen]. Approve. Watch 4 agents start [show WaveBoard]. See the git activity? Four branches working simultaneously. Commits appearing in real-time. Agent A finished—see it merge to main [point to merge animation]. Agent B finished—merged. Agent C—merged. Agent D—merged. All parallel, zero conflicts. That's Scout-and-Wave."
+
+**That's a demo that gets shared.**
+
+---
+
 ## Phase 2: Ecosystem & Integration (v0.16.0+)
 
 ### v0.16.0 - MCP Server Implementation
