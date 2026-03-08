@@ -1231,3 +1231,53 @@ The GET handler reads from `s.cfg.IMPLDir/IMPL-{slug}.md` and returns `text/plai
 One interface deviation: the prompt specified `filepath.Join(s.cfg.RepoPath, "docs", "IMPL", ...)` for path construction, but the existing `impl.go` uses `s.cfg.IMPLDir` directly. Using `s.cfg.IMPLDir` is consistent with the rest of the codebase and avoids hardcoding the `docs/IMPL` subdirectory (which is already baked into `IMPLDir` at server startup). Both approaches resolve to the same path in production.
 
 The two route registrations (`GET /api/impl/{slug}/raw` and `PUT /api/impl/{slug}/raw`) must be added to `pkg/api/server.go` by Agent B or the orchestrator — this file is outside my ownership.
+
+### Agent F - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claude/worktrees/wave2-agent-F
+branch: saw/wave2-agent-F
+commit: 8fa0eb6
+files_changed:
+  - web/src/components/WaveBoard.tsx
+  - web/src/hooks/useWaveEvents.ts
+files_created: []
+interface_deviations: []
+out_of_scope_deps:
+  - downstream_action_required: true
+    orchestrator_action: |
+      Append proceedWaveGate and rerunAgent functions to web/src/api.ts
+      (exact code in notes below). api.ts is owned by Agent E so Agent F
+      used inline fetch() calls in WaveBoard.tsx instead.
+tests_added: []
+verification: PASS (npx tsc --noEmit)
+```
+
+**Key decisions:**
+
+1. `waveGate` field added to `AppWaveState` in `useWaveEvents.ts` as `{ wave: number; nextWave: number } | undefined`. Two new SSE listeners handle `wave_gate_pending` (sets the field) and `wave_gate_resolved` (clears it).
+
+2. `WaveBoard.tsx` tracks a `statusOverrides` Map in local React state for optimistic Re-run updates. When a failed agent's Re-run button is clicked, the agent is immediately shown as `pending`. If the POST returns non-202 or throws, the override is reverted.
+
+3. The wave gate banner is rendered as a sibling `<div>` immediately after the wave card (not inside it), styled with `bg-blue-500/10 border border-blue-500/30 rounded-lg p-4`. The "Proceed" button posts to `/api/wave/{slug}/gate/proceed`.
+
+4. Re-run buttons use inline `fetch()` per the ownership constraint on `web/src/api.ts`.
+
+**Orchestrator action required — append to `web/src/api.ts`:**
+
+```ts
+export async function proceedWaveGate(slug: string): Promise<void> {
+  const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/gate/proceed`, { method: 'POST' })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+}
+
+export async function rerunAgent(slug: string, wave: number, agentLetter: string): Promise<void> {
+  const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/agent/${encodeURIComponent(agentLetter)}/rerun`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wave }),
+  })
+  if (!r.ok) throw new Error(`HTTP ${r.status}`)
+}
+```
