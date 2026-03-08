@@ -149,6 +149,121 @@ Competitive positioning:
 
 ---
 
+### v0.15.1 - Configuration & Agent Phase Tuning
+**Why:** SAW uses hardcoded settings for all orchestrator phases. Scout and wave agents get the same model/config, wasting cost on simple tasks and under-provisioning complex planning. No user control without code changes.
+
+**Scope:**
+- **`saw.config.json` schema** — per-phase agent configuration (scout, wave, scaffold, retry, verify)
+  - Model selection (`claude-opus-4-6`, `claude-sonnet-4-6`, etc.)
+  - Backend selection (`api`, `cli`, `auto`)
+  - Token limits, temperature, system prompt suffixes
+- **Quality gates configuration** — typecheck, test, lint with auto-detection
+  - Auto-detect project type from `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`
+  - Run appropriate tools: `tsc --noEmit`, `pytest`, `cargo test`, `npm test`, `go test ./...`
+  - Configurable as `required` (blocks merge) or `enabled` (warning only)
+- **Config parser** — `pkg/config/config.go` parses JSON, merges with built-in defaults
+- **Orchestrator integration** — select agent config based on phase
+- **Fallback behavior** — if no config file, use current hardcoded defaults (opt-in, not breaking)
+
+**Benefits:**
+- **Cost optimization** — Scout uses Opus ($15/1M), waves use Sonnet ($3/1M)
+- **Quality optimization** — Scout gets extended thinking budget, waves don't need it
+- **Retry diversity** — Failed attempts get modified prompts ("you are fixing a failed attempt...")
+- **User control** — Power users can tune without forking
+
+**Success criteria:**
+- Scout runs with Opus, waves with Sonnet (50%+ cost reduction)
+- Retry prompts differ from initial attempts (measurable via logs)
+- Quality gates surface type errors before human review
+
+**Estimated effort:** 3-4 days
+- Config schema + parser: 1 day
+- Orchestrator integration: 1 day
+- Quality gates auto-detection: 1 day
+- Testing & docs: 1 day
+
+---
+
+### v0.15.2 - Framework Skills Auto-Injection
+**Why:** Agents violate framework conventions (React hooks, Rust ownership, Go idioms) because they lack framework-specific context. Users must manually add "follow React best practices" to every request.
+
+**Scope:**
+- **Auto-detection logic** — `pkg/skills/detect.go` scans project files
+  - `package.json` + "react" → `react-best-practices`
+  - `Cargo.toml` → `rust-ownership`, `rust-error-handling`
+  - `go.mod` → `go-idioms`, `go-error-handling`
+  - `pyproject.toml` + "fastapi" → `fastapi-patterns`
+- **Skill loader** — `pkg/skills/loader.go` reads `.md` files from `../scout-and-wave/skills/`
+- **Prompt injection** — append skill content to Scout and wave agent system prompts
+- **Configuration** — `saw.config.json` allows disabling auto-detect or adding custom skills
+
+**Skill files (stored in protocol repo):**
+```
+scout-and-wave/skills/
+  react-best-practices.md
+  rust-ownership.md
+  go-idioms.md
+  python-type-hints.md
+  fastapi-patterns.md
+```
+
+**Benefits:**
+- Zero configuration — works automatically
+- Better code quality — agents follow framework conventions
+- Consistent style — all agents get same guidance
+- Extensible — users can add custom team patterns
+
+**Success criteria:**
+- React project auto-injects hooks rules (detectable in agent prompts)
+- Rust project auto-injects ownership patterns
+- Custom skills work via config override
+
+**Estimated effort:** 2-3 days
+- Detection logic: 1 day
+- Loader + injection: 1 day
+- Testing & docs: 1 day
+
+---
+
+### v0.15.3 - Web UI Settings Panel
+**Why:** Configuration via JSON editing intimidates non-technical users. The UI should expose settings visually with validation and immediate feedback.
+
+**Scope:**
+- **Settings screen** — new route `/settings` with sections:
+  - Agent Configuration (per-phase model/backend/tokens)
+  - Quality Gates (typecheck/test/lint toggles + required checkbox)
+  - Framework Skills (auto-detect toggle, detected frameworks display, skills directory path)
+- **API endpoints:**
+  - `GET /api/config` — load current config + detected context (frameworks, skills, project type)
+  - `POST /api/config` — save config with validation
+  - `POST /api/config/reset` — reset to defaults
+  - `GET /api/config/validate` — validate before save
+- **Frontend components:**
+  - `SettingsScreen.tsx` — main container
+  - `AgentConfigSection.tsx` — per-phase cards with dropdowns
+  - `QualityGatesSection.tsx` — checkbox + dropdown + "required" toggle
+  - `FrameworkSkillsSection.tsx` — auto-detect toggle + read-only detected list
+- **Hot reload** — config changes apply without server restart
+
+**Benefits:**
+- Accessible — non-developers can tune settings
+- Validated — invalid inputs rejected before save
+- Transparent — users see detected frameworks/skills
+- Discoverable — reveals configuration options users didn't know existed
+
+**Success criteria:**
+- Settings UI feels as polished as Vercel/Linear settings
+- Config changes apply without restart
+- Validation errors shown inline (red text under invalid fields)
+
+**Estimated effort:** 4-5 days
+- API endpoints + validation: 1 day
+- Settings UI components: 2 days
+- Hot reload implementation: 1 day
+- Testing & polish: 1 day
+
+---
+
 ## Phase 2: Ecosystem & Integration (v0.16.0+)
 
 ### v0.16.0 - MCP Server Implementation
