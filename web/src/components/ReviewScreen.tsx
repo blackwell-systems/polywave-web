@@ -41,9 +41,14 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const { slug, impl, onApprove, onReject, onRefreshImpl } = props
   const isNotSuitable = impl.suitability.verdict === 'NOT SUITABLE'
 
-  const [activePanels, setActivePanels] = useState<PanelKey[]>(
-    ['pre-mortem', 'wave-structure', 'dependency-graph']
-  )
+  const [activePanels, setActivePanels] = useState<PanelKey[]>(() => {
+    const defaults: PanelKey[] = []
+    if (impl.pre_mortem) {
+      defaults.push('pre-mortem')
+    }
+    defaults.push('wave-structure', 'dependency-graph', 'file-ownership')
+    return defaults
+  })
   const [isStuck, setIsStuck] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -78,7 +83,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
   return (
     <div className="h-full bg-background">
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-[1600px] mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Plan Review</h1>

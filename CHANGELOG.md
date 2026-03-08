@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+**UI refinements**
+- **Sidebar dark mode background** — sidebar nav uses `#191919` background in dark mode for improved contrast
+- **Double-click sidebar expand** — double-clicking the collapsed sidebar expands it
+- **Sidebar width constraints** — sidebar capped at 10% screen width (down from 40%), minimum 140px; gives main content area up to 90% of screen width
+- **Wider content layout** — ReviewScreen max width increased to 1600px (from 1152px) to prevent tab button wrapping
+- **Conditional Pre-Mortem panel** — Pre-Mortem only auto-enabled if content exists
+- **Default panel order** — panels open in order: Pre-Mortem (if exists), Wave Structure, Dependency Graph, File Ownership
+- **Manual slug entry removed** — sidebar no longer includes manual slug input form
+
 **E16 validator sub-rules (E16A/E16C)**
 - **E16A: required block presence** — `ValidateIMPLDoc` now enforces that `impl-file-ownership`, `impl-dep-graph`, and `impl-wave-structure` blocks all appear when any typed block is present; fires only when `blockCount > 0` so pre-v0.10.0 docs are unaffected
 - **E16C: out-of-band dep graph detection** — plain fenced blocks whose content matches `[A-Z]` agent refs and the word `Wave` produce a `warning`-type `ValidationError` (not an exit-1 error); prompts author to move the content into a typed `impl-dep-graph` block
