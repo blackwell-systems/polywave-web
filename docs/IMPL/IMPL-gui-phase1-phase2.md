@@ -1057,3 +1057,106 @@ After wave 3 completes:
 | 3 | I | Chat with Claude (backend + frontend) | TO-DO |
 | 3 | J | Per-agent context payload (backend + AgentContextToggle) | TO-DO |
 | — | Orch | Post-merge integration, smoke tests, tag v0.18.0 | TO-DO |
+
+---
+
+### Agent A - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claude/worktrees/wave1-agent-A
+branch: wave1-agent-A
+commit: 4e327d993e9ed4850aefc166bd5dae71c3d6066f
+files_changed:
+  - pkg/api/server.go
+  - pkg/api/types.go
+files_created:
+  - pkg/api/stubs.go
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: PASS (go build ./... && go vet ./...)
+```
+
+---
+
+### Agent B - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claude/worktrees/wave1-agent-B
+branch: wave1-agent-B
+commit: f807cad31d4af7b7fe19f8ad886efff66b86d863
+files_changed:
+  - web/src/types.ts
+  - web/src/api.ts
+files_created: []
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: PASS (npm run build in main repo)
+```
+
+The existing `api.ts` uses bare `/api/...` paths (no `BASE_URL` constant) — new functions follow the same convention rather than the `BASE_URL` pattern shown in the agent prompt. The `runScout` third parameter `context?: ScoutContext` is optional so existing two-argument callers are unaffected. All type errors surfaced by `tsc --noEmit` in the worktree were pre-existing infrastructure errors (missing `node_modules`) unrelated to `types.ts` or `api.ts`; the full build in the main repo passes cleanly.
+
+### Agent D - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claude/worktrees/wave1-agent-D
+branch: wave1-agent-D
+commit: e461756
+files_changed: []
+files_created:
+  - web/src/components/review/QualityGatesPanel.tsx
+  - web/src/components/review/NotSuitableResearchPanel.tsx
+  - web/src/components/review/FileDiffPanel.tsx
+  - web/src/components/review/ContextViewerPanel.tsx
+interface_deviations: []
+out_of_scope_deps:
+  - fetchFileDiff, getContext, putContext not yet in api.ts (owned by Agent B) — TEMP inline stubs added to FileDiffPanel.tsx and ContextViewerPanel.tsx; remove after Wave 1 merge
+tests_added: []
+verification: PASS (npm run build — tsc + vite, 1.73s, 0 type errors)
+```
+
+All four panels follow the card/border/dark-mode class conventions from PostMergeChecklistPanel and KnownIssuesPanel. Key decisions:
+
+- QualityGatesPanel: parses `- ` / `* ` lines from gatesText, detects `[required]`/`[optional]` tags (defaults required when neither present), renders a styled table with badge column.
+- NotSuitableResearchPanel: prominent red NOT SUITABLE banner, rationale via MarkdownContent, blockers parsed from bullet lines in rationale text, serial notes section for dependency_graph_text and interface_contracts_text.
+- FileDiffPanel: useEffect fetch on mount, spinner/error states, per-line coloring (green/red/blue-gray/default), Back button. TEMP stub for fetchFileDiff uses a reasonable `/api/impl/:slug/wave/:wave/agent/:agent/diff?file=:file` URL — Agent B should confirm the actual route shape.
+- ContextViewerPanel: two-mode read/edit with TEMP stubs for getContext/putContext using `/api/context` — Agent B should confirm endpoint path. Save shows inline spinner and surfaced error.
+
+The worktree needed `npm install` before building (node_modules absent, as expected for a fresh worktree). Build passes cleanly with no new type errors or warnings attributable to these files.
+
+All 11 new route registrations added to `server.go` immediately after `DELETE /api/impl/{slug}`. `stubs.go` created with 501 stub bodies for all new handler methods. New types appended to `types.go` without touching existing types. Build and vet pass clean with zero warnings.
+
+### Agent C - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claude/worktrees/wave1-agent-C
+branch: wave1-agent-C
+commit: 2de3055297d096b821ab36504a5db53ec0897e1f
+files_changed: []
+files_created:
+  - pkg/api/diff_handler.go
+  - pkg/api/worktree_handler.go
+  - pkg/api/context_handler.go
+  - pkg/api/config_handler.go
+  - pkg/api/agent_context_handler.go
+  - pkg/api/types_temp.go
+  - pkg/api/stubs_temp.go
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: PASS (go build ./... && go vet ./...)
+```
+
+All five handler files implemented against interface contracts. `types_temp.go` adds the new Go types (WorktreeEntry, FileDiffResponse, SAWConfig, AgentContextResponse, ChatRequest/ChatMessage/ChatRunResponse) that Agent A owns in `types.go` — needed for isolated build. `stubs_temp.go` adds 501 stubs for handleImplChat, handleImplChatEvents, handleScaffoldRerun (Agent A-owned). Both temp files must be deleted after Wave 1 merge once Agent A's types.go and stubs.go land.
+
+Key decisions:
+- `handleImplDiff`: uses `git diff main...{branch} -- {file}` with post-merge fallback to `HEAD~1...HEAD`; returns empty diff string (not error) when branch is not found post-merge
+- `handleListWorktrees`: parses porcelain output, filters on `wave\d+-agent-[a-z]+` regex, derives status from `git branch --merged main`
+- `handleDeleteWorktree`: returns 409 JSON with error message if branch is unmerged and force=true not set; uses soft `-d` then hard `-D` delete
+- `handleGetAgentContext`: uses engine.ParseIMPLDoc for structured data; falls back to raw markdown section extraction if parser returns no prompt for the agent
+- All file writes use atomic temp-file + os.Rename pattern consistent with impl_edit.go
