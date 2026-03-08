@@ -157,7 +157,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           <ThemePicker />
           <DarkModeToggle />
-          <button onClick={() => setShowSettings(true)} title="Settings" className="p-1 hover:opacity-70">
+          <button onClick={() => setShowSettings(s => !s)} title="Settings" className="p-1 hover:opacity-70">
             <Settings size={16} />
           </button>
         </div>

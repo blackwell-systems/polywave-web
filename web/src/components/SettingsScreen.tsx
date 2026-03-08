@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getConfig, saveConfig } from '../api'
 import { SAWConfig } from '../types'
+import DirPicker from './DirPicker'
 
 const MODEL_OPTIONS = [
   { value: 'claude-opus-4-5', label: 'Claude Opus 4.5' },
@@ -78,13 +79,9 @@ export default function SettingsScreen({ onClose }: SettingsScreenProps): JSX.El
           <label className="text-xs text-muted-foreground" htmlFor="settings-repo-path">
             Repo path
           </label>
-          <input
-            id="settings-repo-path"
-            type="text"
+          <DirPicker
             value={config.repo.path}
-            onChange={e => setConfig(c => ({ ...c, repo: { path: e.target.value } }))}
-            placeholder="/path/to/repo"
-            className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            onChange={path => setConfig(c => ({ ...c, repo: { path } }))}
           />
         </div>
       </div>

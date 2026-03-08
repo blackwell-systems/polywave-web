@@ -168,6 +168,19 @@ export async function getConfig(): Promise<SAWConfig> {
   return r.json()
 }
 
+export interface BrowseResult {
+  path: string
+  parent: string
+  entries: Array<{ name: string; is_dir: boolean }>
+}
+
+export async function browse(path?: string): Promise<BrowseResult> {
+  const url = path ? `/api/browse?path=${encodeURIComponent(path)}` : `/api/browse`
+  const r = await fetch(url)
+  if (!r.ok) throw new Error(await r.text())
+  return r.json()
+}
+
 export async function saveConfig(config: SAWConfig): Promise<void> {
   const r = await fetch(`/api/config`, {
     method: 'POST',
