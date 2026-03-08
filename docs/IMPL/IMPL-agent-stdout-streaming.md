@@ -64,50 +64,24 @@ The frontend has no test runner configured (no `npm test` script in
 ### Dependency Graph
 
 ```
-pkg/agent/backend/backend.go        (Agent A — root, no new deps)
-pkg/agent/backend/cli/client.go     (Agent A — leaf under backend.go)
-pkg/agent/backend/api/client.go     (Agent A — leaf under backend.go)
-pkg/agent/runner.go                 (Agent A — leaf, passes ChunkCallback through)
-        |
-        | Agent A delivers: extended Backend interface + Runner.ExecuteStreaming
-        |
-pkg/orchestrator/events.go          (Agent B — adds AgentOutputPayload)
-pkg/orchestrator/orchestrator.go    (Agent B — launchAgent calls ExecuteStreaming)
-        |
-        | Agent B publishes "agent_output" SSE events via existing broker
-        |
-web/src/types.ts                    (Agent C — adds AgentOutputData + output field on AgentStatus)
-web/src/hooks/useWaveEvents.ts      (Agent C — handles agent_output event)
-        |
-web/src/components/AgentCard.tsx    (Agent D — renders streaming output area)
+Wave 1 (4 parallel agents):
+
+    [A] pkg/agent/backend/backend.go + cli/client.go + api/client.go + runner.go
+         (extended Backend interface: ChunkCallback type + RunStreaming method)
+         ✓ root (no new dependencies)
+
+    [B] pkg/orchestrator/events.go + orchestrator.go
+         (launchAgent calls ExecuteStreaming, publishes agent_output SSE events)
+         depends on: [A] (Runner.ExecuteStreaming interface contract)
+
+    [C] web/src/types.ts + web/src/hooks/useWaveEvents.ts
+         (AgentOutputData type + agent_output SSE event handler accumulating chunks)
+         ✓ root (no dependency on Go changes)
+
+    [D] web/src/components/AgentCard.tsx
+         (scrolling pre with auto-scroll renders AgentStatus.output)
+         depends on: [C] (AgentStatus.output field)
 ```
-
-All four agents are independent:
-- Agent A touches only Go backend files; no frontend files.
-- Agent B touches only Go orchestrator files; its only new dependency is the
-  `ExecuteStreaming` signature on `Runner` defined by Agent A. Because Agent B
-  calls `runner.ExecuteStreaming` (a new method), it needs the interface contract
-  defined before it starts — which is provided in this document.
-- Agent C touches only TypeScript source files; it adds one new SSE event handler
-  and one new field to `AgentStatus`.
-- Agent D touches only `AgentCard.tsx`; it reads the `output` field from
-  `AgentStatus` added by Agent C. Because Agent D reads `agent.output` which
-  Agent C adds to `AgentStatus`, both agents must be consistent on that field
-  name — this is specified in the Interface Contracts section.
-
-Wave structure: single wave (Wave 1) with all four agents running in parallel.
-All interface contracts are fully specifiable before any agent begins.
-
-Cascade candidates (files that will NOT change but reference changed interfaces):
-
-- `pkg/agent/runner_test.go` — tests `Runner.Execute`; after Agent A adds
-  `ExecuteStreaming`, the test file does not break (old method is preserved), but
-  reviewers should confirm no test asserts the exact method set on `Runner`.
-- `pkg/api/wave_runner.go` — calls `runner.Execute` (unchanged); no modification
-  needed, but the post-merge build must confirm it still compiles.
-- `pkg/orchestrator/orchestrator.go` — `newRunnerFunc` returns `*agent.Runner`;
-  after Agent A adds `ExecuteStreaming` to `Runner`, the orchestrator can call it.
-  Agent B modifies this file; it is in Agent B's ownership, not a cascade.
 
 ---
 

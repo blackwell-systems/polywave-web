@@ -75,47 +75,22 @@ committed to HEAD.
 ### Dependency Graph
 
 ```
-pkg/orchestrator/events.go        (already has OrchestratorEvent, EventPublisher,
-pkg/orchestrator/orchestrator.go   SetEventPublisher, publish() calls in RunWave
-                                   and launchAgent — READ-ONLY for all agents)
-          |
-          | (Agent A imports orchestrator to create real instance)
-          v
-pkg/api/wave_runner.go  [Agent A owns]
-          |
-          | (publishes via sseBroker.Publish)
-          v
-pkg/api/wave.go         (sseBroker.Publish — READ-ONLY, already implemented)
-          |
-          | (HTTP SSE stream already wired in handleWaveEvents)
-          v
-GET /api/wave/{slug}/events   (existing route, READ-ONLY)
-          |
-          | (frontend subscribes, Agent C wires ReviewScreen)
-          v
-web/src/hooks/useWaveEvents.ts   (READ-ONLY — fully handles all events already)
-web/src/components/ReviewScreen.tsx  [Agent C owns]
+Wave 1 (2 parallel agents, both roots):
 
-pkg/api/server_test.go   [Agent B owns — adds integration tests]
-  tests pkg/api/wave.go + pkg/api/wave_runner.go end-to-end
+    [A] pkg/api/wave_runner.go
+         (wire runWaveLoop: real orchestrator + SetEventPublisher + wave loop)
+         ✓ root (reads pkg/orchestrator, which is READ-ONLY for all agents)
+
+    [B] pkg/api/server_test.go
+         (SSE integration tests for wave events pipeline end-to-end)
+         ✓ root (no dependencies on A)
+
+Wave 2 (1 agent, depends on Wave 1):
+
+    [C] web/src/components/ReviewScreen.tsx
+         (SSE subscription + live re-fetch on wave_complete event)
+         depends on: [A] (wave loop publishes events via broker)
 ```
-
-Root nodes (no new dependencies): `pkg/orchestrator/` — already complete, agents
-only read it.
-
-Leaf nodes that change:
-- `pkg/api/wave_runner.go` — Agent A, Wave 1
-- `pkg/api/server_test.go` — Agent B, Wave 1
-- `web/src/components/ReviewScreen.tsx` — Agent C, Wave 2
-
-Cascade candidates (files that reference semantics that will change but are not
-owned by any agent):
-- `pkg/api/server.go` — references `sseBroker` and `activeRuns`; Agent A's
-  changes to `wave_runner.go` must not require new fields on `Server`. Verify
-  at post-merge that `server.go` still compiles without modification.
-- `web/src/App.tsx` — passes `impl` prop to `ReviewScreen`; Agent C adds a
-  `slug` prop usage (already present) and adds a `useEffect` for SSE. The
-  `App.tsx` call site passes `slug` already. No change needed in `App.tsx`.
 
 ---
 
