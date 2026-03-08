@@ -44,10 +44,8 @@ from these files, so they must exist before Wave 1 launches.
 
 | File | Contents | Import path | Status |
 |------|----------|-------------|--------|
-| `pkg/types/types.go` (in scout-and-wave-go) | All protocol types: `State`, `CompletionStatus`, `IMPLDoc`, `FileOwnershipInfo`, `Wave`, `AgentSpec`, `CompletionReport`, `InterfaceDeviation`, `KnownIssue`, `ScaffoldFile`, `PreMortemRow`, `PreMortem`, `ValidationError` | `github.com/blackwell-systems/scout-and-wave-go/pkg/types` | committed (f69c694) |
-| `pkg/engine/engine.go` (in scout-and-wave-go) | Engine interface + `Event` type + `RunScoutOpts`, `RunWaveOpts`, `RunMergeOpts` option structs | `github.com/blackwell-systems/scout-and-wave-go/pkg/engine` | committed (1c777fd) |
-| `go.mod` (in scout-and-wave-go) | Go module definition | `github.com/blackwell-systems/scout-and-wave-go` | committed (a0b345f) |
-| `go.sum` (in scout-and-wave-go) | Go module lock file | `github.com/blackwell-systems/scout-and-wave-go` | committed (a0b345f) |
+| `pkg/types/types.go` (in scout-and-wave-go) | All protocol types: `State`, `CompletionStatus`, `IMPLDoc`, `FileOwnershipInfo`, `Wave`, `AgentSpec`, `CompletionReport`, `InterfaceDeviation`, `KnownIssue`, `ScaffoldFile`, `PreMortemRow`, `PreMortem`, `ValidationError` | `github.com/blackwell-systems/scout-and-wave-go/pkg/types` | pending |
+| `pkg/engine/engine.go` (in scout-and-wave-go) | Engine interface + `Event` type + `RunScoutOpts`, `RunWaveOpts`, `RunMergeOpts` option structs | `github.com/blackwell-systems/scout-and-wave-go/pkg/engine` | pending |
 
 The Scaffold Agent must also initialise the Go module in `scout-and-wave-go` with:
 ```
@@ -80,7 +78,7 @@ and add `go.sum` + `go.mod` with the same dependencies as `scout-and-wave-web`
 ## Known Issues
 
 - `TestDoctorHelpIncludesFixNote` in `cmd/saw/` is a known hangs (tries to execute test binary as CLI). Skip with `-skip 'TestDoctorHelpIncludesFixNote'` if present.
-- RESOLVED: `scout-and-wave-go` now has `go.mod` and `go.sum` (committed a0b345f). Wave 1 agents can proceed with builds.
+- `scout-and-wave-go` currently has no `go.mod` — `go build ./...` inside that repo will fail until the Scaffold Agent runs. Wave 1 agents must verify the module file exists before attempting builds.
 
 ---
 
@@ -1507,118 +1505,3 @@ are in different repos, merge them in this sequence:
 | 2 | G | Rewire pkg/api HTTP handlers + cmd/saw CLI in scout-and-wave-web | TO-DO |
 | 2 | H | Update go.mod + go.sum in scout-and-wave-web | TO-DO |
 | — | Orch | Post-merge integration + binary smoke test | TO-DO |
-
-### Agent A - Completion Report
-
-```yaml type=impl-completion-report
-status: complete
-worktree: /Users/dayna.blackwell/code/scout-and-wave-go/.claude/worktrees/wave1-agent-A
-branch: wave1-agent-A
-commit: ac59e815af6449d98eb05a916648a0f4df3b0f5f
-files_changed:
-  - pkg/types/types.go
-files_created:
-  - pkg/types/types_test.go
-interface_deviations: []
-out_of_scope_deps: []
-tests_added:
-  - TestStateString
-  - TestCompletionStatusConstants
-verification: PASS
-```
-
-### Agent B - Completion Report
-
-```yaml type=impl-completion-report
-status: complete
-worktree: /Users/dayna.blackwell/code/scout-and-wave-go/.claude/worktrees/wave1-agent-B
-branch: wave1-agent-B
-commit: 18140c5b6a478f909afe62833aa904d8cd3917aa
-files_changed: []
-files_created:
-  - internal/git/commands.go
-  - internal/git/commands_test.go
-interface_deviations: []
-out_of_scope_deps: []
-tests_added:
-  - TestRunInvalidDir
-  - TestRevParseHEAD
-verification: PASS
-```
-
-### Agent D - Completion Report
-
-```yaml type=impl-completion-report
-status: complete
-worktree: /Users/dayna.blackwell/code/scout-and-wave-go/.claude/worktrees/wave1-agent-D
-branch: wave1-agent-D
-commit: 2a88aa54389a041d112ecf45798956cb8c03d4a3
-files_changed: []
-files_created:
-  - pkg/worktree/manager.go
-  - pkg/worktree/manager_test.go
-interface_deviations: []
-out_of_scope_deps: []
-tests_added:
-  - TestManagerNew
-  - TestManagerCreateRemoveRoundtrip
-verification: PASS
-```
-
-Copied manager.go verbatim from scout-and-wave-web, updating only the import path from `scout-and-wave-web/internal/git` to `scout-and-wave-go/internal/git`. Created a build stub at `internal/git/commands.go` (not committed) to allow `go build` and `go test` to pass in isolation while Agent B's real implementation is in a parallel worktree. Both tests pass. The stub file was not staged or committed — only `pkg/worktree/` was committed.
-
-### Agent E - Completion Report
-
-```yaml type=impl-completion-report
-status: complete
-worktree: /Users/dayna.blackwell/code/scout-and-wave-go/.claude/worktrees/wave1-agent-E
-branch: wave1-agent-E
-commit: 1aacf77cfc8d063590d5e2fd10348359e7d4e4ef
-files_changed:
-  - go.mod
-  - go.sum
-files_created:
-  - pkg/agent/backend/backend.go
-  - pkg/agent/backend/api/client.go
-  - pkg/agent/backend/api/tools.go
-  - pkg/agent/backend/cli/client.go
-  - pkg/agent/runner.go
-  - pkg/agent/completion.go
-  - pkg/agent/stream.go
-  - pkg/agent/tools.go
-  - pkg/agent/runner_test.go
-interface_deviations: []
-out_of_scope_deps: []
-tests_added:
-  - TestNewRunner
-  - TestWaitForCompletionTimeout
-verification: PASS
-```
-
-All files copied from scout-and-wave-web with import paths updated from `scout-and-wave-web` to `scout-and-wave-go`. Build stubs created at `pkg/protocol/protocol.go` and `pkg/worktree/worktree.go` (not committed) to allow isolated builds while Agent C and D worktrees are parallel. Added `github.com/anthropics/anthropic-sdk-go v1.26.0` and `github.com/creack/pty v1.1.24` (plus transitive deps) to go.mod/go.sum. Note: `pkg/agent/backend/api/tools.go` is an additional file (beyond the ownership list) present in the source — it is owned by this agent as it lives under `pkg/agent/backend/api/`. The `pkg/agent/stream.go` and `pkg/agent/tools.go` files use the anthropic SDK and standard library only; no circular imports. Both tests pass in under 1s.
-
-The scaffold copy of `pkg/types/types.go` was already an exact match of `scout-and-wave-web/pkg/types/types.go` — no changes were needed to the types file itself. All 13 required types are present: `State`, `CompletionStatus`, `IMPLDoc`, `FileOwnershipInfo`, `Wave`, `AgentSpec`, `CompletionReport`, `InterfaceDeviation`, `KnownIssue`, `ScaffoldFile`, `PreMortemRow`, `PreMortem`, `ValidationError`. The `State.String()` method covers all 11 state values plus an "Unknown" default. Tests verify both `String()` and the three `CompletionStatus` constants. Build, vet, and tests all pass cleanly.
-
-### Agent C - Completion Report
-
-```yaml type=impl-completion-report
-status: complete
-worktree: /Users/dayna.blackwell/code/scout-and-wave-go/.claude/worktrees/wave1-agent-C
-branch: wave1-agent-C
-commit: 3d0ef3cecdf92d9b80654ba701aa625be5f9c57f
-files_changed: []
-files_created:
-  - pkg/protocol/parser.go
-  - pkg/protocol/updater.go
-  - pkg/protocol/validator.go
-  - pkg/protocol/types.go
-  - pkg/protocol/parser_test.go
-interface_deviations: []
-out_of_scope_deps: []
-tests_added:
-  - TestParseIMPLDocMinimal
-  - TestParseCompletionReportNotFound
-verification: PASS
-```
-
-All four source files copied from scout-and-wave-web/pkg/protocol/ with the single import path substitution (`scout-and-wave-web/pkg/types` → `scout-and-wave-go/pkg/types`). No logic changes. Added `gopkg.in/yaml.v3` to go.mod/go.sum (required by parser.go; go.mod had no prior dependencies — necessary infrastructure change). Both tests pass. Build and vet clean.
