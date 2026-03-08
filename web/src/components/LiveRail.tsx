@@ -21,7 +21,7 @@ export interface LiveRailProps {
   onRepoSwitch?: (index: number) => void
 }
 
-export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady, onClose }: LiveRailProps): JSX.Element {
+export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady, onClose, repos, activeRepo }: LiveRailProps): JSX.Element {
   const gitSnapshot = useGitActivity(liveView === 'wave' && slug ? slug : '')
 
   return (
@@ -43,7 +43,7 @@ export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady
       {/* Scout view */}
       {liveView === 'scout' && (
         <div className="flex-1 overflow-y-auto">
-          <ScoutLauncher onComplete={onScoutComplete} onScoutReady={onScoutReady} />
+          <ScoutLauncher onComplete={onScoutComplete} onScoutReady={onScoutReady} repos={repos} activeRepo={activeRepo} />
         </div>
       )}
 
@@ -51,7 +51,7 @@ export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady
       {liveView === 'wave' && slug && (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <div className="flex-1 overflow-y-auto min-h-0">
-            <WaveBoard slug={slug} compact={true} />
+            <WaveBoard slug={slug} compact={true} repos={repos} />
           </div>
           <div className="border-t shrink-0 p-3">
             <h2 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Git Activity</h2>

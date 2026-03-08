@@ -239,7 +239,7 @@ export default function App() {
               {loading && <p className="text-muted-foreground text-sm p-4">Loading...</p>}
               {rejected && <p className="text-orange-600 text-sm p-4">Plan rejected.</p>}
               {!loading && impl !== null && selectedSlug !== null && (
-                <ReviewScreen slug={selectedSlug} impl={impl} onApprove={handleApprove} onReject={handleReject} onRefreshImpl={handleSelect} />
+                <ReviewScreen slug={selectedSlug} impl={impl} onApprove={handleApprove} onReject={handleReject} onRefreshImpl={handleSelect} repos={repos} />
               )}
               {!loading && impl === null && !error && (
                 <div className="flex items-center justify-center h-full text-muted-foreground text-sm">

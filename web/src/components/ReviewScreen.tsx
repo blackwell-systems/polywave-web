@@ -26,6 +26,7 @@ interface ReviewScreenProps {
   onApprove: () => void
   onReject: () => void
   onRefreshImpl?: (slug: string) => Promise<void>
+  repos?: import('../types').RepoEntry[]
 }
 
 type PanelKey = 'pre-mortem' | 'stub-report' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist' | 'quality-gates' | 'context-viewer'
@@ -46,7 +47,7 @@ const panels: Array<{ key: PanelKey; label: string }> = [
 ]
 
 export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
-  const { slug, impl, onApprove, onReject, onRefreshImpl } = props
+  const { slug, impl, onApprove, onReject, onRefreshImpl, repos } = props
   const isNotSuitable = impl.suitability.verdict === 'NOT SUITABLE'
 
   const [showRevise, setShowRevise] = useState(false)
@@ -179,7 +180,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 {/* TODO: onFileClick wired here; FileOwnershipPanel does not yet declare this prop — will activate after Wave 1 merge */}
                 {activePanels.includes('file-ownership') && (() => {
                   const AnyFileOwnershipPanel = FileOwnershipPanel as any
-                  return <AnyFileOwnershipPanel impl={impl} onFileClick={(agent: string, wave: number, file: string) => setDiffTarget({ agent, wave, file })} />
+                  return <AnyFileOwnershipPanel impl={impl} repos={repos} onFileClick={(agent: string, wave: number, file: string) => setDiffTarget({ agent, wave, file })} />
                 })()}
 
                 {/* Interface Contracts — full width */}
