@@ -115,7 +115,8 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   }
 
   return (
-    <div className="h-full bg-background">
+    <div className="h-full bg-background flex overflow-hidden">
+      <div className={`${showChat ? 'flex-1' : 'w-full'} overflow-y-auto`}>
       <div className="max-w-[1600px] mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6">
@@ -224,9 +225,14 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
           </>
         )}
       </div>
+      </div>
 
-      {/* Chat Panel — modal overlay */}
-      {showChat && <ChatPanel slug={slug} onClose={() => setShowChat(false)} />}
+      {/* Chat Panel — right sidebar */}
+      {showChat && (
+        <div className="w-[420px] flex-shrink-0 border-l border-gray-200 dark:border-gray-700 flex flex-col">
+          <ChatPanel slug={slug} onClose={() => setShowChat(false)} />
+        </div>
+      )}
 
       {/* Context Viewer — modal overlay */}
       {activePanels.includes('context-viewer') && (

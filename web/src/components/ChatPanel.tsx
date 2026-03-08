@@ -47,8 +47,7 @@ export default function ChatPanel({ slug, onClose }: ChatPanelProps): JSX.Elemen
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end pointer-events-none">
-      <div className="pointer-events-auto bg-white dark:bg-gray-900 shadow-xl border-l border-gray-200 dark:border-gray-700 w-full max-w-md flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full bg-white dark:bg-gray-900 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-sm font-semibold">Ask Claude about this IMPL</h2>
@@ -124,7 +123,6 @@ export default function ChatPanel({ slug, onClose }: ChatPanelProps): JSX.Elemen
             Send
           </button>
         </div>
-      </div>
     </div>
   )
 }
