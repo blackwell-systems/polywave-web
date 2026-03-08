@@ -278,7 +278,8 @@ export default function App() {
         onClick={() => setShowSettings(false)}
       >
         <div
-          className="bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          className="bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl flex flex-col"
+          style={{ height: '80vh' }}
           onClick={(e) => e.stopPropagation()}
         >
           <SettingsScreen onClose={() => setShowSettings(false)} onReposChange={handleReposChange} />
