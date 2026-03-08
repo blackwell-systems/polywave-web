@@ -1231,3 +1231,21 @@ The GET handler reads from `s.cfg.IMPLDir/IMPL-{slug}.md` and returns `text/plai
 One interface deviation: the prompt specified `filepath.Join(s.cfg.RepoPath, "docs", "IMPL", ...)` for path construction, but the existing `impl.go` uses `s.cfg.IMPLDir` directly. Using `s.cfg.IMPLDir` is consistent with the rest of the codebase and avoids hardcoding the `docs/IMPL` subdirectory (which is already baked into `IMPLDir` at server startup). Both approaches resolve to the same path in production.
 
 The two route registrations (`GET /api/impl/{slug}/raw` and `PUT /api/impl/{slug}/raw`) must be added to `pkg/api/server.go` by Agent B or the orchestrator — this file is outside my ownership.
+
+### Agent D - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claude/worktrees/wave2-agent-D
+branch: saw/wave2-agent-D
+commit: c604f84
+files_changed:
+  - web/src/components/AgentCard.tsx
+files_created: []
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: PASS (npx tsc --noEmit)
+```
+
+Added `outputExpanded` state (default false) and a toggle button rendered only when `agentOutput.length > 200`. Button shows "▼ Show more" / "▲ Show less" and sits above the `<pre>`. The `<pre>` switches between `max-h-32` (collapsed) and `max-h-96` (expanded) via a template literal class. Auto-scroll `useEffect` now guards on `!outputExpanded` so it only fires when collapsed, preserving streaming scroll behavior without fighting a manually expanded view.
