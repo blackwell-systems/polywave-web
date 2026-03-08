@@ -171,6 +171,7 @@ export default function App() {
   }
 
   return (
+    <>
     <div className="h-screen flex flex-col bg-background overflow-hidden">
       <header className="flex items-center justify-between px-4 py-2 border-b shrink-0">
         <div className="flex items-center gap-3">
@@ -244,21 +245,6 @@ export default function App() {
           )}
         </div>
 
-        {/* Settings modal overlay */}
-        {showSettings && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-            onClick={() => setShowSettings(false)}
-          >
-            <div
-              className="bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <SettingsScreen onClose={() => setShowSettings(false)} onReposChange={handleReposChange} />
-            </div>
-          </div>
-        )}
-
         {/* Right divider + rail — only when liveView is not null */}
         {liveView !== null && (
           <div
@@ -284,5 +270,21 @@ export default function App() {
         )}
       </div>
     </div>
+
+    {/* Settings modal — outside overflow-hidden root so fixed positioning works */}
+    {showSettings && (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        onClick={() => setShowSettings(false)}
+      >
+        <div
+          className="bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <SettingsScreen onClose={() => setShowSettings(false)} onReposChange={handleReposChange} />
+        </div>
+      </div>
+    )}
+    </>
   )
 }
