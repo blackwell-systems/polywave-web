@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -237,7 +238,11 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 	}
 
 	if doc.FeatureName == "" {
-		return doc, fmt.Errorf("ParseIMPLDoc: %q: missing '# IMPL:' title", path)
+		// Tolerate missing title: derive from filename (IMPL-<slug>.md → slug).
+		base := filepath.Base(path)
+		base = strings.TrimPrefix(base, "IMPL-")
+		base = strings.TrimSuffix(base, ".md")
+		doc.FeatureName = base
 	}
 
 	// If no ## Wave N headers existed, all agents land in a single auto-created
