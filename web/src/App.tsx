@@ -113,6 +113,14 @@ export default function App() {
   if (appMode === 'scout') {
     return (
       <>
+        <div className="fixed top-4 left-4 z-50">
+          <button
+            onClick={() => setAppMode('split')}
+            className="text-xs px-2.5 py-1 rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          >
+            ← Back
+          </button>
+        </div>
         <div className="fixed top-4 right-4 z-50">
           <DarkModeToggle />
         </div>
