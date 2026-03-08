@@ -5,11 +5,17 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
 )
+
+// completionStatusRe matches a real agent-written status line (not the template placeholder).
+// Template: "status: complete | partial | blocked"
+// Real:     "status: complete" or "status: partial" or "status: blocked"
+var completionStatusRe = regexp.MustCompile(`(?m)^status: (complete|partial|blocked)$`)
 
 // implListEntry is one item in the GET /api/impl response.
 type implListEntry struct {
@@ -31,9 +37,12 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(name, "IMPL-") && strings.HasSuffix(name, ".md") {
 			slug := strings.TrimSuffix(strings.TrimPrefix(name, "IMPL-"), ".md")
 			status := "ACTIVE"
-			// Quick scan for SAW:COMPLETE tag without full parse.
+			// Quick scan: explicit SAW:COMPLETE tag, or infer from completion reports.
 			if data, err := os.ReadFile(filepath.Join(s.cfg.IMPLDir, name)); err == nil {
-				if strings.Contains(string(data), "SAW:COMPLETE") {
+				text := string(data)
+				if strings.Contains(text, "SAW:COMPLETE") {
+					status = "COMPLETE"
+				} else if inferComplete(text) {
 					status = "COMPLETE"
 				}
 			}
@@ -123,6 +132,24 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	s.broker.Publish(slug, SSEEvent{Event: "plan_rejected", Data: map[string]string{"slug": slug}})
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// inferComplete returns true if all real agent completion reports in the raw
+// IMPL doc text show "status: complete". A "real" report has exactly one of
+// complete/partial/blocked on its own line (not the template placeholder
+// "status: complete | partial | blocked"). Returns false if no real reports
+// are found or any report shows partial/blocked.
+func inferComplete(text string) bool {
+	matches := completionStatusRe.FindAllStringSubmatch(text, -1)
+	if len(matches) == 0 {
+		return false
+	}
+	for _, m := range matches {
+		if m[1] != "complete" {
+			return false
+		}
+	}
+	return true
 }
 
 // isNotExistErr unwraps errors to check for os.ErrNotExist by checking
