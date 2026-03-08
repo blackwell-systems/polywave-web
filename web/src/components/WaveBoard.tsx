@@ -1,9 +1,25 @@
 import { useState } from 'react'
 import { useWaveEvents } from '../hooks/useWaveEvents'
+import type { AppWaveState } from '../hooks/useWaveEvents'
 import AgentCard from './AgentCard'
 import ProgressBar from './ProgressBar'
 import ImplEditor from './ImplEditor'
 import { AgentStatus } from '../types'
+import { mergeWave, runWaveTests } from '../api'
+
+// Local stub types matching Agent B's interface contract for WaveMergeState/WaveTestState.
+// Once Agent B's changes are merged, these can be replaced with imports from useWaveEvents.
+interface WaveMergeState {
+  status: 'idle' | 'merging' | 'success' | 'failed'
+  output: string
+  conflictingFiles: string[]
+  error?: string
+}
+
+interface WaveTestState {
+  status: 'idle' | 'running' | 'pass' | 'fail'
+  output: string
+}
 
 interface WaveBoardProps {
   slug: string
@@ -70,6 +86,22 @@ export default function WaveBoard({ slug, compact }: WaveBoardProps): JSX.Elemen
   async function handleProceedGate(nextWave: number): Promise<void> {
     await fetch(`/api/wave/${encodeURIComponent(slug)}/gate/proceed`, { method: 'POST' })
     void nextWave
+  }
+
+  async function handleMergeWave(waveNum: number): Promise<void> {
+    try {
+      await mergeWave(slug, waveNum)
+    } catch (err) {
+      console.error('mergeWave request failed:', err)
+    }
+  }
+
+  async function handleRunTests(waveNum: number): Promise<void> {
+    try {
+      await runWaveTests(slug, waveNum)
+    } catch (err) {
+      console.error('runWaveTests request failed:', err)
+    }
   }
 
   return (
@@ -162,6 +194,93 @@ export default function WaveBoard({ slug, compact }: WaveBoardProps): JSX.Elemen
                   ))}
                 </div>
               </div>
+
+              {/* Merge and test controls */}
+              {(() => {
+                const mergeState = (state as AppWaveState & { wavesMergeState?: Map<number, WaveMergeState>; wavesTestState?: Map<number, WaveTestState> }).wavesMergeState?.get(wave.wave)
+                const testState = (state as AppWaveState & { wavesMergeState?: Map<number, WaveMergeState>; wavesTestState?: Map<number, WaveTestState> }).wavesTestState?.get(wave.wave)
+                const allComplete = waveComplete === waveTotal && waveTotal > 0
+                const mergeStatus = mergeState?.status ?? 'idle'
+                const testStatus = testState?.status ?? 'idle'
+
+                return (
+                  <>
+                    {/* Merge button */}
+                    {allComplete && mergeStatus === 'idle' && !hasGate && (
+                      <button
+                        onClick={() => void handleMergeWave(wave.wave)}
+                        className="mt-3 text-sm font-medium px-4 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                      >
+                        Merge Wave {wave.wave}
+                      </button>
+                    )}
+
+                    {/* Merging in progress */}
+                    {mergeStatus === 'merging' && (
+                      <div className="mt-3 bg-violet-50 border border-violet-200 rounded-lg px-4 py-2 text-violet-700 text-sm animate-pulse dark:bg-violet-950 dark:border-violet-800 dark:text-violet-400">
+                        Merging Wave {wave.wave}...
+                      </div>
+                    )}
+
+                    {/* Merge success */}
+                    {mergeStatus === 'success' && (
+                      <div className="mt-3 space-y-2">
+                        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-green-800 text-sm dark:bg-green-950 dark:border-green-800 dark:text-green-400">
+                          Wave {wave.wave} merged successfully
+                        </div>
+
+                        {testStatus === 'idle' && (
+                          <button
+                            onClick={() => void handleRunTests(wave.wave)}
+                            className="text-sm font-medium px-4 py-1.5 rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                          >
+                            Run Tests
+                          </button>
+                        )}
+
+                        {testStatus === 'running' && (
+                          <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-2 text-teal-700 text-sm animate-pulse dark:bg-teal-950 dark:border-teal-800 dark:text-teal-400">
+                            Running tests...
+                          </div>
+                        )}
+
+                        {testStatus === 'pass' && (
+                          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-green-800 text-sm dark:bg-green-950 dark:border-green-800 dark:text-green-400">
+                            Tests passed ✓
+                          </div>
+                        )}
+
+                        {testStatus === 'fail' && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-2 dark:bg-red-950 dark:border-red-800">
+                            <p className="text-red-800 text-sm font-medium dark:text-red-400">Tests failed</p>
+                            {testState?.output && (
+                              <pre className="text-xs font-mono text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-300 rounded p-2 overflow-y-auto max-h-48 whitespace-pre-wrap break-all">
+                                {testState.output}
+                              </pre>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Merge failed */}
+                    {mergeStatus === 'failed' && (
+                      <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-1 dark:bg-red-950 dark:border-red-800">
+                        <p className="text-red-800 text-sm font-medium dark:text-red-400">
+                          Merge failed: {mergeState?.error}
+                        </p>
+                        {(mergeState?.conflictingFiles?.length ?? 0) > 0 && (
+                          <ul className="mt-1 space-y-0.5">
+                            {mergeState!.conflictingFiles.map(f => (
+                              <li key={f} className="font-mono text-xs text-red-700 dark:text-red-300">{f}</li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
 
               {/* Wave gate banner — shown after this wave row when gate is pending */}
               {hasGate && state.waveGate && (
