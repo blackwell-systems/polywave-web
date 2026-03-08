@@ -249,11 +249,12 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 		doc.FeatureName = base
 	}
 
-	// If no ## Wave N headers existed, all agents land in a single auto-created
-	// wave. Use the file ownership table's wave column to regroup them.
-	if len(doc.Waves) == 1 && len(doc.FileOwnership) > 0 {
+	// If no agent headers were parsed, reconstruct waves from the file ownership
+	// table directly. Also handles the single-wave case where maxWave > 1.
+	if len(doc.Waves) <= 1 && len(doc.FileOwnership) > 0 {
 		// Build agent -> wave number from ownership table.
 		agentWave := make(map[string]int)
+		agentSeen := make(map[string]bool)
 		maxWave := 1
 		for _, info := range doc.FileOwnership {
 			if info.Wave > 0 {
@@ -264,14 +265,30 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 					maxWave = info.Wave
 				}
 			}
+			agentSeen[info.Agent] = true
 		}
-		if maxWave > 1 {
-			origAgents := doc.Waves[0].Agents
+
+		// When 0 waves: build entirely from ownership table agents.
+		// When 1 wave: only regroup if maxWave > 1 (existing behavior).
+		if len(doc.Waves) == 0 || maxWave > 1 {
+			var origAgents []types.AgentSpec
+			if len(doc.Waves) == 1 {
+				origAgents = doc.Waves[0].Agents
+			} else {
+				// Reconstruct agent list from ownership table in letter order.
+				seen := make(map[string]bool)
+				for _, info := range doc.FileOwnership {
+					if !seen[info.Agent] && info.Agent != "" {
+						origAgents = append(origAgents, types.AgentSpec{Letter: info.Agent})
+						seen[info.Agent] = true
+					}
+				}
+			}
 			waveMap := make(map[int][]types.AgentSpec)
 			for _, a := range origAgents {
-				wn := 1
-				if w, ok := agentWave[a.Letter]; ok {
-					wn = w
+				wn := agentWave[a.Letter]
+				if wn == 0 {
+					wn = 1
 				}
 				waveMap[wn] = append(waveMap[wn], a)
 			}

@@ -250,13 +250,14 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
               const y1 = edge.from.y + NODE_H / 2
               const x2 = edge.to.x
               const y2 = edge.to.y + NODE_H / 2
-              const cx = (x1 + x2) / 2
 
               return (
-                <path
+                <line
                   key={i}
-                  d={`M ${x1} ${y1} C ${cx} ${y1}, ${cx} ${y2}, ${x2} ${y2}`}
-                  fill="none"
+                  x1={x1}
+                  y1={y1}
+                  x2={x2}
+                  y2={y2}
                   stroke={edge.color}
                   strokeWidth={2}
                   opacity={0.6}
