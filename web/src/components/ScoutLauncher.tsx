@@ -157,7 +157,6 @@ export default function ScoutLauncher({ onComplete, onScoutReady }: ScoutLaunche
     'Minimize API surface changes',
     'Prefer additive changes (no deletions)',
     'Keep existing tests passing',
-    'Single-wave only (no multi-wave)',
   ]
 
   function toggleConstraint(label: string) {
