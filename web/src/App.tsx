@@ -49,6 +49,16 @@ export default function App() {
     document.addEventListener('mouseup', onUp)
   }
 
+  // Subscribe to global server events so the IMPL list stays in sync
+  // with any external changes (CLI scout runs, wave completion, approve/reject).
+  useEffect(() => {
+    const es = new EventSource('/api/events')
+    es.addEventListener('impl_list_updated', () => {
+      listImpls().then(setEntries).catch(() => {})
+    })
+    return () => es.close()
+  }, [])
+
   useEffect(() => {
     listImpls().then(setEntries).catch(() => {})
     getConfig().then(config => {
