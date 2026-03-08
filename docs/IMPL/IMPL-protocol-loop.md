@@ -1266,6 +1266,21 @@ commit: c604f84
 files_changed:
   - web/src/components/AgentCard.tsx
 files_created: []
+
+---
+
+---
+
+### Agent H - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: .claude/worktrees/wave2-agent-H
+branch: saw/wave2-agent-H
+commit: c3b2121728ab7042664a67ea7ccd2df9a0bf7a9f
+files_changed: []
+files_created:
+  - web/src/components/ImplEditor.tsx
 interface_deviations: []
 out_of_scope_deps: []
 tests_added: []
@@ -1273,3 +1288,11 @@ verification: PASS (npx tsc --noEmit)
 ```
 
 Added `outputExpanded` state (default false) and a toggle button rendered only when `agentOutput.length > 200`. Button shows "▼ Show more" / "▲ Show less" and sits above the `<pre>`. The `<pre>` switches between `max-h-32` (collapsed) and `max-h-96` (expanded) via a template literal class. Auto-scroll `useEffect` now guards on `!outputExpanded` so it only fires when collapsed, preserving streaming scroll behavior without fighting a manually expanded view.
+
+---
+
+Component fetches raw markdown via `fetch('/api/impl/${slug}/raw')` on mount, renders in a monospace textarea with dark theme (`bg-gray-900 text-gray-100 font-mono text-sm`), tracks dirty state by comparing textarea content to last-saved content, and shows an amber "Unsaved changes" indicator when dirty. Save uses `PUT /api/impl/${slug}/raw` with a `text/plain` body — on success shows a green "Saved ✓" flash for 2 seconds; on error shows the error message in red inline. Revert resets textarea to `savedContent` and clears dirty state. Loading and error states are handled with a retry button. All state is self-contained; no api.ts imports were used.
+
+**downstream_action_required:** true
+
+**orchestrator_action:** Wire ImplEditor into WaveBoard gate banner: import ImplEditor and render `<ImplEditor slug={slug} />` inside the wave_gate_pending banner in WaveBoard.tsx (after the Proceed button). Also optionally add to review sidebar.
