@@ -1,6 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { AgentOutputData, AgentStatus, WaveState } from '../types'
 
+export interface WaveMergeState {
+  status: 'idle' | 'merging' | 'success' | 'failed'
+  output: string
+  conflictingFiles: string[]
+  error?: string
+}
+
+export interface WaveTestState {
+  status: 'idle' | 'running' | 'pass' | 'fail'
+  output: string
+}
+
 // AppWaveState is the composite state managed by the hook.
 // WaveState in types.ts is per-wave; we expose a top-level shape here
 // and also return the list of per-wave WaveState objects for WaveBoard grouping.
@@ -14,6 +26,8 @@ export interface AppWaveState {
   error?: string
   waves: WaveState[]
   waveGate?: { wave: number; nextWave: number }
+  wavesMergeState: Map<number, WaveMergeState>
+  wavesTestState: Map<number, WaveTestState>
 }
 
 // useWaveEvents subscribes to the SSE stream for a given slug and returns
@@ -27,6 +41,8 @@ export function useWaveEvents(slug: string): AppWaveState {
     runComplete: false,
     connected: false,
     waves: [],
+    wavesMergeState: new Map(),
+    wavesTestState: new Map(),
   })
 
   const esRef = useRef<EventSource | null>(null)
@@ -171,6 +187,84 @@ export function useWaveEvents(slug: string): AppWaveState {
       const data = JSON.parse(event.data) as { wave: number; action: string }
       void data // consumed for side-effect only
       setState(s => ({ ...s, waveGate: undefined }))
+    })
+
+    es.addEventListener('merge_started', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number }
+      setState(prev => {
+        const next = new Map(prev.wavesMergeState)
+        next.set(data.wave, { status: 'merging', output: '', conflictingFiles: [] })
+        return { ...prev, wavesMergeState: next }
+      })
+    })
+
+    es.addEventListener('merge_output', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; chunk: string }
+      setState(prev => {
+        const next = new Map(prev.wavesMergeState)
+        const cur = next.get(data.wave) ?? { status: 'merging' as const, output: '', conflictingFiles: [] }
+        next.set(data.wave, { ...cur, output: cur.output + data.chunk })
+        return { ...prev, wavesMergeState: next }
+      })
+    })
+
+    es.addEventListener('merge_complete', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; status: string }
+      setState(prev => {
+        const next = new Map(prev.wavesMergeState)
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [] }
+        next.set(data.wave, { ...cur, status: 'success' })
+        return { ...prev, wavesMergeState: next }
+      })
+    })
+
+    es.addEventListener('merge_failed', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; error: string; conflicting_files: string[] }
+      setState(prev => {
+        const next = new Map(prev.wavesMergeState)
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [] }
+        next.set(data.wave, { ...cur, status: 'failed', error: data.error, conflictingFiles: data.conflicting_files ?? [] })
+        return { ...prev, wavesMergeState: next }
+      })
+    })
+
+    es.addEventListener('test_started', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number }
+      setState(prev => {
+        const next = new Map(prev.wavesTestState)
+        next.set(data.wave, { status: 'running', output: '' })
+        return { ...prev, wavesTestState: next }
+      })
+    })
+
+    es.addEventListener('test_output', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; chunk: string }
+      setState(prev => {
+        const next = new Map(prev.wavesTestState)
+        const cur = next.get(data.wave) ?? { status: 'running' as const, output: '' }
+        next.set(data.wave, { ...cur, output: cur.output + data.chunk })
+        return { ...prev, wavesTestState: next }
+      })
+    })
+
+    es.addEventListener('test_complete', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; status: string }
+      setState(prev => {
+        const next = new Map(prev.wavesTestState)
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '' }
+        next.set(data.wave, { ...cur, status: 'pass' })
+        return { ...prev, wavesTestState: next }
+      })
+    })
+
+    es.addEventListener('test_failed', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; status: string; output: string }
+      setState(prev => {
+        const next = new Map(prev.wavesTestState)
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '' }
+        next.set(data.wave, { ...cur, status: 'fail', output: data.output })
+        return { ...prev, wavesTestState: next }
+      })
     })
 
     return () => {
