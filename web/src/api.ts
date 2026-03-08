@@ -82,6 +82,24 @@ export async function cancelRevise(slug: string, runId: string): Promise<void> {
   await fetch(`/api/impl/${encodeURIComponent(slug)}/revise/${encodeURIComponent(runId)}/cancel`, { method: 'POST' })
 }
 
+export async function mergeWave(slug: string, wave: number): Promise<void> {
+  const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/merge`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wave }),
+  })
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`)
+}
+
+export async function runWaveTests(slug: string, wave: number): Promise<void> {
+  const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/test`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wave }),
+  })
+  if (!r.ok) throw new Error(`HTTP ${r.status}: ${await r.text()}`)
+}
+
 export async function saveImplRaw(slug: string, content: string): Promise<void> {
   const r = await fetch(`/api/impl/${encodeURIComponent(slug)}/raw`, {
     method: 'PUT',
