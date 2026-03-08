@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -248,6 +249,19 @@ func (o *Orchestrator) RunWave(waveNum int) error {
 	return nil
 }
 
+// wtIMPLPath derives the IMPL doc path inside the agent's worktree.
+// implDocPath is the main repo IMPL doc path (e.g. /repo/docs/IMPL/IMPL-foo.md).
+// wtPath is the worktree root (e.g. /repo/.claude/worktrees/wave1-agent-A).
+// repoPath is the repo root (e.g. /repo).
+// Result: /repo/.claude/worktrees/wave1-agent-A/docs/IMPL/IMPL-foo.md
+func wtIMPLPath(repoPath, implDocPath, wtPath string) string {
+	rel, err := filepath.Rel(repoPath, implDocPath)
+	if err != nil {
+		return implDocPath // fallback to main repo path
+	}
+	return filepath.Join(wtPath, rel)
+}
+
 // launchAgent creates a worktree for one agent, calls Execute, then
 // polls WaitForCompletion. Returns the first non-nil error encountered.
 func (o *Orchestrator) launchAgent(
@@ -307,8 +321,10 @@ func (o *Orchestrator) launchAgent(
 		return fmt.Errorf("orchestrator: agent %s: Execute: %w", agentSpec.Letter, err)
 	}
 
-	// c. Poll for the completion report.
-	report, err := waitForCompletionFunc(o.implDocPath, agentSpec.Letter, defaultAgentTimeout, defaultAgentPollInterval)
+	// c. Poll for the completion report in the agent's worktree IMPL doc.
+	// Agents write their completion reports into the worktree copy of the IMPL doc,
+	// not the main repo copy — so we must poll wtIMPLPath, not o.implDocPath.
+	report, err := waitForCompletionFunc(wtIMPLPath(o.repoPath, o.implDocPath, wtPath), agentSpec.Letter, defaultAgentTimeout, defaultAgentPollInterval)
 	if err != nil {
 		o.publish(OrchestratorEvent{
 			Event: "agent_failed",
