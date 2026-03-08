@@ -15,13 +15,13 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	apiclient "github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/api"
-	cliclient "github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/worktree"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	apiclient "github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/api"
+	cliclient "github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/worktree"
 )
 
 // defaultAgentTimeout is the maximum time RunWave waits per agent for a

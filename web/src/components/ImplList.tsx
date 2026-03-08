@@ -6,11 +6,12 @@ interface ImplListProps {
   entries: IMPLListEntry[]
   selectedSlug: string | null
   onSelect: (slug: string) => void
+  onDelete: (slug: string) => void
   loading: boolean
 }
 
 export default function ImplList(props: ImplListProps): JSX.Element {
-  const { entries, selectedSlug, onSelect, loading } = props
+  const { entries, selectedSlug, onSelect, onDelete, loading } = props
 
   const activeEntries = entries.filter((e) => e.doc_status !== 'complete')
   const completedEntries = entries.filter((e) => e.doc_status === 'complete')
@@ -26,19 +27,27 @@ export default function ImplList(props: ImplListProps): JSX.Element {
           {activeEntries.map((e) => {
             const isSelected = e.slug === selectedSlug
             return (
-              <Button
-                key={e.slug}
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  'w-full justify-start font-mono text-xs',
-                  isSelected && 'bg-accent border-l-2 border-primary rounded-none'
-                )}
-                disabled={loading}
-                onClick={() => onSelect(e.slug)}
-              >
-                {e.slug}
-              </Button>
+              <div key={e.slug} className="group relative flex items-center">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    'flex-1 justify-start font-mono text-xs pr-6',
+                    isSelected && 'bg-accent border-l-2 border-primary rounded-none'
+                  )}
+                  disabled={loading}
+                  onClick={() => onSelect(e.slug)}
+                >
+                  {e.slug}
+                </Button>
+                <button
+                  onClick={(ev) => { ev.stopPropagation(); if (confirm(`Delete "${e.slug}"?`)) onDelete(e.slug) }}
+                  className="absolute right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-destructive transition-opacity"
+                  title="Delete"
+                >
+                  ✕
+                </button>
+              </div>
             )
           })}
 
@@ -50,21 +59,29 @@ export default function ImplList(props: ImplListProps): JSX.Element {
               {completedEntries.map((e) => {
                 const isSelected = e.slug === selectedSlug
                 return (
-                  <Button
-                    key={e.slug}
-                    variant="ghost"
-                    size="sm"
-                    className={cn(
-                      'w-full justify-start font-mono text-xs',
-                      isSelected
-                        ? 'bg-accent border-l-2 border-primary rounded-none'
-                        : 'opacity-60 hover:opacity-100'
-                    )}
-                    disabled={loading}
-                    onClick={() => onSelect(e.slug)}
-                  >
-                    {'\u2713 '}{e.slug}
-                  </Button>
+                  <div key={e.slug} className="group relative flex items-center">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        'flex-1 justify-start font-mono text-xs pr-6',
+                        isSelected
+                          ? 'bg-accent border-l-2 border-primary rounded-none'
+                          : 'opacity-60 hover:opacity-100'
+                      )}
+                      disabled={loading}
+                      onClick={() => onSelect(e.slug)}
+                    >
+                      {'\u2713 '}{e.slug}
+                    </Button>
+                    <button
+                      onClick={(ev) => { ev.stopPropagation(); if (confirm(`Delete "${e.slug}"?`)) onDelete(e.slug) }}
+                      className="absolute right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-destructive transition-opacity"
+                      title="Delete"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 )
               })}
             </>

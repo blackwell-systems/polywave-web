@@ -1,4 +1,4 @@
-module github.com/blackwell-systems/scout-and-wave-go
+module github.com/blackwell-systems/scout-and-wave-web
 
 go 1.25.0
 
@@ -9,6 +9,7 @@ require (
 )
 
 require (
+	github.com/creack/pty v1.1.24 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect

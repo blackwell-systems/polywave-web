@@ -151,7 +151,8 @@ export interface AgentStatus {
   branch?: string
   failure_type?: string
   message?: string
-  output?: string   // NEW: accumulated streaming output chunks
+  output?: string
+  startedAt?: number  // ms timestamp when agent_started fired
 }
 
 export interface WaveState {

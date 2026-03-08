@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/api"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/api"
 )
 
 // runServe parses flags and starts the local HTTP API server for reviewing IMPL docs.

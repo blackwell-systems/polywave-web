@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
 )
 
 // anthropicEndTurnResponse builds a minimal Anthropic Messages API JSON response

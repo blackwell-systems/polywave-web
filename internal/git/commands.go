@@ -34,8 +34,10 @@ func WorktreeAdd(repoPath, path, branch string) error {
 }
 
 // WorktreeRemove removes the worktree at path from the repository at repoPath.
+// --force is required because agent worktrees often contain untracked files
+// that git would otherwise refuse to delete.
 func WorktreeRemove(repoPath, path string) error {
-	_, err := Run(repoPath, "worktree", "remove", path)
+	_, err := Run(repoPath, "worktree", "remove", "--force", path)
 	if err != nil {
 		return fmt.Errorf("git worktree remove failed: %w", err)
 	}

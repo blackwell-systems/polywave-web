@@ -40,9 +40,23 @@ const getStatusStyle = (status: string) => {
   }
 }
 
+function formatElapsed(ms: number): string {
+  const s = Math.floor(ms / 1000)
+  if (s < 60) return `${s}s`
+  return `${Math.floor(s / 60)}m ${s % 60}s`
+}
+
 export default function AgentCard({ agent }: AgentCardProps) {
   const preRef = useRef<HTMLPreElement>(null)
   const [outputExpanded, setOutputExpanded] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+
+  useEffect(() => {
+    if (agent.status !== 'running' || !agent.startedAt) return
+    setElapsed(Date.now() - agent.startedAt)
+    const t = setInterval(() => setElapsed(Date.now() - agent.startedAt!), 1000)
+    return () => clearInterval(t)
+  }, [agent.status, agent.startedAt])
 
   useEffect(() => {
     if (!outputExpanded && preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
@@ -81,10 +95,13 @@ export default function AgentCard({ agent }: AgentCardProps) {
             <div className="text-xs font-medium text-white/90">{statusLabels[agent.status] ?? agent.status}</div>
           </div>
           {agent.status === 'running' && (
-            <div className="flex items-center gap-1">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0.2s' }} />
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0.4s' }} />
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono text-blue-300/70">{formatElapsed(elapsed)}</span>
+              <div className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0.2s' }} />
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0.4s' }} />
+              </div>
             </div>
           )}
         </div>

@@ -3,7 +3,7 @@ package orchestrator
 import (
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 func TestNewStates_StringRepresentation(t *testing.T) {

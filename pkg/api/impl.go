@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // completionStatusRe matches a real agent-written status line (not the template placeholder).
@@ -289,4 +289,24 @@ func mapPreMortem(pm *types.PreMortem) *PreMortemEntry {
 		OverallRisk: pm.OverallRisk,
 		Rows:        rows,
 	}
+}
+
+// handleDeleteImpl handles DELETE /api/impl/{slug}.
+// Removes the IMPL doc file from disk.
+func (s *Server) handleDeleteImpl(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	if slug == "" {
+		http.Error(w, "missing slug", http.StatusBadRequest)
+		return
+	}
+	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".md")
+	if err := os.Remove(implPath); err != nil {
+		if os.IsNotExist(err) {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "failed to delete", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

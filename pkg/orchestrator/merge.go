@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-go/internal/git"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/internal/git"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 func init() {

@@ -6,10 +6,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/worktree"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/worktree"
 )
 
 // Runner orchestrates agent execution in worktree contexts.

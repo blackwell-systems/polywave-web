@@ -96,6 +96,7 @@ export function useWaveEvents(slug: string): AppWaveState {
         upsertAgent(prev, data.agent, data.wave, {
           status: 'running',
           files: data.files,
+          startedAt: Date.now(),
         })
       )
     })

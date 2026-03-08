@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/worktree"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/worktree"
 )
 
 // makeOrch is a helper that returns a fresh Orchestrator backed by an

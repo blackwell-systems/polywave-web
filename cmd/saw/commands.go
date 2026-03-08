@@ -12,13 +12,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/api"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/orchestrator"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/api"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/orchestrator"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 func init() {

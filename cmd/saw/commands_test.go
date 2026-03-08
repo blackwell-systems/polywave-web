@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/api"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/api"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // minimalIMPLDoc is a minimal IMPL doc fixture used in tests that need a

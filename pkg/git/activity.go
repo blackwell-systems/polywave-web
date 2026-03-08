@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	igit "github.com/blackwell-systems/scout-and-wave-go/internal/git"
+	igit "github.com/blackwell-systems/scout-and-wave-web/internal/git"
 )
 
 var agentBranchRe = regexp.MustCompile(`^wave(\d+)-agent-([a-z])$`)

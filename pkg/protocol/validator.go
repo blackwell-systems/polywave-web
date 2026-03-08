@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // typedBlockRe matches the opening fence of a typed block, e.g.:

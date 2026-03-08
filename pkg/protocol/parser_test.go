@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // ── fixture helpers ───────────────────────────────────────────────────────────

@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/blackwell-systems/scout-and-wave-go/internal/git"
+	"github.com/blackwell-systems/scout-and-wave-web/internal/git"
 )
 
 // Manager tracks and manages git worktrees for SAW wave agents.

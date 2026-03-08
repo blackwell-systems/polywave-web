@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/worktree"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/worktree"
 )
 
 // mockBackend is a test double for the backend.Backend interface.

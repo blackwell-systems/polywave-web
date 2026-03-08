@@ -1,11 +1,21 @@
 import { useState, useRef, useEffect } from 'react'
-import { runScout, subscribeScoutEvents } from '../api'
+
+const WORKING_MESSAGES = [
+  'Reading codebase…',
+  'Mapping file ownership…',
+  'Checking suitability…',
+  'Designing wave structure…',
+  'Defining interface contracts…',
+  'Writing IMPL doc…',
+]
+import { runScout, subscribeScoutEvents, cancelScout } from '../api'
 
 interface ScoutLauncherProps {
   onComplete: (slug: string) => void
+  onScoutReady?: () => void  // fires immediately when scout_complete fires (before user clicks Review)
 }
 
-export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.Element {
+export default function ScoutLauncher({ onComplete, onScoutReady }: ScoutLauncherProps): JSX.Element {
   const [feature, setFeature] = useState('')
   const [repo, setRepo] = useState('')
   const [showRepo, setShowRepo] = useState(false)
@@ -13,6 +23,14 @@ export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.E
   const [output, setOutput] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [completedSlug, setCompletedSlug] = useState<string | null>(null)
+  const [msgIdx, setMsgIdx] = useState(0)
+  const runIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(() => setMsgIdx(i => (i + 1) % WORKING_MESSAGES.length), 3000)
+    return () => clearInterval(t)
+  }, [running])
   const esRef = useRef<EventSource | null>(null)
   const outputRef = useRef<HTMLPreElement | null>(null)
 
@@ -30,6 +48,10 @@ export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.E
 
   async function handleRun() {
     if (!feature.trim() || running) return
+    if (feature.trim().length < 15) {
+      setError('Please describe the feature in at least 15 characters.')
+      return
+    }
     setRunning(true)
     setOutput('')
     setError(null)
@@ -38,6 +60,7 @@ export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.E
     try {
       const result = await runScout(feature.trim(), repo.trim() || undefined)
       runId = result.runId
+      runIdRef.current = runId
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
       setRunning(false)
@@ -64,9 +87,21 @@ export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.E
         const payload = JSON.parse(e.data) as { slug?: string; impl_path?: string }
         const slug = payload.slug ?? payload.impl_path ?? ''
         setCompletedSlug(slug)
+        onScoutReady?.()
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          new Notification('Scout complete', { body: slug ? `Plan ready: ${slug}` : 'Plan ready for review' })
+        }
       } catch {
         setCompletedSlug('')
+        onScoutReady?.()
       }
+    })
+
+    es.addEventListener('scout_cancelled', () => {
+      es.close()
+      esRef.current = null
+      setRunning(false)
+      setOutput('')
     })
 
     es.addEventListener('scout_failed', (e: MessageEvent) => {
@@ -140,11 +175,19 @@ export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.E
             )}
           </div>
 
-          {/* Run button */}
-          <div className="flex justify-end">
+          {/* Run / Cancel buttons */}
+          <div className="flex justify-end gap-2">
+            {running && (
+              <button
+                onClick={() => { if (runIdRef.current) cancelScout(runIdRef.current); }}
+                className="px-4 py-1.5 text-sm font-medium rounded-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+            )}
             <button
               onClick={handleRun}
-              disabled={running || !feature.trim()}
+              disabled={running || feature.trim().length < 15}
               className="px-4 py-1.5 text-sm font-medium rounded-md bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 dark:disabled:bg-blue-800 text-white transition-colors disabled:cursor-not-allowed"
             >
               {running ? 'Running...' : 'Run Scout'}
@@ -185,7 +228,7 @@ export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.E
               ref={outputRef}
               className="p-4 text-xs text-gray-200 font-mono whitespace-pre-wrap overflow-y-auto max-h-[50vh] leading-relaxed"
             >
-              {output || (running ? 'Analyzing codebase…' : ' ')}
+              {output || (running ? WORKING_MESSAGES[msgIdx] : ' ')}
             </pre>
           </div>
         )}

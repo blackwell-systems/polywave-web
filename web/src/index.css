@@ -103,14 +103,10 @@
     @apply bg-background text-foreground;
   }
 
-  /* Custom scrollbar styling */
+  /* Custom scrollbar styling — uses CSS vars so it follows the active theme */
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgb(134, 239, 172) hsl(var(--background));
-  }
-
-  .dark * {
-    scrollbar-color: rgb(74, 222, 128) hsl(var(--background));
+    scrollbar-color: hsl(var(--primary)) hsl(var(--background));
   }
 
   /* Webkit browsers (Chrome, Safari, Edge) */
@@ -124,20 +120,12 @@
   }
 
   *::-webkit-scrollbar-thumb {
-    background: rgb(134, 239, 172);
+    background: hsl(var(--primary));
     border-radius: 0.5rem;
     border: 2px solid hsl(var(--background));
   }
 
-  .dark *::-webkit-scrollbar-thumb {
-    background: rgb(74, 222, 128);
-  }
-
   *::-webkit-scrollbar-thumb:hover {
-    background: rgb(74, 222, 128);
-  }
-
-  .dark *::-webkit-scrollbar-thumb:hover {
-    background: rgb(134, 239, 172);
+    background: hsl(var(--primary) / 0.8);
   }
 }

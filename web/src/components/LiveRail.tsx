@@ -14,10 +14,11 @@ export interface LiveRailProps {
   liveView: LiveView
   widthPx: number
   onScoutComplete: (slug: string) => void
+  onScoutReady?: () => void
   onClose: () => void
 }
 
-export default function LiveRail({ slug, liveView, onScoutComplete, onClose }: LiveRailProps): JSX.Element {
+export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady, onClose }: LiveRailProps): JSX.Element {
   const gitSnapshot = useGitActivity(liveView === 'wave' && slug ? slug : '')
 
   return (
@@ -39,7 +40,7 @@ export default function LiveRail({ slug, liveView, onScoutComplete, onClose }: L
       {/* Scout view */}
       {liveView === 'scout' && (
         <div className="flex-1 overflow-y-auto">
-          <ScoutLauncher onComplete={onScoutComplete} />
+          <ScoutLauncher onComplete={onScoutComplete} onScoutReady={onScoutReady} />
         </div>
       )}
 

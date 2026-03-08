@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/orchestrator"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/orchestrator"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // runMerge parses --impl and --wave flags, constructs an Orchestrator,

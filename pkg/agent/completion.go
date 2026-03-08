@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // WaitForCompletion polls the IMPL doc at implDocPath every pollInterval until

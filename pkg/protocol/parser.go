@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -149,8 +149,10 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 			state = stateTop
 
 		// ── Suitability verdict: Verdict: SUITABLE / NOT SUITABLE
-		case state == stateTop && strings.HasPrefix(trimmed, "Verdict:"):
-			val := strings.TrimSpace(strings.TrimPrefix(trimmed, "Verdict:"))
+		// Also handles **Verdict: ...** (bold markdown from scout output).
+		case state == stateTop && strings.Contains(trimmed, "Verdict:"):
+			stripped := strings.ReplaceAll(trimmed, "**", "")
+			val := strings.TrimSpace(strings.SplitN(stripped, "Verdict:", 2)[1])
 			doc.Status = val
 
 		// ── Metadata: **Test Command:** go test ./...  (or without bold)

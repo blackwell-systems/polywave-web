@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // implDocWithStatus is a minimal IMPL doc containing a ### Status table

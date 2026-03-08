@@ -1,10 +1,19 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
+
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // handleGetImplRaw serves GET /api/impl/{slug}/raw
@@ -74,4 +83,125 @@ func (s *Server) handlePutImplRaw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// handleImplRevise handles POST /api/impl/{slug}/revise.
+// Accepts {"feedback":"..."}, launches a Claude agent to revise the IMPL doc
+// in place, and returns 202 with {"run_id":"..."} for SSE subscription.
+func (s *Server) handleImplRevise(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+	if slug == "" {
+		http.Error(w, "missing slug", http.StatusBadRequest)
+		return
+	}
+	var req struct {
+		Feedback string `json:"feedback"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Feedback == "" {
+		http.Error(w, "feedback is required", http.StatusBadRequest)
+		return
+	}
+
+	runID := fmt.Sprintf("%d", time.Now().UnixNano())
+	ctx, cancel := context.WithCancel(context.Background())
+	s.reviseCancels.Store(runID, cancel)
+	go func() {
+		defer s.reviseCancels.Delete(runID)
+		defer cancel()
+		s.runImplReviseAgent(ctx, runID, slug, req.Feedback)
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(map[string]string{"run_id": runID}) //nolint:errcheck
+}
+
+// handleImplReviseEvents handles GET /api/impl/{slug}/revise/{runID}/events.
+// Streams revise_output, revise_complete, and revise_failed SSE events.
+func (s *Server) handleImplReviseEvents(w http.ResponseWriter, r *http.Request) {
+	runID := r.PathValue("runID")
+	brokerKey := "revise-" + runID
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	ch := s.broker.subscribe(brokerKey)
+	defer s.broker.unsubscribe(brokerKey, ch)
+
+	for {
+		select {
+		case ev := <-ch:
+			data, err := json.Marshal(ev.Data)
+			if err != nil {
+				continue
+			}
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Event, data)
+			flusher.Flush()
+		case <-r.Context().Done():
+			return
+		}
+	}
+}
+
+// handleImplReviseCancel handles POST /api/impl/{slug}/revise/{runID}/cancel.
+func (s *Server) handleImplReviseCancel(w http.ResponseWriter, r *http.Request) {
+	runID := r.PathValue("runID")
+	if v, ok := s.reviseCancels.Load(runID); ok {
+		if cancel, ok := v.(context.CancelFunc); ok {
+			cancel()
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// runImplReviseAgent runs a Claude agent that reads and revises the IMPL doc.
+func (s *Server) runImplReviseAgent(ctx context.Context, runID, slug, feedback string) {
+	brokerKey := "revise-" + runID
+	publish := func(event string, data interface{}) {
+		s.broker.Publish(brokerKey, SSEEvent{Event: event, Data: data})
+	}
+
+	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".md")
+
+	systemPrompt := fmt.Sprintf(`You are an expert software architect revising a Scout-and-Wave IMPL doc.
+
+The IMPL doc is at: %s
+
+The user has requested these changes:
+%s
+
+Instructions:
+- Read the current IMPL doc using the Read tool
+- Make exactly the changes the user requested
+- Write the complete updated file back using the Write tool
+- Preserve all sections that don't need modification
+- Keep the same format and structure
+- Do not output commentary — just revise and save the file`, implPath, feedback)
+
+	b := cli.New("", backend.Config{})
+	runner := agent.NewRunner(b, nil)
+	spec := &types.AgentSpec{Letter: "revise", Prompt: systemPrompt}
+
+	onChunk := func(chunk string) {
+		publish("revise_output", map[string]string{"run_id": runID, "chunk": chunk})
+	}
+
+	_, err := runner.ExecuteStreaming(ctx, spec, s.cfg.RepoPath, onChunk)
+	if err != nil {
+		if ctx.Err() != nil {
+			publish("revise_cancelled", map[string]string{"run_id": runID})
+		} else {
+			publish("revise_failed", map[string]string{"run_id": runID, "error": err.Error()})
+		}
+		return
+	}
+
+	publish("revise_complete", map[string]string{"run_id": runID, "slug": slug})
 }

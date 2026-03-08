@@ -2,6 +2,40 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.16.0] - Unreleased
+
+### Added
+
+**Request Changes — inline IMPL editor with Claude revision**
+- **RevisePanel** — "Request Changes" button opens a full revision panel replacing the review screen; "← Back" returns to review without changes
+- **Ask Claude mode** — natural-language feedback field sends instructions to a Claude agent that reads and rewrites the IMPL doc in place; streams live output via SSE (`revise_output`, `revise_complete`, `revise_failed` events)
+- **Manual edit mode** — raw markdown textarea with Save button for direct edits; atomic write via temp file + rename
+- **Lock during revision** — manual edit textarea and Save button disabled while Claude is revising to prevent conflicts
+- **Auto-reload** — ReviewScreen reloads the IMPL doc after Save or Claude revision completes
+
+**Real-time Claude output streaming**
+- **PTY + stream-json** — CLI backend now uses `--output-format stream-json` inside a PTY; Node.js line-buffers when connected to a terminal, enabling per-event streaming instead of batched end-of-run output
+- **JSON fragment reassembly** — PTY set to 65535 columns; scanner accumulates wrapped JSON fragments until a complete object is parsed before processing
+- **Rich event formatting** — `formatStreamEvent` converts stream-json events to human-readable lines: tool calls shown as `→ ToolName(arg)`, tool results indented and truncated at 400 chars, final event shown as `✓ complete`
+- **1 MB scanner buffer** — handles large tool-result JSON lines without truncation
+
+**Scout UX improvements**
+- **Minimum description length** — Scout launcher requires at least 15 characters before enabling the Run button; error shown if keyboard shortcut bypasses the disabled state; prevents trivial/test inputs from launching full codebase scans
+- **Completion banner** — scout_complete no longer auto-navigates; instead shows a "Plan ready → Review" green banner; user explicitly clicks to proceed after seeing output
+- **Rotating status messages** — placeholder cycles through descriptive messages (Reading codebase, Mapping file ownership, etc.) while waiting for first output chunk
+
+**Bug fixes**
+- **NOT SUITABLE verdict parsing** — parser now handles `**Verdict: NOT SUITABLE**` (bold markdown) in addition to bare `Verdict:` lines; uses `strings.Contains` + `**` stripping
+- **"Plan rejected" sticky banner** — `rejected` state now resets when selecting a different plan; was persisting across all plans in the sidebar
+- **Scrollbar theme-aware** — scrollbar colors changed from hardcoded `rgb(134, 239, 172)` green to `hsl(var(--primary))`; scrollbar now follows the active theme (Gruvbox, Darcula, Catppuccin, Nord, default)
+- **`useCallback` unused import** — removed unused `useCallback` import from ScoutLauncher.tsx that caused TypeScript build error
+
+**New API endpoints**
+- `POST /api/impl/{slug}/revise` — launches Claude revision agent, returns `run_id`
+- `GET /api/impl/{slug}/revise/{runID}/events` — SSE stream for revision progress
+
+---
+
 ## [0.15.0] - Unreleased
 
 ### Added

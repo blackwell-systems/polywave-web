@@ -2,652 +2,303 @@
 
 ## Vision
 
-**SAW is the only agent coordination framework that solves merge conflicts AND works with any LLM provider.**
+**SAW is the only agent coordination framework that solves merge conflicts by design — parallel agents own disjoint files, branches merge cleanly, and humans review the plan before any code is written.**
 
 Competitive positioning:
-- Everyone else: flashy UIs, single provider, merge chaos
-- SAW: solid foundations (protocol-driven coordination), provider-agnostic, polished UI
+- Chief: simple loop, great DX, serial execution — one agent, one task
+- Plan Cascade: parallel stories, rich desktop app, complex surface area, vague on merge safety
+- SAW: protocol-driven parallelism, hard merge safety guarantees, human review gate, zero merge conflicts by construction
 
-## Core Differentiators
+Distribution strategy: `/saw` skill + subagents for orchestration (already works, zero setup); Wails desktop app for rich wave monitoring with native OS distribution.
 
-1. **Protocol-first design** - merge-conflict-free parallel execution via disjoint file ownership
-2. **Provider-agnostic** - works with Claude, GPT-4, Gemini, local models, or any LiteLLM-compatible API
-3. **Production-grade UI** - sophisticated review interface showing suitability gates, dependency graphs, interface contracts
-4. **Open Agent Protocol compliance** - conforms to agent skills specification for interoperability
+**Repo structure (target):**
+```
+scout-and-wave-go/       github.com/blackwell-systems/scout-and-wave-go (engine repo)
+  pkg/engine/            wave runner, scout runner, merge, worktree mgmt
+  pkg/protocol/          IMPL doc parser
+  internal/git/          git commands
+
+scout-and-wave-web/      github.com/blackwell-systems/scout-and-wave-web (current repo)
+  pkg/api/               HTTP adapter over engine (imports engine module)
+  web/                   React frontend
+  cmd/saw/               web server binary
+
+scout-and-wave-app/      Wails desktop app (future)
+  cmd/saw-app/           Wails binary
+  src/                   React frontend (shared from scout-and-wave-web)
+```
 
 ---
 
-## Current Status (v0.12.0)
+## Current Status (v0.17.0)
 
-### ✅ Completed
-- Core protocol implementation (I1-I6 invariants, E1-E15 execution rules)
+### ✅ Shipped
+
+**Protocol & engine**
+- Core protocol (I1–I6 invariants, E1–E16 execution rules)
 - Go orchestration engine (worktrees, merge, state machine)
-- Basic web UI (review screen, wave board, SSE streaming)
-- IMPL doc completion lifecycle (E15)
-- shadcn/ui migration for consistent design system
+- E16 IMPL doc validator (required blocks, typed-block dispatch, dep graph detection)
+- Scaffold Agent gap detection in wave runner (`runScaffoldIfNeeded`)
 
-### 🚧 In Progress
-- **v0.15.4 Visual Execution Dashboard** (Phase B complete: Agent color coding)
-  - ✅ Phase B: Agent color coding across UI (AgentCard, DependencyGraph, WaveStructure)
-  - ⏳ Phase A: Git activity sidebar with branch lanes (pending)
-  - ⏳ Phase C: Integration and polish (pending)
+**Web UI**
+- 3-column persistent layout: sidebar | review | LiveRail
+- Scout launcher: description input, 15-char minimum, live output streaming, completion banner
+- ReviewScreen: toggleable panels, sticky toolbar, pre-mortem, wave structure, dep graph, file ownership, interface contracts, scaffolds, known issues, post-merge checklist, stub report
+- WaveBoard: live agent cards, status badges, agent color coding (A–K), output toggle, re-run button
+- Request Changes: RevisePanel with manual markdown editor + Claude revision via SSE
+- Plan approval / rejection / request changes actions
+- ThemePicker: Gruvbox Dark, Darcula, Catppuccin Mocha, Nord (persisted to localStorage)
+- Dark mode toggle, scrollbar follows active theme
+- SVG dependency graph with bezier edges, agent color nodes, hover tooltips
+- Git activity sidebar: branch lanes, commit dots, animated merge lines
+- Wave gate: pause-between-waves banner with inline IMPL editor
+- Cancel button: Scout and Revise cancellation with silent reset (`scout_cancelled` / `revise_cancelled` SSE events)
+- Desktop notifications: browser Notification API, fires on scout/wave/revise complete
+- Auto-refresh sidebar: IMPL list refreshes immediately on scout complete
+- Delete IMPL: hover ✕ button with confirm dialog, removes IMPL doc from disk
+
+**Streaming**
+- PTY + `--output-format stream-json` pipeline: per-event real-time streaming
+- JSON fragment reassembly for PTY-wrapped lines
+- Rich event formatting: `→ ToolName(arg)`, indented tool results, `✓ complete`
+- SSE broker (2048-channel capacity) for scout, wave, and revise events
+
+**API**
+- `POST /api/scout/run` + `GET /api/scout/{runID}/events`
+- `POST /api/impl/{slug}/revise` + `GET /api/impl/{slug}/revise/{runID}/events`
+- `GET|PUT /api/impl/{slug}/raw`
+- `POST /api/wave/{slug}/start|gate/proceed|agent/{letter}/rerun`
+- `GET /api/git/{slug}/activity`
 
 ---
 
-## Phase 1: Polish & Position (v0.13.0 - v0.15.0)
+## Phase 1: Close the GUI Loop (v0.17.0)
 
-**Goal:** Create the demo that gets attention. Show SAW's sophistication is real, not just marketing.
+**Goal:** You should never need a terminal. Everything from feature description to merged, tested code happens in the SAW GUI.
 
-### v0.13.0 - Live Agent Output Streaming ⚡ NON-OPTIONAL
-**Why:** Without this, the WaveBoard shows "Running" and nothing else. Zero visibility into what agents are doing. This is not a polish item — it is a core usability requirement. Users cannot trust or debug a system they cannot observe.
+### What forces you out of the GUI today
+
+| Trigger | Current workaround | Fix | Status |
+|---|---|---|---|
+| Wave completes | `saw merge` in terminal | Merge button in WaveBoard | Pending |
+| Merge succeeds | `go test` / `npm test` in terminal | Inline test runner | Pending |
+| Want to see changes | Open IDE | File diff viewer | Pending |
+| Scout/revise hung | Kill process in terminal | Cancel button | ✅ Shipped |
+| Old worktrees pile up | `git branch -D` in terminal | Worktree manager | Pending |
+| Want to configure SAW | Edit JSON | Settings screen | Pending |
+
+---
+
+### v0.17.0-A — Merge Button
+
+**Why:** Wave completion is completely invisible from the GUI. You finish reviewing completion reports and then... go to terminal. This is the single biggest workflow break.
 
 **Scope:**
-- Capture subprocess stdout/stderr from each agent process in `pkg/agent/backend/cli/client.go`
-- Stream output lines to a per-agent SSE channel: `GET /api/wave/{slug}/agent/{letter}/output`
-- Frontend: expandable output section in each AgentCard showing live scrolling text
-- Auto-scroll to bottom; preserve last N lines (cap at 500 to avoid memory issues)
-- Distinguish tool calls from text output (lines starting with known tool patterns get different styling)
-- Output persists after agent completes so you can read what happened
+- "Merge Wave" button appears in WaveBoard after all agents in current wave report `status: complete`
+- Click triggers `POST /api/wave/{slug}/merge` — runs the merge procedure server-side
+  - `git merge --no-ff wave{N}-agent-{X}` for each agent in merge order
+  - Conflict detection: if merge fails, surface conflict details in UI
+  - Cleanup: delete merged worktree branches
+- SSE stream shows merge output line-by-line as it runs
+- On success: wave card turns green, "Proceed to Wave N+1" or "Complete" banner appears
+- On conflict: red banner with conflicting files listed, link to manual resolution guide
 
 **Success criteria:**
-- You can watch an agent work in real time from the WaveBoard
-- When an agent fails, you can scroll its output to see the error
-- Feels like watching a terminal, not staring at a spinner
-
-**Estimated effort:** 2-3 days
+- Full wave → merge → next wave cycle happens entirely in browser
+- Merge conflicts surfaced with enough detail to resolve without terminal
 
 ---
 
-### v0.15.0 - Multi-Provider Backend Support
-**Why:** Removes vendor lock-in, demonstrates infrastructure thinking, differentiates from Claude-only frameworks.
+### v0.17.0-B — Post-Merge Test Runner
+
+**Why:** After merging you need to verify nothing broke. Currently requires terminal.
 
 **Scope:**
-- Extend `pkg/agent/backend/` interface to be truly provider-agnostic
-- Add OpenAI backend (`backend/openai/`) - GPT-4, o1 support
-- Add LiteLLM backend (`backend/litellm/`) - universal adapter for 100+ providers
-- Add local model support (`backend/local/`) - Ollama, llama.cpp
-- Update `--backend` flag: `api|cli|openai|litellm|local|auto`
-- Auto-detection: tries Anthropic API key → OpenAI key → LiteLLM config → local fallback
-- Tool use format translation layer (each provider has different JSON schema)
-
-**Technical challenges:**
-- OpenAI tool calling uses `tools` array, not `tool_use` blocks
-- Streaming response formats differ across providers
-- Token limits vary (Claude: 200k, GPT-4: 128k, local: 8k-32k)
-- Need graceful degradation for models without tool use (fallback to text parsing)
+- "Run Tests" button appears after successful merge
+- Reads test command from IMPL doc (`test_command` field); falls back to auto-detection (`go test ./...`, `npm test`, `cargo test`)
+- Streams test output via SSE
+- Pass: green banner. Fail: red banner with failed test output highlighted
+- Results saved to IMPL doc as a post-merge note
 
 **Success criteria:**
-- `saw scout --backend openai` works end-to-end
-- `saw wave --backend litellm` executes agents via Gemini/Mistral/etc
-- Documentation shows 3+ provider examples
-- Demo video shows same IMPL doc executed with different backends
-
-**Estimated effort:** 1 week
-- OpenAI backend: 2 days (tool use translation, streaming)
-- LiteLLM backend: 1 day (mostly config passthrough)
-- Local backend: 2 days (needs special handling for context limits)
-- Testing & docs: 2 days
+- Test results visible in GUI within seconds of merge completing
+- Failed tests show enough context to understand what broke
 
 ---
 
-### v0.14.0 - Live Agent Observability (merged into v0.13.0 — see above)
-**Why:** Operators can't see what agents are doing during execution. The review UI is plan-only — no live feedback loop.
+### v0.17.0-C — File Diff Viewer
+
+**Why:** Agents write code you can't see from the GUI. You're approving work you can't inspect.
 
 **Scope:**
-- **Completion reports panel** — render `### Agent X - Completion Report` sections as they appear in the IMPL doc (parser already extracts these)
-- **Live agent output stream** — SSE endpoint (`/api/sse/wave/{slug}`) streams agent stdout/stderr in real time during wave execution
-- **Git activity feed** — poll worktree branches for new commits, show per-agent commit timeline with diffs
-- **Wave progress indicators** — update wave structure timeline nodes (pending → running → complete/failed) in real time via SSE
-
-**Technical notes:**
-- SSE already used for wave board updates — extend to per-agent granularity
-- Agent output requires capturing subprocess stdout/stderr and forwarding to SSE channel
-- Git polling: check `git log --oneline` on each worktree branch every 5s, deduplicate
-- Consider WebSocket upgrade path if SSE uni-directional limitation becomes a bottleneck (e.g., user wants to cancel/restart agents from UI)
+- Clicking any file in the File Ownership panel opens a diff panel
+- `GET /api/impl/{slug}/diff/{agent}` — runs `git diff main...wave{N}-agent-{X} -- {file}` and returns unified diff
+- Syntax-highlighted diff (added lines green, removed red, unchanged gray)
+- For completed waves: shows merged diff against main
+- "← Back" returns to review
 
 **Success criteria:**
-- Operator can watch agents work in real time from the review UI
-- Completion reports render as agents finish (no page refresh)
-- Git commits visible within 5s of agent committing
-
-**Estimated effort:** 4-5 days
+- You can read every file an agent touched without leaving SAW
+- Diff loads in under 1 second for files under 500 lines
 
 ---
 
-### v0.15.0 - UI Polish Pass
-**Why:** First impressions matter. The UI should feel like a product, not a prototype.
+### v0.17.0-D — Worktree Manager
+
+**Why:** Failed or aborted waves leave `wave{N}-agent-{X}` branches on disk indefinitely. They pile up silently and cause "branch already exists" errors on re-runs.
 
 **Scope:**
-- Review screen performance optimization (lazy-load panels, virtualized lists for large IMPL docs)
-- Wave board live updates polish (smooth transitions, better error states)
-- Stale worktree cleanup button — detect leftover `wave{N}-agent-{X}` branches before run, offer one-click cleanup in UI
-- Empty states for all panels ("No agents yet", "No known issues")
-- Loading skeletons for API calls
-- Keyboard shortcuts (tab navigation, approve with Cmd+Enter)
-- Mobile-responsive layout (current UI only tested on desktop)
-- Dark mode refinements (check all panels, ensure shadcn components look good)
-- Accessibility audit (ARIA labels, keyboard navigation, screen reader support)
+- Worktree panel in sidebar (or WaveBoard footer): lists all SAW-created branches for the current slug
+- `GET /api/impl/{slug}/worktrees` — returns branch list with status (merged, unmerged, stale)
+- One-click cleanup: delete selected branches + worktree directories
+- Warning before deleting unmerged branches with uncommitted changes
+- Auto-suggest cleanup when a new wave run is about to start and stale branches exist
 
 **Success criteria:**
-- Feels as polished as Linear/Vercel/Stripe
-- No obvious UI bugs or glitches
-- Works on mobile Safari
-
-**Estimated effort:** 3-4 days
+- No need to run `git branch -D` manually
+- Re-running a wave after failure works without "branch exists" errors
 
 ---
 
-### v0.15.0 - Demo & Documentation
-**Why:** Great product is useless if nobody understands it.
+## Phase 2: Deepen the Intelligence (v0.18.0)
+
+### v0.18.0-A — Scout Context Panel
+
+**Why:** Scout often misses context that's obvious to the developer — an existing pattern to follow, a file to avoid, an architectural constraint. Currently you can only add it by editing the IMPL doc after the fact.
 
 **Scope:**
-- **Demo video (2-3 minutes):**
-  - Problem: "Everyone's building agent frameworks, but they break on merge conflicts"
-  - Solution: "SAW coordinates agents with protocol-driven isolation"
-  - Demo: Scout → Review (show 9 panels) → Approve → Wave board (parallel execution) → Clean merge
-  - Differentiator: "Works with any LLM - watch the same IMPL doc execute with Claude, GPT-4, and Gemini"
-- **Documentation overhaul:**
-  - Landing page: clearer value prop, animated demo
-  - Quickstart: 5 minutes from install to first wave
-  - Architecture deep-dive: protocol explanation, why it works
-  - Multi-provider guide: when to use which backend
-  - Troubleshooting: common issues, debugging tips
-- **Sample IMPL docs:**
-  - 3-5 realistic examples across different project types
-  - Show suitability gate rejections (not everything is suitable)
-  - Show complex dependency graphs
+- Expandable "Add context" section in ScoutLauncher (below feature description)
+  - File attachments: paste file paths, SAW reads them and includes content in scout prompt
+  - Free-text notes: "follow the pattern in pkg/api/scout.go", "don't touch the parser"
+  - Constraint checkboxes: "keep backward compatible", "no new dependencies", "tests required"
+- Context is appended to the scout system prompt before launch
+- Context persists in browser session so you can reuse it across scout runs
 
 **Success criteria:**
-- Someone can understand SAW in 3 minutes (video)
-- Someone can run SAW in 5 minutes (quickstart)
-- Hacker News/Twitter demo is ready
-
-**Estimated effort:** 1 week
-- Video: 2 days (scripting, recording, editing)
-- Docs: 3 days (writing, diagrams, examples)
-- Samples: 2 days (creating, testing)
+- Scout incorporates attached file content in its analysis
+- Common constraints can be set in one click
 
 ---
 
-### v0.15.1 - Configuration & Agent Phase Tuning
-**Why:** SAW uses hardcoded settings for all orchestrator phases. Scout and wave agents get the same model/config, wasting cost on simple tasks and under-provisioning complex planning. No user control without code changes.
+### v0.18.0-B — Chat with Claude About the Plan
+
+**Why:** Before approving an IMPL doc you often have questions — "why did you put this in wave 2?", "can this be done in one wave?", "what happens if agent B fails?" Currently you either approve blind or do a full revision.
 
 **Scope:**
-- **`saw.config.json` schema** — per-phase agent configuration (scout, wave, scaffold, retry, verify)
-  - Model selection (`claude-opus-4-6`, `claude-sonnet-4-6`, etc.)
-  - Backend selection (`api`, `cli`, `auto`)
-  - Token limits, temperature, system prompt suffixes
-- **Quality gates configuration** — typecheck, test, lint with auto-detection
-  - Auto-detect project type from `package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`
-  - Run appropriate tools: `tsc --noEmit`, `pytest`, `cargo test`, `npm test`, `go test ./...`
-  - Configurable as `required` (blocks merge) or `enabled` (warning only)
-- **Config parser** — `pkg/config/config.go` parses JSON, merges with built-in defaults
-- **Orchestrator integration** — select agent config based on phase
-- **Fallback behavior** — if no config file, use current hardcoded defaults (opt-in, not breaking)
-
-**Benefits:**
-- **Cost optimization** — Scout uses Opus ($15/1M), waves use Sonnet ($3/1M)
-- **Quality optimization** — Scout gets extended thinking budget, waves don't need it
-- **Retry diversity** — Failed attempts get modified prompts ("you are fixing a failed attempt...")
-- **User control** — Power users can tune without forking
+- "Ask Claude" chat panel in ReviewScreen (separate from Request Changes)
+- Lightweight Q&A: user asks a question, Claude answers in context of the IMPL doc
+- Does NOT modify the IMPL doc — read-only consultation
+- Full conversation history visible in the panel
+- "Apply this suggestion" button converts a chat answer into a revision request
 
 **Success criteria:**
-- Scout runs with Opus, waves with Sonnet (50%+ cost reduction)
-- Retry prompts differ from initial attempts (measurable via logs)
-- Quality gates surface type errors before human review
-
-**Estimated effort:** 3-4 days
-- Config schema + parser: 1 day
-- Orchestrator integration: 1 day
-- Quality gates auto-detection: 1 day
-- Testing & docs: 1 day
+- You can ask architectural questions and get answers in under 30 seconds
+- Chat context includes the full IMPL doc so Claude's answers are grounded
 
 ---
 
-### v0.15.2 - Framework Skills Auto-Injection
-**Why:** Agents violate framework conventions (React hooks, Rust ownership, Go idioms) because they lack framework-specific context. Users must manually add "follow React best practices" to every request.
+### v0.18.0-C — Settings Screen
+
+**Why:** Configuring SAW requires editing JSON files. Non-technical users can't do it.
 
 **Scope:**
-- **Auto-detection logic** — `pkg/skills/detect.go` scans project files
-  - `package.json` + "react" → `react-best-practices`
-  - `Cargo.toml` → `rust-ownership`, `rust-error-handling`
-  - `go.mod` → `go-idioms`, `go-error-handling`
-  - `pyproject.toml` + "fastapi" → `fastapi-patterns`
-- **Skill loader** — `pkg/skills/loader.go` reads `.md` files from `../scout-and-wave/skills/`
-- **Prompt injection** — append skill content to Scout and wave agent system prompts
-- **Configuration** — `saw.config.json` allows disabling auto-detect or adding custom skills
-
-**Skill files (stored in protocol repo):**
-```
-scout-and-wave/skills/
-  react-best-practices.md
-  rust-ownership.md
-  go-idioms.md
-  python-type-hints.md
-  fastapi-patterns.md
-```
-
-**Benefits:**
-- Zero configuration — works automatically
-- Better code quality — agents follow framework conventions
-- Consistent style — all agents get same guidance
-- Extensible — users can add custom team patterns
-
-**Success criteria:**
-- React project auto-injects hooks rules (detectable in agent prompts)
-- Rust project auto-injects ownership patterns
-- Custom skills work via config override
-
-**Estimated effort:** 2-3 days
-- Detection logic: 1 day
-- Loader + injection: 1 day
-- Testing & docs: 1 day
+- Settings route in sidebar (gear icon)
+- **Repo section:** default repo path, docs/IMPL dir override
+- **Agent section:** per-phase model selection (scout/wave/scaffold/revise), max turns
+- **Quality gates:** test command, lint command, required vs. warning
+- **Appearance:** theme (already in header, expose here too), font size, compact mode
+- API: `GET|POST /api/config` — load/save `saw.config.json`
+- Hot reload: config changes apply without server restart
 
 ---
 
-### v0.15.3 - Web UI Settings Panel
-**Why:** Configuration via JSON editing intimidates non-technical users. The UI should expose settings visually with validation and immediate feedback.
+## Phase 3: Native App (v0.19.0+)
+
+### v0.19.0 — Engine Extraction + Repo Split
+
+**Why:** Before the Wails app can exist, the engine needs to be a standalone Go module that both the web server and the desktop app can import. Currently the engine logic (wave runner, scout runner, merge, worktree management) is tangled inside `pkg/api/` alongside HTTP handlers. This is the prerequisite for everything else in Phase 3.
+
+**This is a SAW job.** The engine extraction will be planned and executed using SAW itself — eating our own cooking for the third time.
 
 **Scope:**
-- **Settings screen** — new route `/settings` with sections:
-  - Agent Configuration (per-phase model/backend/tokens)
-  - Quality Gates (typecheck/test/lint toggles + required checkbox)
-  - Framework Skills (auto-detect toggle, detected frameworks display, skills directory path)
-- **API endpoints:**
-  - `GET /api/config` — load current config + detected context (frameworks, skills, project type)
-  - `POST /api/config` — save config with validation
-  - `POST /api/config/reset` — reset to defaults
-  - `GET /api/config/validate` — validate before save
-- **Frontend components:**
-  - `SettingsScreen.tsx` — main container
-  - `AgentConfigSection.tsx` — per-phase cards with dropdowns
-  - `QualityGatesSection.tsx` — checkbox + dropdown + "required" toggle
-  - `FrameworkSkillsSection.tsx` — auto-detect toggle + read-only detected list
-- **Hot reload** — config changes apply without server restart
+- Create `scout-and-wave-engine` repo: extract `pkg/engine/`, `pkg/protocol/`, `internal/git/` from current repo
+- Define clean engine API: `engine.RunScout(ctx, feature, opts, onChunk)`, `engine.StartWave(slug, onEvent)`, `engine.RunMerge(slug)` etc.
+- Streaming via callback interface — no HTTP, no SSE, transport-agnostic
+- Rename current repo (`scout-and-wave-go`) to `scout-and-wave-web`
+- Rewire `pkg/api/` HTTP handlers to call engine module via `require` + `replace` directive during dev
+- All existing behaviour preserved, no user-visible changes
 
-**Benefits:**
-- Accessible — non-developers can tune settings
-- Validated — invalid inputs rejected before save
-- Transparent — users see detected frameworks/skills
-- Discoverable — reveals configuration options users didn't know existed
+**Wave structure (expected):**
+- Agent A: extract engine package + define interfaces
+- Agent B: rewire HTTP adapter to call engine
+- Agent C: update go.mod, replace directives, CI
 
 **Success criteria:**
-- Settings UI feels as polished as Vercel/Linear settings
-- Config changes apply without restart
-- Validation errors shown inline (red text under invalid fields)
-
-**Estimated effort:** 4-5 days
-- API endpoints + validation: 1 day
-- Settings UI components: 2 days
-- Hot reload implementation: 1 day
-- Testing & polish: 1 day
+- Engine builds and tests pass independently
+- Web server imports engine as a Go module, all existing API endpoints work
+- `replace` directive in web go.mod for local dev workflow
 
 ---
 
-### v0.15.4 - Visual Execution Dashboard
-**Why:** SAW's demo shows static diagrams (dependency graph, wave timeline) but doesn't visually convey *live parallel execution*. When compared to Maestro (which shows 4 terminals working simultaneously with git commits appearing in real-time), SAW feels less dynamic. Visual impact = attention = users.
+### v0.19.5 — Wails Desktop App
 
-**Problem:** Current WaveBoard only shows:
-- Agent status badges (pending/running/complete) - boring
-- File lists (static text)
-- Error messages (only on failure)
-
-No visual proof that agents are working in parallel. No git activity. No live output. The demo doesn't *show* the power of parallel execution—it just tells you about it.
-
-**Proposed:** Transform WaveBoard into a visually compelling execution dashboard that proves parallel work is happening.
-
-**Core Components:**
-
-**1. Git Activity Sidebar**
-
-Animated branch visualization showing real-time commits and merge order:
-
-```
-Main ━━━━━━━━━━━━━━━━━━━━━━━━━━●━━━━━━━●━━━━━
-                                  ↑         ↑
-Agent A (blue)   ●━━●━━●━━●━━━━━━┘         │
-                 └── 4 commits             │
-                                           │
-Agent B (green)  ●━━━●━━●━━●━━━━━━━━━━━━━━┘
-                 └── 3 commits
-                 └── Merging... ⏳
-
-Agent C (orange) ●━━●━━━━●━━━━━━━━━━━━━━━━●
-                 └── 3 commits             ⚙️ running
-                 └── "Update API types"
-
-Agent D (purple) ●
-                 └── waiting for merge gate...
-```
-
-**Implementation:**
-- Horizontal lane per agent with SVG rendering
-- Poll `git log --oneline wave1-agent-*` every 5s
-- Commit dots appear in real-time as agents work
-- Lines connect to main when merged
-- Agent color coding (A=blue, B=green, C=orange, D=purple)
-- Hover over commit → show message + files changed
-- Click commit → modal with full diff
-
-**Visual elements:**
-- Lane background: subtle gradient matching agent color
-- Commit dots: filled circles with agent color
-- Active commits: pulsing animation
-- Merge lines: bezier curves connecting branch to main
-- Status icons: ⏳ (merging), ⚙️ (running), ✓ (complete), ✗ (failed)
-
-**Benefits:**
-- **Visual proof of parallelism** - See 4 branches with commits appearing simultaneously
-- **Merge order transparency** - Visual representation of dependency-driven merge sequence
-- **Demo appeal** - 10-second clip shows parallel work better than any text description
-
-**2. Agent Color Coding**
-
-Consistent color scheme across entire UI:
-
-```
-Agent A → Blue (#3b82f6)
-Agent B → Green (#22c55e)
-Agent C → Orange (#f97316)
-Agent D → Purple (#a855f7)
-Agent E → Pink (#ec4899)
-Agent F → Cyan (#06b6d4)
-... continues through K
-```
-
-**Apply colors to:**
-- Agent cards (border + header background)
-- Git activity lanes
-- Dependency graph nodes
-- Wave timeline dots
-- Status badges
-
-**Implementation:**
-```tsx
-// lib/agentColors.ts
-export const getAgentColor = (agent: string): string => {
-  const colors = {
-    'A': '#3b82f6', 'B': '#22c55e', 'C': '#f97316', 'D': '#a855f7',
-    'E': '#ec4899', 'F': '#06b6d4', 'G': '#f59e0b', 'H': '#8b5cf6',
-    'I': '#10b981', 'J': '#ef4444', 'K': '#6366f1'
-  }
-  return colors[agent] || '#6b7280'
-}
-
-// Use everywhere:
-<AgentCard agent="A" style={{ borderColor: getAgentColor('A') }} />
-<BranchLane agent="B" color={getAgentColor('B')} />
-<DagNode agent="C" fill={getAgentColor('C')} />
-```
-
-**Benefits:**
-- **Visual continuity** - Same color across all views reinforces agent identity
-- **Quick scanning** - "Blue branch merged" matches "Agent A card turned green"
-- **Professional polish** - Consistent design language
-
-**3. Live Output Stream (Optional)**
-
-Stream agent stdout/stderr to UI in real-time:
-
-```tsx
-<AgentCard agent="A" status="running">
-  <LiveOutput>
-    <OutputLine type="stdout">Reading src/types.ts...</OutputLine>
-    <OutputLine type="stdout">Analyzing PreMortem structure...</OutputLine>
-    <OutputLine type="tool">Tool: Read(file_path="src/types.ts")</OutputLine>
-    <OutputLine type="stdout">Writing PreMortem type definition...</OutputLine>
-    <OutputLine type="tool">Tool: Write(file_path="src/types.ts", ...)</OutputLine>
-  </LiveOutput>
-</AgentCard>
-```
-
-**Implementation:**
-- Capture subprocess stdout/stderr when running agents
-- Stream to SSE endpoint `/api/wave/{slug}/agent/{agent}/output`
-- Frontend subscribes per agent, displays in expandable section
-- Auto-scroll to bottom, syntax highlighting for tool calls
-- Collapsible (default: collapsed, expand to see detail)
-
-**Benefits:**
-- **Transparency** - Users can see exactly what agents are thinking/doing
-- **Debugging** - When agent fails, scroll back through its output
-- **Trust building** - Watching the agent work builds confidence in the system
-
-**Technical considerations:**
-- Output can be verbose (10k+ lines) - virtualized scrolling required
-- Needs filtering (show only tool calls, hide LLM thinking)
-- Privacy: some users may not want to see LLM reasoning tokens
-
-**Deferred to later:** This adds complexity (subprocess piping, SSE per-agent channels, virtualized rendering). Git activity + color coding delivers 80% of visual impact for 40% of effort. Add output streaming only if users request it.
-
----
-
-**Success Criteria:**
-
-**For demo recording:**
-- Can show 4 agents starting simultaneously
-- Git lanes show commits appearing in parallel
-- Merge order visually follows dependency graph
-- Entire execution visible in one screen (no scrolling)
-- Color-coded consistently throughout UI
-
-**For user understanding:**
-- First-time user can watch WaveBoard and understand:
-  - Agents are working in parallel (git lanes prove it)
-  - Merge order follows dependencies (visual connection clear)
-  - No conflicts occurred (clean merge lines)
-
-**For shareability:**
-- 10-second screen recording demonstrates parallel execution
-- Twitter/HN viewers immediately understand the value
-- Looks as polished as Maestro/Linear/Vercel
-
----
-
-**Implementation Plan:**
-
-**Phase A: Git Activity Visualization (2-3 days)**
-```
-Day 1:
-- `pkg/git/activity.go` - poll git log, parse commits
-- `pkg/api/git.go` - SSE endpoint streaming git activity
-- Data structures: Commit, Branch, Activity
-
-Day 2:
-- `web/src/components/git/GitActivitySidebar.tsx` - branch lanes SVG
-- `web/src/components/git/BranchLane.tsx` - single lane with commits
-- `web/src/components/git/CommitDot.tsx` - animated commit marker
-
-Day 3:
-- Merge animations (bezier curves connecting to main)
-- Hover tooltips (commit message + files)
-- Click handler (show diff modal)
-- Polish: timing, colors, smoothness
-```
-
-**Phase B: Agent Color Coding (1 day)**
-```
-- `web/src/lib/agentColors.ts` - color mapping
-- Update AgentCard borders + headers
-- Update GitActivitySidebar lane colors
-- Update DependencyGraphPanel node fills
-- Update WaveStructurePanel dot colors
-- Ensure consistent across light/dark themes
-```
-
-**Phase C: Integration (0.5 day)**
-```
-- Add GitActivitySidebar to WaveBoard layout
-- Position: right side, 30% width, resizable
-- Connect SSE git activity stream
-- Test with 4+ agents running
-```
-
-**Total Effort:** 3.5-4 days
-
----
-
-**Layout Change:**
-
-**Before (current WaveBoard):**
-```
-┌─────────────────────────────────────────────┐
-│ Wave Board: demo-complex                    │
-├─────────────────────────────────────────────┤
-│                                             │
-│  [Agent A Card] [Agent B Card]              │
-│  [Agent C Card] [Agent D Card]              │
-│                                             │
-│  ... more agents below ...                  │
-│                                             │
-└─────────────────────────────────────────────┘
-```
-
-**After (with git activity):**
-```
-┌────────────────────────┬────────────────────┐
-│ Wave Board             │ Git Activity       │
-├────────────────────────┤                    │
-│ [Agent A Card]         │ main ━━━●━━━●━━━  │
-│  Status: Complete ✓    │        ↑     ↑    │
-│  Files: types.go       │ A ●━●━●┘     │    │
-│  Commits: 4            │              │    │
-│                        │ B ●━━●━━━━━━━┘    │
-│ [Agent B Card]         │                    │
-│  Status: Merging... ⏳  │ C ●━●━━━●━━━━●    │
-│  Files: parser.go      │   ⚙️ running       │
-│  Commits: 3            │                    │
-│                        │ D ●                │
-│ [Agent C Card]         │   waiting...       │
-│  Status: Running ⚙️     │                    │
-│  Files: api.go         │                    │
-│  Commits: 3            │                    │
-│                        │                    │
-│ [Agent D Card]         │                    │
-│  Status: Pending       │                    │
-│                        │                    │
-└────────────────────────┴────────────────────┘
-```
-
-**Alternative layout:** Git activity as a horizontal banner above agent cards (takes less width, more mobile-friendly).
-
----
-
-**After This:**
-
-Your demo becomes:
-
-> "Scout analyzed the codebase—here's the IMPL doc with dependency graph [show ReviewScreen]. Approve. Watch 4 agents start [show WaveBoard]. See the git activity? Four branches working simultaneously. Commits appearing in real-time. Agent A finished—see it merge to main [point to merge animation]. Agent B finished—merged. Agent C—merged. Agent D—merged. All parallel, zero conflicts. That's Scout-and-Wave."
-
-**That's a demo that gets shared.**
-
----
-
-## Phase 2: Ecosystem & Integration (v0.16.0+)
-
-### v0.16.0 - MCP Server Implementation
-**Why:** Make SAW orchestratable by AI agents. Claude Code (or any MCP client) can coordinate SAW runs.
+**Why:** The web server is the wrong distribution primitive for end users. The `/saw` skill handles orchestration — the UI's job is monitoring, and monitoring deserves a real native app.
 
 **Scope:**
-- MCP server at `mcp-server-saw` package
-- Tools: `saw_scout`, `saw_wave`, `saw_status`, `saw_approve`, `saw_reject`
-- Resources: IMPL docs, wave status, completion reports
-- Prompts: "Review this IMPL doc", "Execute Wave 1"
-- Integration with Claude Code: user asks "build a caching layer", Claude runs `saw scout`, shows review, asks for approval, runs `saw wave`
+- New `scout-and-wave-app` repo: Wails app importing `scout-and-wave-engine`
+- Replace `net/http` handlers with Wails bound methods
+- Replace SSE `EventSource` with `runtime.EventsEmit` / `EventsOn`
+- Replace `fetch` calls in `api.ts` with Wails JS bindings
+- React frontend carries over as-is — WebKit/WebView2 renders it unchanged
+- SVG dep graph, wave board, all components work without modification
 
-**Success criteria:**
-- Claude Code can orchestrate a full SAW workflow
-- AI can review IMPL docs and ask clarifying questions
-- "AI pair programming with merge-free agent execution"
-
-**Estimated effort:** 1 week
-
----
-
-### v0.17.0 - VS Code Extension
-**Why:** Developers live in their editor. Bring SAW review to where they work.
-
-**Scope:**
-- Sidebar panel showing IMPL doc review (same 9 panels as web UI)
-- Status bar showing wave progress
-- Inline approve/reject buttons
-- Notifications when agents complete
-- Quick actions: "Scout this feature", "Run next wave"
-
-**Success criteria:**
-- Never leave VS Code during SAW workflow
-- Inline IMPL doc review with file navigation
-- Better than opening browser
-
-**Estimated effort:** 2 weeks
+**What you get:**
+- `brew install --cask saw` on Mac, MSI on Windows, AppImage on Linux
+- No port, no server process — double-click and it works
+- Real OS notifications, menu bar wave progress indicator
+- Hot reload in dev mode via `wails dev`
+- Cross-platform via goreleaser
 
 ---
 
-### v0.18.0 - GitHub Integration
-**Why:** Teams want to review IMPL docs in PRs, not locally.
+### v0.19.5 — Multi-Provider Backends
 
-**Scope:**
-- GitHub App that comments IMPL doc review on PRs
-- `saw-bot` posts file ownership table, wave structure as PR comment
-- Approval workflow: team reviews IMPL in GitHub, then merges triggers wave execution
-- Wave results posted back to PR (which agents completed, test results)
+OpenAI, LiteLLM, Ollama support via `--backend` flag. Auto-detection from env vars. Tool-use format translation layer.
 
-**Success criteria:**
-- IMPL review happens in GitHub PR
-- Team can approve/reject without running SAW locally
-- CI/CD integration for automated wave execution
+### v0.20.0 — MCP Server
 
-**Estimated effort:** 2 weeks
+`mcp-server-saw` package. Tools: `saw_scout`, `saw_wave`, `saw_status`, `saw_approve`. Expose SAW engine to any MCP-capable host.
+
+### v0.21.0 — GitHub Integration
+
+GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitHub. Wave results posted back to PR.
 
 ---
 
-## Phase 3: Scale & Enterprise (v1.0.0+)
+## Phase 4: Scale (v1.0.0+)
 
-### v1.0.0 - Production Hardening
-- Observability: OpenTelemetry, structured logging, metrics
-- Error recovery: automatic retry, partial wave restart
-- Cost tracking: per-agent token usage, cost attribution
-- Security: credential isolation, sandbox execution
-- Performance: concurrent wave execution, agent queueing
-
-### v1.1.0 - Team Features
-- Multi-user review: IMPL doc approval requires 2+ reviewers
-- Role-based access: who can approve, who can execute
-- Audit log: all IMPL reviews, wave executions, outcomes
-- Template library: reusable IMPL patterns for common features
-
-### v1.2.0 - Enterprise
-- Self-hosted deployment
-- SAML/SSO authentication
-- Organization-level configuration
-- Private model support (on-prem LLMs)
-- SLA monitoring & alerting
+- **v1.0.0** — Production hardening: OpenTelemetry, structured logging, cost tracking, sandboxed execution
+- **v1.1.0** — Team features: multi-user review, role-based access, audit log, IMPL templates
+- **v1.2.0** — Enterprise: self-hosted, SAML/SSO, on-prem LLM support
 
 ---
 
 ## Stretch Goals
 
-### Agent Marketplace
-- Publish custom agent prompts (specialized agents for specific tasks)
-- Community-contributed IMPL templates
-- Agent performance leaderboard (success rate by task type)
-
-### Visual IMPL Builder
-- Drag-and-drop interface for defining waves
-- Visual dependency graph editor
-- AI-assisted agent prompt generation
-
-### Multi-Repo Coordination
-- SAW orchestrates across multiple repositories
-- Cross-repo interface contracts
-- Monorepo support with isolated wave execution per package
+- **Visual IMPL Builder** — drag-and-drop wave/agent definition, visual dep graph editor
+- **Agent Marketplace** — publish custom agent prompts, community IMPL templates
+- **Multi-repo coordination** — SAW orchestrates across multiple repositories, cross-repo interface contracts
 
 ---
 
 ## Current Focus
 
-**Next 2 weeks:** Complete sidebar feature (Wave 1 in progress), ship v0.13.0 with multi-provider support.
+**Next:** v0.17.0 — close the GUI loop. Merge button first (biggest impact), then test runner, diff viewer, cancel, worktree manager.
 
-**Next 1 month:** UI polish (v0.14.0), demo video + docs (v0.15.0), launch on Hacker News.
+**After that:** v0.18.0 — deepen the intelligence. Scout context, chat-with-Claude, notifications, settings.
 
-**Next 3 months:** MCP server (v0.16.0), VS Code extension (v0.17.0), position SAW as infrastructure layer for AI agent coordination.
+**Then:** v0.19.0 — engine extraction. Use SAW to plan and execute the repo split. Extract pure engine from `pkg/api/`, publish as standalone Go module, rewire web server as a thin HTTP adapter. Third time SAW builds itself.
+
+**Then:** v0.19.5 — Wails desktop app. Import the extracted engine, replace HTTP + SSE with Wails bindings and events, React frontend carries over unchanged. Ships as a native cross-platform app.
+
+**Goal:** By v0.19.5, SAW is installable in one command on Mac, Windows, and Linux with no server to run and full OS integration.

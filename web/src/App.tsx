@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { listImpls, fetchImpl, approveImpl, rejectImpl, startWave } from './api'
+import { listImpls, fetchImpl, approveImpl, rejectImpl, startWave, deleteImpl } from './api'
 import { IMPLDocResponse, IMPLListEntry } from './types'
 import ReviewScreen from './components/ReviewScreen'
 import DarkModeToggle from './components/DarkModeToggle'
@@ -38,10 +38,14 @@ export default function App() {
 
   useEffect(() => {
     listImpls().then(setEntries).catch(() => {})
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission()
+    }
   }, [])
 
   async function handleSelect(selected: string) {
     setSelectedSlug(selected)
+    setRejected(false)
     setLoading(true)
     setError(null)
     try {
@@ -86,6 +90,30 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDelete(slug: string) {
+    try {
+      await deleteImpl(slug)
+      const updated = await listImpls()
+      setEntries(updated)
+      if (selectedSlug === slug) {
+        setSelectedSlug(null)
+        setImpl(null)
+        setRejected(false)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  async function handleScoutReady() {
+    try {
+      const updated = await listImpls()
+      setEntries(updated)
+    } catch {
+      // non-fatal
     }
   }
 
@@ -159,6 +187,7 @@ export default function App() {
                 entries={entries}
                 selectedSlug={selectedSlug}
                 onSelect={handleSelect}
+                onDelete={handleDelete}
                 loading={loading}
               />
             </div>
@@ -196,6 +225,7 @@ export default function App() {
               liveView={liveView}
               widthPx={rightWidthPx}
               onScoutComplete={handleScoutComplete}
+              onScoutReady={handleScoutReady}
               onClose={() => setLiveView(null)}
             />
           </div>

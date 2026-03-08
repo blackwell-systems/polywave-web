@@ -1,6 +1,6 @@
 package orchestrator
 
-import "github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+import "github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 
 // SetParseIMPLDocFunc injects the real IMPL doc parser from pkg/protocol,
 // replacing the default no-op that returns an empty IMPLDoc.

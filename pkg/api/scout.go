@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
 )
 
 // ScoutRunRequest is the JSON body for POST /api/scout/run.
@@ -57,11 +57,13 @@ func (s *Server) handleScoutRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	runID := fmt.Sprintf("%d", time.Now().UnixNano())
-	s.scoutRuns.Store(runID, struct{}{})
+	ctx, cancel := context.WithCancel(context.Background())
+	s.scoutRuns.Store(runID, cancel)
 
 	go func() {
 		defer s.scoutRuns.Delete(runID)
-		s.runScoutAgent(runID, req.Feature, req.Repo)
+		defer cancel()
+		s.runScoutAgent(ctx, runID, req.Feature, req.Repo)
 	}()
 
 	w.Header().Set("Content-Type", "application/json")
@@ -104,9 +106,20 @@ func (s *Server) handleScoutEvents(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// handleScoutCancel handles POST /api/scout/{runID}/cancel.
+func (s *Server) handleScoutCancel(w http.ResponseWriter, r *http.Request) {
+	runID := r.PathValue("runID")
+	if v, ok := s.scoutRuns.Load(runID); ok {
+		if cancel, ok := v.(context.CancelFunc); ok {
+			cancel()
+		}
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // runScoutAgent executes the Scout agent in a background goroutine.
 // Publishes scout_output, scout_complete, and scout_failed SSE events.
-func (s *Server) runScoutAgent(runID, feature, repoOverride string) {
+func (s *Server) runScoutAgent(ctx context.Context, runID, feature, repoOverride string) {
 	brokerKey := "scout-" + runID
 
 	publish := func(event string, data interface{}) {
@@ -152,8 +165,6 @@ func (s *Server) runScoutAgent(runID, feature, repoOverride string) {
 	runner := agent.NewRunner(b, nil)
 	spec := &types.AgentSpec{Letter: "scout", Prompt: prompt}
 
-	ctx := context.Background()
-
 	onChunk := func(chunk string) {
 		publish("scout_output", map[string]string{
 			"run_id": runID,
@@ -161,12 +172,16 @@ func (s *Server) runScoutAgent(runID, feature, repoOverride string) {
 		})
 	}
 
-	_, execErr := runner.ExecuteStreaming(ctx, spec, repoRoot, onChunk)
+	_, execErr := runner.ExecuteStreaming(ctx, spec, repoRoot, onChunk) //nolint:contextcheck
 	if execErr != nil {
-		publish("scout_failed", map[string]string{
-			"run_id": runID,
-			"error":  execErr.Error(),
-		})
+		if ctx.Err() != nil {
+			publish("scout_cancelled", map[string]string{"run_id": runID})
+		} else {
+			publish("scout_failed", map[string]string{
+				"run_id": runID,
+				"error":  execErr.Error(),
+			})
+		}
 		return
 	}
 

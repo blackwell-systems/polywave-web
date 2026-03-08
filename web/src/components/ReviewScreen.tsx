@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { IMPLDocResponse } from '../types'
 import ActionButtons from './ActionButtons'
+import RevisePanel from './RevisePanel'
 import { Button } from './ui/button'
 import OverviewPanel from './review/OverviewPanel'
 import FileOwnershipPanel from './review/FileOwnershipPanel'
@@ -41,6 +42,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const { slug, impl, onApprove, onReject, onRefreshImpl } = props
   const isNotSuitable = impl.suitability.verdict === 'NOT SUITABLE'
 
+  const [showRevise, setShowRevise] = useState(false)
   const [activePanels, setActivePanels] = useState<PanelKey[]>(() => {
     const defaults: PanelKey[] = []
     if (impl.pre_mortem) {
@@ -78,6 +80,16 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
       prev.includes(key)
         ? prev.filter(k => k !== key)
         : [...prev, key]
+    )
+  }
+
+  if (showRevise) {
+    return (
+      <RevisePanel
+        slug={slug}
+        onBack={() => setShowRevise(false)}
+        onSaved={() => { onRefreshImpl?.(slug); setShowRevise(false) }}
+      />
     )
   }
 
@@ -174,7 +186,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
         {/* Action buttons - always interactive, fixed at bottom */}
         <div className="mt-8">
-          <ActionButtons onApprove={onApprove} onReject={onReject} />
+          <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} />
         </div>
       </div>
     </div>

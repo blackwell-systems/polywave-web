@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/blackwell-systems/scout-and-wave-go/web"
+	"github.com/blackwell-systems/scout-and-wave-web/web"
 )
 
 var staticFiles = web.StaticFiles

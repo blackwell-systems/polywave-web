@@ -18,11 +18,12 @@ type Config struct {
 
 // Server is the HTTP server for the saw web UI.
 type Server struct {
-	cfg        Config
-	mux        *http.ServeMux
-	broker     *sseBroker // unexported; used by wave.go handlers
-	activeRuns sync.Map   // slug -> struct{}; tracks in-progress wave runs
-	scoutRuns  sync.Map   // runID -> struct{}; tracks in-progress scout runs
+	cfg            Config
+	mux            *http.ServeMux
+	broker         *sseBroker // unexported; used by wave.go handlers
+	activeRuns     sync.Map   // slug -> struct{}; tracks in-progress wave runs
+	scoutRuns      sync.Map   // runID -> context.CancelFunc; tracks in-progress scout runs
+	reviseCancels  sync.Map   // runID -> context.CancelFunc; tracks in-progress revise runs
 }
 
 // New creates a Server with the given Config and registers all routes.
@@ -48,6 +49,11 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("POST /api/wave/{slug}/agent/{letter}/rerun", s.handleWaveAgentRerun)
 	s.mux.HandleFunc("GET /api/impl/{slug}/raw", s.handleGetImplRaw)
 	s.mux.HandleFunc("PUT /api/impl/{slug}/raw", s.handlePutImplRaw)
+	s.mux.HandleFunc("POST /api/impl/{slug}/revise", s.handleImplRevise)
+	s.mux.HandleFunc("GET /api/impl/{slug}/revise/{runID}/events", s.handleImplReviseEvents)
+	s.mux.HandleFunc("POST /api/impl/{slug}/revise/{runID}/cancel", s.handleImplReviseCancel)
+	s.mux.HandleFunc("POST /api/scout/{runID}/cancel", s.handleScoutCancel)
+	s.mux.HandleFunc("DELETE /api/impl/{slug}", s.handleDeleteImpl)
 	sub, err := fs.Sub(staticFiles, "dist")
 	if err != nil {
 		panic("saw: failed to sub embed.FS: " + err.Error())
