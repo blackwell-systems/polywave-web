@@ -18,12 +18,12 @@ type Config struct {
 
 // Server is the HTTP server for the saw web UI.
 type Server struct {
-	cfg            Config
-	mux            *http.ServeMux
-	broker         *sseBroker // unexported; used by wave.go handlers
-	activeRuns     sync.Map   // slug -> struct{}; tracks in-progress wave runs
-	scoutRuns      sync.Map   // runID -> context.CancelFunc; tracks in-progress scout runs
-	reviseCancels  sync.Map   // runID -> context.CancelFunc; tracks in-progress revise runs
+	cfg           Config
+	mux           *http.ServeMux
+	broker        *sseBroker // unexported; used by wave.go handlers
+	activeRuns    sync.Map   // slug -> struct{}; tracks in-progress wave runs
+	scoutRuns     sync.Map   // runID -> context.CancelFunc; tracks in-progress scout runs
+	reviseCancels sync.Map   // runID -> context.CancelFunc; tracks in-progress revise runs
 }
 
 // New creates a Server with the given Config and registers all routes.

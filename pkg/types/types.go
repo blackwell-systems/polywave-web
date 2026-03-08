@@ -62,15 +62,15 @@ const (
 
 // IMPLDoc is the parsed representation of an IMPL markdown document
 type IMPLDoc struct {
-	FeatureName   string
-	Status        string // suitability verdict (e.g. "SUITABLE", "NOT SUITABLE")
-	DocStatus     string // lifecycle status: "" (active) or "COMPLETE"
-	CompletedAt   string // ISO date from <!-- SAW:COMPLETE YYYY-MM-DD --> tag, empty if active
-	TestCommand   string            // post-merge verification command (e.g. "go test ./...")
-	LintCommand   string            // check-mode lint command (e.g. "go vet ./...")
-	Waves             []Wave
-	FileOwnership     map[string]FileOwnershipInfo // file path -> ownership info
-	FileOwnershipCol4 string                       // detected header name for 4th column (e.g. "Action", "Depends On")
+	FeatureName            string
+	Status                 string // suitability verdict (e.g. "SUITABLE", "NOT SUITABLE")
+	DocStatus              string // lifecycle status: "" (active) or "COMPLETE"
+	CompletedAt            string // ISO date from <!-- SAW:COMPLETE YYYY-MM-DD --> tag, empty if active
+	TestCommand            string // post-merge verification command (e.g. "go test ./...")
+	LintCommand            string // check-mode lint command (e.g. "go vet ./...")
+	Waves                  []Wave
+	FileOwnership          map[string]FileOwnershipInfo // file path -> ownership info
+	FileOwnershipCol4      string                       // detected header name for 4th column (e.g. "Action", "Depends On")
 	KnownIssues            []KnownIssue
 	ScaffoldsDetail        []ScaffoldFile
 	InterfaceContractsText string
@@ -103,16 +103,16 @@ type AgentSpec struct {
 
 // CompletionReport is the structured YAML block each agent appends to the IMPL doc
 type CompletionReport struct {
-	Status               CompletionStatus
-	Worktree             string
-	Branch               string
-	Commit               string
-	FilesChanged         []string
-	FilesCreated         []string
-	InterfaceDeviations  []InterfaceDeviation
-	OutOfScopeDeps       []string
-	TestsAdded           []string
-	Verification         string
+	Status              CompletionStatus
+	Worktree            string
+	Branch              string
+	Commit              string
+	FilesChanged        []string
+	FilesCreated        []string
+	InterfaceDeviations []InterfaceDeviation
+	OutOfScopeDeps      []string
+	TestsAdded          []string
+	Verification        string
 }
 
 // InterfaceDeviation records a deviation from the spec contract
@@ -146,7 +146,7 @@ type PreMortemRow struct {
 
 // PreMortem holds the parsed ## Pre-Mortem section.
 type PreMortem struct {
-	OverallRisk string        // "low", "medium", or "high"
+	OverallRisk string // "low", "medium", or "high"
 	Rows        []PreMortemRow
 }
 

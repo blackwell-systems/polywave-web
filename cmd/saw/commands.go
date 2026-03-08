@@ -12,12 +12,12 @@ import (
 	"regexp"
 	"strings"
 
+	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
 	backendapi "github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/api"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
 
 // waveOrchestrator is the minimal interface runWave needs from an Orchestrator.

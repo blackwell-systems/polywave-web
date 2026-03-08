@@ -17,12 +17,12 @@ import (
 
 // mockBackend is a test double for the backend.Backend interface.
 type mockBackend struct {
-	mu              sync.Mutex
-	lastSystem      string
-	lastUser        string
-	lastWorkDir     string
-	responseToSend  string
-	errToReturn     error
+	mu             sync.Mutex
+	lastSystem     string
+	lastUser       string
+	lastWorkDir    string
+	responseToSend string
+	errToReturn    error
 }
 
 func (m *mockBackend) Run(_ context.Context, systemPrompt, userMessage, workDir string) (string, error) {

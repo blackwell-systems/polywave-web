@@ -13,9 +13,9 @@ import (
 // It tracks RunWave/MergeWave/RunVerification calls and drives a minimal
 // state machine so TransitionTo behaves correctly.
 type fakeWaveOrch struct {
-	doc          *types.IMPLDoc
-	state        types.State
-	runWaveCalls []int
+	doc            *types.IMPLDoc
+	state          types.State
+	runWaveCalls   []int
 	mergeWaveCalls []int
 	runVerifCalls  []string
 	// transitionErr, if non-nil, is returned by the next TransitionTo call.
@@ -24,11 +24,11 @@ type fakeWaveOrch struct {
 
 // validTransitions mirrors the SAW state machine for the states runWave uses.
 var fakeValidTransitions = map[types.State][]types.State{
-	types.ScoutPending: {types.Reviewed, types.NotSuitable},
-	types.Reviewed:           {types.WavePending},
-	types.WavePending:        {types.WaveExecuting},
-	types.WaveExecuting:      {types.WaveVerified},
-	types.WaveVerified:       {types.Complete, types.WavePending},
+	types.ScoutPending:  {types.Reviewed, types.NotSuitable},
+	types.Reviewed:      {types.WavePending},
+	types.WavePending:   {types.WaveExecuting},
+	types.WaveExecuting: {types.WaveVerified},
+	types.WaveVerified:  {types.Complete, types.WavePending},
 }
 
 func (f *fakeWaveOrch) TransitionTo(newState types.State) error {

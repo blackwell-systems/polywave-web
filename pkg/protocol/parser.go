@@ -39,11 +39,11 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 
 	type parserState int
 	const (
-		stateTop         parserState = iota // scanning top-level headers
-		stateFileOwner                      // inside ### File Ownership table
-		stateWave                           // inside a ## Wave N section
-		stateAgent                          // inside a ### Agent X: section
-		stateCompletion                     // inside ### Agent X - Completion Report
+		stateTop        parserState = iota // scanning top-level headers
+		stateFileOwner                     // inside ### File Ownership table
+		stateWave                          // inside a ## Wave N section
+		stateAgent                         // inside a ### Agent X: section
+		stateCompletion                    // inside ### Agent X - Completion Report
 	)
 
 	state := stateTop
@@ -417,9 +417,9 @@ func ParseCompletionReport(path string, agentLetter string) (*types.CompletionRe
 
 	type scanState int
 	const (
-		scanLooking  scanState = iota // searching for the section header
-		scanInSection                 // found header, looking for yaml fence
-		scanInYAML                    // inside ```yaml ... ```
+		scanLooking   scanState = iota // searching for the section header
+		scanInSection                  // found header, looking for yaml fence
+		scanInYAML                     // inside ```yaml ... ```
 	)
 
 	state := scanLooking
@@ -1018,4 +1018,3 @@ func classifyAction(s string) string {
 		return s
 	}
 }
-

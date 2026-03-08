@@ -103,7 +103,7 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 			Files:     scaffoldFiles,
 			Contracts: []ContractEntry{}, // Contracts not parsed yet - would need scaffolds section parsing
 		},
-		PreMortem: mapPreMortem(doc.PreMortem),
+		PreMortem:              mapPreMortem(doc.PreMortem),
 		KnownIssues:            mapKnownIssues(doc.KnownIssues),
 		ScaffoldsDetail:        mapScaffoldsDetail(doc.ScaffoldsDetail),
 		InterfaceContractsText: doc.InterfaceContractsText,

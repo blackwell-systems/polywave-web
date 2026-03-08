@@ -17,8 +17,8 @@ type PreMortemEntry struct {
 // IMPLDocResponse is the JSON body for GET /api/impl/{slug}.
 type IMPLDocResponse struct {
 	Slug                   string               `json:"slug"`
-	DocStatus              string               `json:"doc_status"`              // "active" or "complete"
-	CompletedAt            string               `json:"completed_at,omitempty"`  // ISO date, present only when COMPLETE
+	DocStatus              string               `json:"doc_status"`             // "active" or "complete"
+	CompletedAt            string               `json:"completed_at,omitempty"` // ISO date, present only when COMPLETE
 	Suitability            SuitabilityInfo      `json:"suitability"`
 	FileOwnership          []FileOwnershipEntry `json:"file_ownership"`
 	FileOwnershipCol4Name  string               `json:"file_ownership_col4_name"` // detected 4th column header (e.g. "Action", "Depends On")

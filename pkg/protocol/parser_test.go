@@ -843,4 +843,3 @@ Goal: implement foo.
 		t.Errorf("PostMergeChecklistText does not contain checklist items: %q", doc.PostMergeChecklistText)
 	}
 }
-
