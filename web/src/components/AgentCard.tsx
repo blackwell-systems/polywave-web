@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { AgentStatus } from '../types'
 import { getAgentColor } from '../lib/agentColors'
 
@@ -42,10 +42,11 @@ const getStatusStyle = (status: string) => {
 
 export default function AgentCard({ agent }: AgentCardProps) {
   const preRef = useRef<HTMLPreElement>(null)
+  const [outputExpanded, setOutputExpanded] = useState(false)
 
   useEffect(() => {
-    if (preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
-  }, [agent.output])
+    if (!outputExpanded && preRef.current) preRef.current.scrollTop = preRef.current.scrollHeight
+  }, [agent.output, outputExpanded])
 
   const agentOutput: string | undefined = agent.output
   const showOutput = (agent.status === 'running' || agent.status === 'complete') && agentOutput && agentOutput.length > 0
@@ -93,9 +94,17 @@ export default function AgentCard({ agent }: AgentCardProps) {
       {/* Output section */}
       {showOutput && (
         <div className="p-3">
+          {agentOutput.length > 200 && (
+            <button
+              onClick={() => setOutputExpanded(prev => !prev)}
+              className="text-xs text-white/50 hover:text-white/80 cursor-pointer mb-1 block"
+            >
+              {outputExpanded ? '▲ Show less' : '▼ Show more'}
+            </button>
+          )}
           <pre
             ref={preRef}
-            className="text-xs font-mono text-white/70 bg-black/30 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-all"
+            className={`text-xs font-mono text-white/70 bg-black/30 rounded p-2 overflow-y-auto whitespace-pre-wrap break-all ${outputExpanded ? 'max-h-96' : 'max-h-32'}`}
           >
             {agentOutput}
           </pre>
