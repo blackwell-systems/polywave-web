@@ -161,3 +161,59 @@ export interface WaveState {
   merge_status?: string
   complete: boolean
 }
+
+// Worktree manager (v0.17.0-D)
+export interface WorktreeEntry {
+  branch: string
+  path: string
+  status: 'merged' | 'unmerged' | 'stale'
+  has_unsaved: boolean
+}
+
+export interface WorktreeListResponse {
+  worktrees: WorktreeEntry[]
+}
+
+// File diff viewer (v0.17.0-C)
+export interface FileDiffResponse {
+  agent: string
+  file: string
+  branch: string
+  diff: string
+}
+
+// Settings (v0.18.0-C)
+export interface SAWConfig {
+  repo: { path: string }
+  agent: { scout_model: string; wave_model: string }
+  quality: { require_tests: boolean; require_lint: boolean; block_on_failure: boolean }
+  appearance: { theme: 'system' | 'light' | 'dark' }
+}
+
+// Chat with Claude (v0.18.0-B)
+export interface ChatMessage {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+// Quality gates display
+export interface QualityGate {
+  command: string
+  required: boolean
+  description: string
+}
+
+// Scout context (v0.18.0-A)
+export interface ScoutContext {
+  files: string[]
+  notes: string
+  constraints: string[]
+}
+
+// Per-agent context payload (v0.18.0-K)
+export interface AgentContextResponse {
+  slug: string
+  agent: string
+  wave: number
+  context_text: string
+}
