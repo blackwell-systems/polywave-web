@@ -254,6 +254,12 @@ func ParseIMPLDoc(path string) (*types.IMPLDoc, error) {
 			doc.PostMergeChecklistText = parsePostMergeChecklistSection(scanner)
 			state = stateTop
 
+		// ── Stub Report section: ## Stub Report
+		case trimmed == "## Stub Report" || trimmed == "### Stub Report":
+			flushAgent()
+			doc.StubReportText = parseInterfaceContractsSection(scanner)
+			state = stateTop
+
 		// ── Agent subsection: ### Agent X: Description  or  #### Agent X — Description
 		//    Accepted in any state (wave, agent, or top-level). If no ## Wave N
 		//    section is active, auto-create wave 1.

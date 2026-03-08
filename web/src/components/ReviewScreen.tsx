@@ -12,6 +12,7 @@ import DependencyGraphPanel from './review/DependencyGraphPanel'
 import KnownIssuesPanel from './review/KnownIssuesPanel'
 import PostMergeChecklistPanel from './review/PostMergeChecklistPanel'
 import PreMortemPanel from './review/PreMortemPanel'
+import StubReportPanel from './review/StubReportPanel'
 
 interface ReviewScreenProps {
   slug: string
@@ -21,10 +22,11 @@ interface ReviewScreenProps {
   onRefreshImpl?: (slug: string) => Promise<void>
 }
 
-type PanelKey = 'pre-mortem' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist'
+type PanelKey = 'pre-mortem' | 'stub-report' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist'
 
 const panels: Array<{ key: PanelKey; label: string }> = [
   { key: 'pre-mortem', label: 'Pre-Mortem' },
+  { key: 'stub-report', label: 'Stub Report' },
   { key: 'file-ownership', label: 'File Ownership' },
   { key: 'wave-structure', label: 'Wave Structure' },
   { key: 'agent-prompts', label: 'Agent Prompts' },
@@ -124,6 +126,8 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
               switch (key) {
                 case 'pre-mortem':
                   return <PreMortemPanel key={key} preMortem={impl.pre_mortem} />
+                case 'stub-report':
+                  return <StubReportPanel key={key} stubReportText={impl.stub_report_text} />
                 case 'file-ownership':
                   return <FileOwnershipPanel key={key} impl={impl} />
                 case 'wave-structure':

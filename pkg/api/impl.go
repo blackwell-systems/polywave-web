@@ -109,6 +109,7 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 		InterfaceContractsText: doc.InterfaceContractsText,
 		DependencyGraphText:    doc.DependencyGraphText,
 		PostMergeChecklistText: doc.PostMergeChecklistText,
+		StubReportText:         doc.StubReportText,
 		AgentPrompts:           extractAgentPrompts(doc.Waves),
 	}
 

@@ -30,6 +30,7 @@ type IMPLDocResponse struct {
 	InterfaceContractsText string               `json:"interface_contracts_text"`
 	DependencyGraphText    string               `json:"dependency_graph_text"`
 	PostMergeChecklistText string               `json:"post_merge_checklist_text"`
+	StubReportText         string               `json:"stub_report_text"`
 	AgentPrompts           []AgentPromptEntry   `json:"agent_prompts"`
 }
 

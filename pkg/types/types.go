@@ -77,6 +77,7 @@ type IMPLDoc struct {
 	DependencyGraphText    string
 	PostMergeChecklistText string
 	PreMortem              *PreMortem // parsed ## Pre-Mortem section; nil if absent
+	StubReportText         string     // raw markdown content of ## Stub Report section; empty if absent
 }
 
 // FileOwnershipInfo holds parsed data for one row of the file ownership table.

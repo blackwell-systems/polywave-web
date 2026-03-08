@@ -17,6 +17,7 @@ const makeImpl = (): IMPLDocResponse => ({
   interface_contracts_text: '',
   dependency_graph_text: '',
   post_merge_checklist_text: '',
+  stub_report_text: '',
   agent_prompts: [],
 })
 

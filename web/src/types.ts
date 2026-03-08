@@ -75,6 +75,7 @@ export interface IMPLDocResponse {
   interface_contracts_text: string
   dependency_graph_text: string
   post_merge_checklist_text: string
+  stub_report_text: string
   agent_prompts: AgentPromptEntry[]
   pre_mortem?: PreMortem
 }
