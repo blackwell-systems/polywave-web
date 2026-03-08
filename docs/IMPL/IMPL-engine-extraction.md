@@ -1420,6 +1420,33 @@ verification: "go mod tidy && go build ./... && go vet ./... — all pass"
 ```
 ```
 
+### Agent H - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+worktree: /Users/dayna.blackwell/code/scout-and-wave-web/.claude/worktrees/wave2-agent-H
+branch: wave2-agent-H
+commit: 34479424271e70274d6daf04b3bdf4e18ad7cb2d
+files_changed:
+  - go.mod
+  - go.sum
+files_created:
+  - internal/engine_import_anchor.go
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: "go mod tidy && go build ./... && go vet ./... — all pass"
+```
+
+`go mod tidy` dropped the require for `scout-and-wave-go` on the first pass because no `.go`
+file in this worktree imports it yet (Agent G's import rewrites are in a parallel worktree).
+Created `internal/engine_import_anchor.go` with a blank import of
+`github.com/blackwell-systems/scout-and-wave-go/pkg/engine` to anchor the require entry.
+After adding the anchor, `go mod tidy` retained the require and replace directives cleanly.
+Both `go build ./...` and `go vet ./...` passed with zero errors.
+
+The anchor file must be deleted post-merge once Agent G's source imports are in place.
+
 ---
 
 ## Wave Execution Loop
