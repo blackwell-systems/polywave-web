@@ -185,7 +185,7 @@ export default function ScoutLauncher({ onComplete }: ScoutLauncherProps): JSX.E
               ref={outputRef}
               className="p-4 text-xs text-gray-200 font-mono whitespace-pre-wrap overflow-y-auto max-h-[50vh] leading-relaxed"
             >
-              {output || ' '}
+              {output || (running ? 'Analyzing codebase…' : ' ')}
             </pre>
           </div>
         )}

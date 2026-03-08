@@ -16,7 +16,7 @@ type sseBroker struct {
 
 // subscribe registers a new channel for the given slug and returns it.
 func (b *sseBroker) subscribe(slug string) chan SSEEvent {
-	ch := make(chan SSEEvent, 16)
+	ch := make(chan SSEEvent, 2048)
 	b.mu.Lock()
 	b.clients[slug] = append(b.clients[slug], ch)
 	b.mu.Unlock()
