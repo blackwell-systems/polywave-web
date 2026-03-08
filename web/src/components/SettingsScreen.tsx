@@ -103,7 +103,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
   }
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto p-6 gap-6 max-w-2xl mx-auto w-full">
+    <div className="flex flex-col p-6 gap-6 max-w-2xl mx-auto w-full">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Settings</h2>
       </div>

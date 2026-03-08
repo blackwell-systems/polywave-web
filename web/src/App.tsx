@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { listImpls, fetchImpl, approveImpl, rejectImpl, startWave, deleteImpl, getConfig } from './api'
 import { IMPLDocResponse, IMPLListEntry, RepoEntry } from './types'
 import ReviewScreen from './components/ReviewScreen'
@@ -271,20 +272,20 @@ export default function App() {
       </div>
     </div>
 
-    {/* Settings modal — outside overflow-hidden root so fixed positioning works */}
-    {showSettings && (
+    {showSettings && createPortal(
       <div
         className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
         onClick={() => setShowSettings(false)}
       >
         <div
-          className="bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl flex flex-col"
-          style={{ height: '80vh' }}
+          className="bg-background border border-border rounded-lg shadow-xl w-full max-w-2xl overflow-y-auto"
+          style={{ maxHeight: '85vh' }}
           onClick={(e) => e.stopPropagation()}
         >
           <SettingsScreen onClose={() => setShowSettings(false)} onReposChange={handleReposChange} />
         </div>
-      </div>
+      </div>,
+      document.body
     )}
     </>
   )
