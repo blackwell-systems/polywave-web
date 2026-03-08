@@ -2,6 +2,24 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.0] - 2026-03-08
+
+### Added
+
+**Multi-Repo GUI Registry (v0.19.0)**
+- **Repo registry** — `SAWConfig` now stores `repos: [{name, path}]` array; backward-compat migration from legacy `repo.path` on first read; legacy field cleared on save
+- **SettingsScreen repo list** — full add/remove/reorder UI for multiple repos; path validation, name defaulting to last path segment; `DirPicker` for server-side filesystem browsing
+- **ScoutLauncher repo dropdown** — when `repos` has 2+ entries, freeform path input replaced by `<select>` pre-seeded from `activeRepo`; custom path option preserved
+- **ImplList repo switcher** — `<select>` above IMPL list when 2+ repos registered; multi-repo badge (violet `multi` label) on slugs matching cross-repo keywords
+- **FileOwnershipPanel grouped by repo** — when files span 2+ repos, ownership table splits into per-repo sections with repo name headers; graceful fallback to flat table when single-repo
+- **WaveBoard agent repo tag** — each agent card shows a `repo:name` badge derived from the dominant repo in its file set
+- **`GET /api/browse`** — server-side filesystem directory browser; returns `{path, parent, entries}` JSON; required because browsers cannot expose filesystem paths from native file pickers
+- **`GET /api/events` global SSE stream** — `globalBroker` fans out `impl_list_updated` to all connected clients; IMPL list refreshes automatically without page reload
+- **fsnotify IMPL watcher** — `startIMPLWatcher` watches `IMPLDir` for file create/rename events; broadcasts `impl_list_updated` to keep sidebar in sync with CLI scout runs
+- **`impl_list_updated` events** — also fired on approve, reject, and wave completion so status changes propagate instantly to the sidebar
+
+---
+
 ## [0.18.0] - 2026-03-08
 
 ### Added
