@@ -1,4 +1,4 @@
-import { IMPLDocResponse, IMPLListEntry } from './types'
+import { IMPLDocResponse, IMPLListEntry, WorktreeListResponse, FileDiffResponse, SAWConfig, ChatMessage, AgentContextResponse, ScoutContext } from './types'
 
 export async function listImpls(): Promise<IMPLListEntry[]> {
   const response = await fetch('/api/impl')
@@ -43,11 +43,19 @@ export async function startWave(slug: string): Promise<void> {
   }
 }
 
-export async function runScout(feature: string, repo?: string): Promise<{ runId: string }> {
+export async function runScout(feature: string, repo?: string, context?: ScoutContext): Promise<{ runId: string }> {
   const r = await fetch('/api/scout/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ feature, repo }),
+    body: JSON.stringify({
+      feature,
+      repo,
+      ...(context && {
+        context_files: context.files,
+        context_notes: context.notes,
+        context_constraints: context.constraints,
+      }),
+    }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   const data = await r.json()
@@ -131,4 +139,86 @@ export async function rerunAgent(slug: string, wave: number, agentLetter: string
     body: JSON.stringify({ wave }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
+}
+
+// Worktree manager
+export async function listWorktrees(slug: string): Promise<WorktreeListResponse> {
+  const r = await fetch(`/api/impl/${slug}/worktrees`)
+  if (!r.ok) throw new Error(await r.text())
+  return r.json()
+}
+
+export async function deleteWorktree(slug: string, branch: string): Promise<void> {
+  const r = await fetch(`/api/impl/${slug}/worktrees/${encodeURIComponent(branch)}`, { method: 'DELETE' })
+  if (!r.ok) throw new Error(await r.text())
+}
+
+// File diff viewer
+export async function fetchFileDiff(slug: string, agent: string, wave: number, file: string): Promise<FileDiffResponse> {
+  const params = new URLSearchParams({ wave: String(wave), file })
+  const r = await fetch(`/api/impl/${slug}/diff/${agent}?${params}`)
+  if (!r.ok) throw new Error(await r.text())
+  return r.json()
+}
+
+// Settings
+export async function getConfig(): Promise<SAWConfig> {
+  const r = await fetch(`/api/config`)
+  if (!r.ok) throw new Error(await r.text())
+  return r.json()
+}
+
+export async function saveConfig(config: SAWConfig): Promise<void> {
+  const r = await fetch(`/api/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(config),
+  })
+  if (!r.ok) throw new Error(await r.text())
+}
+
+// CONTEXT.md viewer
+export async function getContext(): Promise<string> {
+  const r = await fetch(`/api/context`)
+  if (r.status === 404) return ''
+  if (!r.ok) throw new Error(await r.text())
+  return r.text()
+}
+
+export async function putContext(content: string): Promise<void> {
+  const r = await fetch(`/api/context`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'text/plain' },
+    body: content,
+  })
+  if (!r.ok) throw new Error(await r.text())
+}
+
+// Chat with Claude
+export async function startImplChat(slug: string, message: string, history: ChatMessage[]): Promise<{ runId: string }> {
+  const r = await fetch(`/api/impl/${slug}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message, history }),
+  })
+  if (!r.ok) throw new Error(await r.text())
+  const data = await r.json()
+  return { runId: data.run_id }
+}
+
+export function subscribeChatEvents(slug: string, runId: string): EventSource {
+  return new EventSource(`/api/impl/${slug}/chat/${runId}/events`)
+}
+
+// Scaffold rerun
+export async function rerunScaffold(slug: string): Promise<void> {
+  const r = await fetch(`/api/impl/${slug}/scaffold/rerun`, { method: 'POST' })
+  if (!r.ok) throw new Error(await r.text())
+}
+
+// Per-agent context payload
+export async function fetchAgentContext(slug: string, agent: string): Promise<AgentContextResponse> {
+  const r = await fetch(`/api/impl/${slug}/agent/${agent}/context`)
+  if (!r.ok) throw new Error(await r.text())
+  return r.json()
 }
