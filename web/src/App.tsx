@@ -275,9 +275,9 @@ export default function App() {
     {showSettings && createPortal(
       <>
         {/* Backdrop */}
-        <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setShowSettings(false)} />
+        <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setShowSettings(false)} />
         {/* Drawer */}
-        <div className="fixed inset-y-0 right-0 z-50 w-[560px] max-w-full bg-background border-l border-border shadow-2xl overflow-y-auto">
+        <div className="fixed inset-y-0 right-0 z-50 w-[560px] max-w-[90vw] bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-700 shadow-2xl overflow-y-auto">
           <SettingsScreen onClose={() => setShowSettings(false)} onReposChange={handleReposChange} />
         </div>
       </>,

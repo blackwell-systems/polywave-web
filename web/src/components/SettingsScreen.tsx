@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { X } from 'lucide-react'
 import { getConfig, saveConfig } from '../api'
 import { SAWConfig, RepoEntry } from '../types'
 import DirPicker from './DirPicker'
@@ -106,6 +107,13 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
     <div className="flex flex-col p-6 gap-6 max-w-2xl mx-auto w-full">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Settings</h2>
+        <button
+          onClick={onClose}
+          className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+          title="Close settings"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       {error && (
