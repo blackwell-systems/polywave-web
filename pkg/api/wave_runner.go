@@ -1,12 +1,17 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend/cli"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/orchestrator"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
@@ -90,6 +95,12 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 		publish(ev.Event, ev.Data)
 	})
 
+	// Run scaffold agent if any scaffold files are pending.
+	if err := runScaffoldIfNeeded(implPath, repoPath, orch.IMPLDoc().ScaffoldsDetail, publish); err != nil {
+		publish("run_failed", map[string]string{"error": err.Error()})
+		return
+	}
+
 	// Execute all waves in the order they appear in the IMPL doc.
 	waves := orch.IMPLDoc().Waves
 	totalAgents := 0
@@ -171,6 +182,64 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 		Waves:  len(waves),
 		Agents: totalAgents,
 	})
+}
+
+// runScaffoldIfNeeded checks if the IMPL doc has scaffold files that have not yet
+// been created on disk. If any are missing, launches a Scaffold Agent via the CLI
+// backend and streams output as SSE events.
+func runScaffoldIfNeeded(implPath, repoPath string, scaffolds []types.ScaffoldFile, publish func(string, interface{})) error {
+	if len(scaffolds) == 0 {
+		return nil
+	}
+
+	// If all scaffold files already exist, skip.
+	allExist := true
+	for _, sf := range scaffolds {
+		absPath := sf.FilePath
+		if !filepath.IsAbs(absPath) {
+			absPath = filepath.Join(repoPath, absPath)
+		}
+		if _, err := os.Stat(absPath); os.IsNotExist(err) {
+			allExist = false
+			break
+		}
+	}
+	if allExist {
+		return nil
+	}
+
+	publish("scaffold_started", map[string]string{"impl_path": implPath})
+
+	// Locate scaffold-agent.md prompt.
+	sawRepo := os.Getenv("SAW_REPO")
+	if sawRepo == "" {
+		home, _ := os.UserHomeDir()
+		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+	}
+	scaffoldMdPath := filepath.Join(sawRepo, "prompts", "scaffold-agent.md")
+	scaffoldMdBytes, err := os.ReadFile(scaffoldMdPath)
+	if err != nil {
+		scaffoldMdBytes = []byte("You are a Scaffold Agent. Create the stub files defined in the IMPL doc Scaffolds section.")
+	}
+
+	prompt := fmt.Sprintf("%s\n\n## IMPL Doc Path\n%s\n", string(scaffoldMdBytes), implPath)
+
+	b := cli.New("", backend.Config{})
+	runner := agent.NewRunner(b, nil)
+	spec := &types.AgentSpec{Letter: "scaffold", Prompt: prompt}
+
+	ctx := context.Background()
+	onChunk := func(chunk string) {
+		publish("scaffold_output", map[string]string{"chunk": chunk})
+	}
+
+	if _, execErr := runner.ExecuteStreaming(ctx, spec, repoPath, onChunk); execErr != nil {
+		publish("scaffold_failed", map[string]string{"error": execErr.Error()})
+		return fmt.Errorf("scaffold agent failed: %w", execErr)
+	}
+
+	publish("scaffold_complete", map[string]string{"impl_path": implPath})
+	return nil
 }
 
 // handleWaveGateProceed handles POST /api/wave/{slug}/gate/proceed.
