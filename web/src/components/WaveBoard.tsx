@@ -33,8 +33,15 @@ export default function WaveBoard({ slug }: WaveBoardProps): JSX.Element {
 
         {/* Run complete banner */}
         {state.runComplete && (
-          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-800 text-sm font-medium">
+          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-green-800 text-sm font-medium dark:bg-green-950 dark:border-green-800 dark:text-green-400">
             Run complete{state.runStatus ? ` — ${state.runStatus}` : ''}
+          </div>
+        )}
+
+        {/* Run failed banner */}
+        {state.runFailed && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-800 text-sm dark:bg-red-950 dark:border-red-800 dark:text-red-400">
+            <span className="font-medium">Wave failed:</span> {state.runFailed}
           </div>
         )}
 

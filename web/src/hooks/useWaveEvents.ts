@@ -9,6 +9,7 @@ export interface AppWaveState {
   scaffoldStatus: 'idle' | 'running' | 'complete'
   runComplete: boolean
   runStatus?: string
+  runFailed?: string
   connected: boolean
   error?: string
   waves: WaveState[]
@@ -152,6 +153,11 @@ export function useWaveEvents(slug: string): AppWaveState {
     es.addEventListener('run_complete', (event: MessageEvent) => {
       const data = JSON.parse(event.data) as { status: string; waves: number; agents: number }
       setState(prev => ({ ...prev, runComplete: true, runStatus: data.status }))
+    })
+
+    es.addEventListener('run_failed', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { error: string }
+      setState(prev => ({ ...prev, runFailed: data.error }))
     })
 
     return () => {

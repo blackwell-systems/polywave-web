@@ -29,7 +29,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
   }, [agent.output])
 
   const agentOutput: string | undefined = agent.output
-  const showOutput = agent.status === 'running' && agentOutput && agentOutput.length > 0
+  const showOutput = (agent.status === 'running' || agent.status === 'complete') && agentOutput && agentOutput.length > 0
 
   return (
     <Card className="min-w-[200px] max-w-xs">
