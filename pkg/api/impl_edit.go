@@ -10,10 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
 
 // handleGetImplRaw serves GET /api/impl/{slug}/raw
@@ -162,6 +159,7 @@ func (s *Server) handleImplReviseCancel(w http.ResponseWriter, r *http.Request) 
 }
 
 // runImplReviseAgent runs a Claude agent that reads and revises the IMPL doc.
+// Uses engine.RunScout with a revise-specific system prompt.
 func (s *Server) runImplReviseAgent(ctx context.Context, runID, slug, feedback string) {
 	brokerKey := "revise-" + runID
 	publish := func(event string, data interface{}) {
@@ -185,15 +183,24 @@ Instructions:
 - Keep the same format and structure
 - Do not output commentary — just revise and save the file`, implPath, feedback)
 
-	b := cli.New("", backend.Config{})
-	runner := agent.NewRunner(b, nil)
-	spec := &types.AgentSpec{Letter: "revise", Prompt: systemPrompt}
-
 	onChunk := func(chunk string) {
 		publish("revise_output", map[string]string{"run_id": runID, "chunk": chunk})
 	}
 
-	_, err := runner.ExecuteStreaming(ctx, spec, s.cfg.RepoPath, onChunk)
+	// Locate SAW repo for prompt files.
+	sawRepo := os.Getenv("SAW_REPO")
+	if sawRepo == "" {
+		home, _ := os.UserHomeDir()
+		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+	}
+
+	err := engine.RunScout(ctx, engine.RunScoutOpts{
+		Feature:     systemPrompt,
+		RepoPath:    s.cfg.RepoPath,
+		SAWRepoPath: sawRepo,
+		IMPLOutPath: implPath,
+	}, onChunk)
+
 	if err != nil {
 		if ctx.Err() != nil {
 			publish("revise_cancelled", map[string]string{"run_id": runID})

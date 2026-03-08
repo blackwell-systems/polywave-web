@@ -12,19 +12,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/api"
+	backendapi "github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/api"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/agent/backend/cli"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/orchestrator"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/types"
+	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
-
-func init() {
-	orchestrator.SetValidateInvariantsFunc(protocol.ValidateInvariants)
-	orchestrator.SetParseIMPLDocFunc(protocol.ParseIMPLDoc)
-}
 
 // waveOrchestrator is the minimal interface runWave needs from an Orchestrator.
 // Using an interface enables tests to inject a fake without real git/API calls.
@@ -37,10 +31,83 @@ type waveOrchestrator interface {
 	IMPLDoc() *types.IMPLDoc
 }
 
+// engineOrchAdapter wraps the engine package functions to satisfy waveOrchestrator.
+// It holds the IMPL doc parsed at construction time so IMPLDoc() can return it.
+type engineOrchAdapter struct {
+	repoPath string
+	implPath string
+	doc      *types.IMPLDoc
+	// state tracks the current protocol state (simplified; engine handles real state).
+	state types.State
+}
+
+func (a *engineOrchAdapter) TransitionTo(newState types.State) error {
+	a.state = newState
+	return nil
+}
+
+func (a *engineOrchAdapter) RunWave(waveNum int) error {
+	return engine.RunSingleWave(context.Background(), engine.RunWaveOpts{
+		IMPLPath: a.implPath,
+		RepoPath: a.repoPath,
+	}, waveNum, func(ev engine.Event) {
+		fmt.Printf("[%s] %v\n", ev.Event, ev.Data)
+	})
+}
+
+func (a *engineOrchAdapter) MergeWave(waveNum int) error {
+	return engine.MergeWave(context.Background(), engine.RunMergeOpts{
+		IMPLPath: a.implPath,
+		RepoPath: a.repoPath,
+		WaveNum:  waveNum,
+	})
+}
+
+func (a *engineOrchAdapter) RunVerification(testCommand string) error {
+	return engine.RunVerification(context.Background(), engine.RunVerificationOpts{
+		RepoPath:    a.repoPath,
+		TestCommand: testCommand,
+	})
+}
+
+func (a *engineOrchAdapter) UpdateIMPLStatus(waveNum int) error {
+	if a.doc == nil {
+		return nil
+	}
+	var letters []string
+	for _, w := range a.doc.Waves {
+		if w.Number == waveNum {
+			for _, ag := range w.Agents {
+				letters = append(letters, ag.Letter)
+			}
+			break
+		}
+	}
+	return engine.UpdateIMPLStatus(a.implPath, letters)
+}
+
+func (a *engineOrchAdapter) IMPLDoc() *types.IMPLDoc {
+	return a.doc
+}
+
 // orchestratorNewFunc is a seam for tests: creates a waveOrchestrator from a
 // repo path and IMPL doc path. Tests can replace this to inject a fake.
 var orchestratorNewFunc = func(repoPath, implPath string) (waveOrchestrator, error) {
-	return orchestrator.New(repoPath, implPath)
+	// Use the web repo's protocol.ParseIMPLDoc so the returned doc uses
+	// the web repo's *types.IMPLDoc (required by the waveOrchestrator interface).
+	doc, err := protocol.ParseIMPLDoc(implPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse IMPL doc: %w", err)
+	}
+	if doc == nil {
+		return nil, fmt.Errorf("cannot parse IMPL doc: %s", implPath)
+	}
+	return &engineOrchAdapter{
+		repoPath: repoPath,
+		implPath: implPath,
+		doc:      doc,
+		state:    types.ScoutPending,
+	}, nil
 }
 
 // resolveBackend returns a backend.Backend based on kind and cfg.
@@ -55,12 +122,12 @@ func resolveBackend(kind string, cfg backend.Config) (backend.Backend, error) {
 	}
 	switch kind {
 	case "api":
-		return api.New(os.Getenv("ANTHROPIC_API_KEY"), cfg), nil
+		return backendapi.New(os.Getenv("ANTHROPIC_API_KEY"), cfg), nil
 	case "cli":
 		return cli.New("", cfg), nil
 	case "auto":
 		if os.Getenv("ANTHROPIC_API_KEY") != "" {
-			return api.New(os.Getenv("ANTHROPIC_API_KEY"), cfg), nil
+			return backendapi.New(os.Getenv("ANTHROPIC_API_KEY"), cfg), nil
 		}
 		return cli.New("", cfg), nil
 	default:
@@ -108,7 +175,6 @@ func runWave(args []string) error {
 	}
 
 	// Build the ordered list of waves to execute, starting from *waveNum.
-	// Waves are iterated in the order they appear in the IMPL doc (sorted by Number).
 	waves := o.IMPLDoc().Waves
 	// Find the index of the first wave with Number >= *waveNum.
 	startIdx := len(waves)
@@ -214,6 +280,7 @@ func runStatus(args []string) error {
 		return errors.New("status: --impl is required\nRun 'saw status --help' for usage.")
 	}
 
+	// Use the web repo's protocol package — the engine stubs return nil.
 	doc, err := protocol.ParseIMPLDoc(*implPath)
 	if err != nil {
 		return fmt.Errorf("status: %w", err)
@@ -229,7 +296,7 @@ func runStatus(args []string) error {
 		Agents []jsonAgent `json:"agents"`
 	}
 	type jsonSummary struct {
-		Total   int `json:"total"`
+		Total    int `json:"total"`
 		Complete int `json:"complete"`
 		Partial  int `json:"partial"`
 		Blocked  int `json:"blocked"`
@@ -385,7 +452,7 @@ func runScout(args []string) error {
 	feature := fs.String("feature", "", "One-line feature description (required)")
 	implPath := fs.String("impl", "", "Output path for IMPL doc (optional)")
 	repoFlag := fs.String("repo", "", "Repository root (optional; default: auto-detect from cwd)")
-	backendKind := fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: SAW_BACKEND)")
+	fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: SAW_BACKEND)")
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -420,33 +487,24 @@ func runScout(args []string) error {
 		implOut = filepath.Join(repoRoot, "docs", "IMPL", fmt.Sprintf("IMPL-%s.md", slug))
 	}
 
-	// Locate and read scout.md.
+	// Locate and read scout.md to verify it exists (engine will re-read it).
 	scoutMdPath, err := locatePromptFile(filepath.Join("prompts", "scout.md"))
 	if err != nil {
 		return fmt.Errorf("scout: %w", err)
 	}
-	scoutMdBytes, err := os.ReadFile(scoutMdPath)
-	if err != nil {
-		return fmt.Errorf("scout: cannot read scout.md: %w", err)
-	}
 
-	prompt := fmt.Sprintf("%s\n\n## Feature\n%s\n\n## IMPL Output Path\n%s\n",
-		string(scoutMdBytes), *feature, implOut)
-
-	b, err := resolveBackend(*backendKind, backend.Config{})
-	if err != nil {
-		return fmt.Errorf("scout: %w", err)
-	}
-	runner := agent.NewRunner(b, nil)
-	spec := types.AgentSpec{Letter: "scout", Prompt: prompt}
+	sawRepo := filepath.Dir(filepath.Dir(scoutMdPath))
 
 	ctx := context.Background()
-	result, err := runner.Execute(ctx, &spec, repoRoot)
-	if err != nil {
+	if err := engine.RunScout(ctx, engine.RunScoutOpts{
+		Feature:     *feature,
+		RepoPath:    repoRoot,
+		SAWRepoPath: sawRepo,
+		IMPLOutPath: implOut,
+	}, func(s string) { fmt.Print(s) }); err != nil {
 		return fmt.Errorf("scout: %w", err)
 	}
 
-	fmt.Println(result)
 	return nil
 }
 
@@ -458,7 +516,7 @@ func runScaffold(args []string) error {
 	fs := flag.NewFlagSet("scaffold", flag.ContinueOnError)
 	implPath := fs.String("impl", "", "Path to IMPL doc (required)")
 	repoFlag := fs.String("repo", "", "Repository root (optional; default: auto-detect from cwd)")
-	backendKind := fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: SAW_BACKEND)")
+	fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: SAW_BACKEND)")
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -492,37 +550,21 @@ func runScaffold(args []string) error {
 		}
 	}
 
-	// Parse IMPL doc to validate it exists and is parseable.
-	if _, err := protocol.ParseIMPLDoc(absImpl); err != nil {
-		return fmt.Errorf("scaffold: cannot parse IMPL doc: %w", err)
-	}
-
-	// Locate and read scaffold-agent.md.
+	// Locate scaffold-agent.md to verify it exists and resolve sawRepo.
 	scaffoldMdPath, err := locatePromptFile(filepath.Join("prompts", "scaffold-agent.md"))
 	if err != nil {
 		return fmt.Errorf("scaffold: %w", err)
 	}
-	scaffoldMdBytes, err := os.ReadFile(scaffoldMdPath)
-	if err != nil {
-		return fmt.Errorf("scaffold: cannot read scaffold-agent.md: %w", err)
-	}
 
-	prompt := fmt.Sprintf("%s\n\n## IMPL Doc Path\n%s\n", string(scaffoldMdBytes), absImpl)
-
-	b, err := resolveBackend(*backendKind, backend.Config{})
-	if err != nil {
-		return fmt.Errorf("scaffold: %w", err)
-	}
-	runner := agent.NewRunner(b, nil)
-	spec := types.AgentSpec{Letter: "scaffold", Prompt: prompt}
+	sawRepo := filepath.Dir(filepath.Dir(scaffoldMdPath))
 
 	ctx := context.Background()
-	result, err := runner.Execute(ctx, &spec, repoRoot)
-	if err != nil {
+	if err := engine.RunScaffold(ctx, absImpl, repoRoot, sawRepo, func(ev engine.Event) {
+		fmt.Println(ev.Event)
+	}); err != nil {
 		return fmt.Errorf("scaffold: %w", err)
 	}
 
-	fmt.Println(result)
 	return nil
 }
 
