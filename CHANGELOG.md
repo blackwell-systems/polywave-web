@@ -7,6 +7,7 @@ All notable changes to this project will be documented in this file.
 ### Added
 
 **UI refinements**
+- **Agent color coding** — consistent color scheme across all UI components: A=blue, B=green, C=orange, D=purple, E=pink, F=cyan, G=amber, H=violet, I=emerald, J=red, K=indigo; applied to agent cards (left border + header), dependency graph nodes, wave timeline badges
 - **Sidebar dark mode background** — sidebar nav uses `#191919` background in dark mode for improved contrast
 - **Double-click sidebar expand** — double-clicking the collapsed sidebar expands it
 - **Sidebar width constraints** — sidebar capped at 10% screen width (down from 40%), minimum 140px; gives main content area up to 90% of screen width
@@ -14,6 +15,7 @@ All notable changes to this project will be documented in this file.
 - **Conditional Pre-Mortem panel** — Pre-Mortem only auto-enabled if content exists
 - **Default panel order** — panels open in order: Pre-Mortem (if exists), Wave Structure, Dependency Graph, File Ownership
 - **Manual slug entry removed** — sidebar no longer includes manual slug input form
+- **Wider scrollbar** — scrollbar width increased to 18px (from 14px) for better visibility
 
 **E16 validator sub-rules (E16A/E16C)**
 - **E16A: required block presence** — `ValidateIMPLDoc` now enforces that `impl-file-ownership`, `impl-dep-graph`, and `impl-wave-structure` blocks all appear when any typed block is present; fires only when `blockCount > 0` so pre-v0.10.0 docs are unaffected

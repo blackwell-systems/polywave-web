@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
+import { getAgentColor } from '../../lib/agentColors'
 
 interface DependencyGraphPanelProps {
   dependencyGraphText?: string
@@ -81,20 +82,14 @@ const AGENT_GAP = 72
 const PAD_X = 60
 const PAD_Y = 40
 
-const AGENT_FILLS: Record<string, { bg: string; border: string; text: string }> = {
-  A: { bg: '#3b82f620', border: '#3b82f650', text: '#3b82f6' },
-  B: { bg: '#a855f720', border: '#a855f750', text: '#a855f7' },
-  C: { bg: '#f9731620', border: '#f9731650', text: '#f97316' },
-  D: { bg: '#14b8a620', border: '#14b8a650', text: '#14b8a6' },
-  E: { bg: '#ec489920', border: '#ec489950', text: '#ec4899' },
-  F: { bg: '#22c55e20', border: '#22c55e50', text: '#22c55e' },
-  G: { bg: '#6366f120', border: '#6366f150', text: '#6366f1' },
-  H: { bg: '#f4364620', border: '#f4364650', text: '#f43646' },
-  I: { bg: '#06b6d420', border: '#06b6d450', text: '#06b6d4' },
-  J: { bg: '#f59e0b20', border: '#f59e0b50', text: '#f59e0b' },
-  K: { bg: '#84cc1620', border: '#84cc1650', text: '#84cc16' },
+function getAgentFill(letter: string): { bg: string; border: string; text: string } {
+  const color = getAgentColor(letter)
+  return {
+    bg: `${color}20`,
+    border: `${color}50`,
+    text: color,
+  }
 }
-const DEFAULT_FILL = { bg: '#6b728020', border: '#6b728050', text: '#6b7280' }
 
 // Wave column colors — blends the hues of agents typically in that wave
 const WAVE_COLORS = [
@@ -189,7 +184,7 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
     for (const dep of node.agent.dependencies) {
       const source = nodeMap.get(dep)
       if (source && source.agent.wave !== node.agent.wave) {
-        const fill = AGENT_FILLS[node.agent.letter] || DEFAULT_FILL
+        const fill = getAgentFill(node.agent.letter)
         edges.push({ from: source, to: node, color: fill.border.replace('50', 'aa') })
       }
     }
@@ -281,7 +276,7 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
 
             {/* Nodes */}
             {nodes.map(node => {
-              const fill = AGENT_FILLS[node.agent.letter] || DEFAULT_FILL
+              const fill = getAgentFill(node.agent.letter)
               return (
                 <g
                   key={node.agent.letter}

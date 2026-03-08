@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react'
 import { AgentStatus } from '../types'
 import { Card, CardContent, CardHeader } from './ui/card'
 import { Badge } from './ui/badge'
+import { getAgentColor, getAgentColorWithOpacity } from '../lib/agentColors'
 
 interface AgentCardProps {
   agent: AgentStatus
@@ -31,9 +32,18 @@ export default function AgentCard({ agent }: AgentCardProps) {
   const agentOutput: string | undefined = agent.output
   const showOutput = (agent.status === 'running' || agent.status === 'complete') && agentOutput && agentOutput.length > 0
 
+  const agentColor = getAgentColor(agent.agent)
+  const agentBgColor = getAgentColorWithOpacity(agent.agent, 0.1)
+
   return (
-    <Card className="min-w-[200px] max-w-xs">
-      <CardHeader className="pb-3">
+    <Card
+      className="min-w-[200px] max-w-xs"
+      style={{ borderLeftWidth: '4px', borderLeftColor: agentColor }}
+    >
+      <CardHeader
+        className="pb-3"
+        style={{ backgroundColor: agentBgColor }}
+      >
         <div className="flex items-center justify-between">
           <span className="font-bold text-sm truncate mr-2">{agent.agent}</span>
           <Badge

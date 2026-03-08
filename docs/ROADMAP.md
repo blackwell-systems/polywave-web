@@ -27,11 +27,10 @@ Competitive positioning:
 - shadcn/ui migration for consistent design system
 
 ### 🚧 In Progress
-- **Wave 1 Active:** Review sidebar with 9-panel tabbed interface
-  - Agent A: Parser extensions (5 new IMPL sections)
-  - Agent B: API layer (6 new response fields)
-  - Agent C: TypeScript types
-  - Agent D: ReviewScreen refactor with shadcn Tabs
+- **v0.15.4 Visual Execution Dashboard** (Phase B complete: Agent color coding)
+  - ✅ Phase B: Agent color coding across UI (AgentCard, DependencyGraph, WaveStructure)
+  - ⏳ Phase A: Git activity sidebar with branch lanes (pending)
+  - ⏳ Phase C: Integration and polish (pending)
 
 ---
 

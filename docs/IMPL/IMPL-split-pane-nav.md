@@ -64,21 +64,16 @@ cross-agent type dependency.
 
 ### Dependency Graph
 
-```
-web/src/types.ts  (unchanged, read-only)
-web/src/api.ts    (unchanged, read-only)
-         |
-         v
-web/src/components/ImplList.tsx          [Agent A — new file]
-web/src/hooks/useResizableDivider.ts     [Agent B — new file]
-         |                                        |
-         +------------------+--------------------+
-                            |
-                            v
-web/src/App.tsx              [Agent C — modify]
-         |
-         v
-web/src/components/ReviewScreen.tsx      [Agent C — minor modify]
+```yaml type=impl-dep-graph
+Wave 1 (parallel):
+    [A] web/src/components/ImplList.tsx
+        ✓ root
+    [B] web/src/hooks/useResizableDivider.ts
+        ✓ root
+    [C] web/src/App.tsx
+        depends on: A, B
+    [C] web/src/components/ReviewScreen.tsx
+        depends on: A, B
 ```
 
 **Roots (no new dependencies):** `ImplList.tsx`, `useResizableDivider.ts`

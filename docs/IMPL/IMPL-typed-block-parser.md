@@ -136,7 +136,7 @@ Wave 3 (2 parallel agents, integration):
          Verify/fix doc_status casing ("active"/"complete" lowercase); surface PreMortem in IMPLDocResponse
          pkg/api/types.go (add PreMortemEntry, PreMortemRowEntry response types)
          pkg/api/server_test.go (verify doc_status and PreMortem in API responses)
-         depends on: [A] [S]
+         depends on: [A]
 
     [E] web/src/types.ts
          Add PreMortemRow, PreMortem interfaces
