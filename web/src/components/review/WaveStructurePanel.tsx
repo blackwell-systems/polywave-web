@@ -7,7 +7,7 @@ interface WaveStructurePanelProps {
   impl: IMPLDocResponse
 }
 
-type NodeType = 'orchestrator' | 'wave' | 'merge' | 'complete'
+type NodeType = 'orchestrator' | 'wave' | 'scaffold' | 'merge' | 'complete'
 
 interface TimelineNode {
   type: NodeType
@@ -15,10 +15,12 @@ interface TimelineNode {
   description?: string
   agents?: string[]
   agentCount?: number
+  scaffoldFiles?: number
 }
 
 const JEWEL_CONFIGS: Record<NodeType, { size: number; colors: [string, string, string] }> = {
   wave: { size: 20, colors: ['#93c5fd', '#3b82f6', '#1e40af'] },
+  scaffold: { size: 20, colors: ['#fcd34d', '#f59e0b', '#92400e'] },
   complete: { size: 20, colors: ['#c4b5fd', '#7c3aed', '#4c1d95'] },
   merge: { size: 12, colors: ['#cbd5e1', '#64748b', '#334155'] },
   orchestrator: { size: 12, colors: ['#cbd5e1', '#64748b', '#334155'] },
@@ -79,9 +81,9 @@ export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): J
 
   if (impl.scaffold.required) {
     nodes.push({
-      type: 'orchestrator',
+      type: 'scaffold',
       label: 'Scaffold',
-      description: `Create ${impl.scaffold.files.length} interface ${impl.scaffold.files.length === 1 ? 'file' : 'files'}`,
+      scaffoldFiles: impl.scaffold.files.length,
     })
   }
 
@@ -114,9 +116,9 @@ export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): J
           <div className="absolute left-[9px] top-2 bottom-2 w-px bg-border" />
 
           {nodes.map((node, i) => (
-            <div key={i} className={`relative ${i > 0 ? (node.type === 'wave' ? 'mt-6' : 'mt-4') : ''}`}>
+            <div key={i} className={`relative ${i > 0 ? (node.type === 'wave' || node.type === 'scaffold' ? 'mt-6' : 'mt-4') : ''}`}>
               {/* Dot on rail */}
-              <div className="absolute -left-8 flex items-center justify-center w-5" style={{ top: node.type === 'wave' ? 14 : 2 }}>
+              <div className="absolute -left-8 flex items-center justify-center w-5" style={{ top: node.type === 'wave' || node.type === 'scaffold' ? 14 : 2 }}>
                 <Jewel type={node.type} filled={isComplete} />
               </div>
 
@@ -143,6 +145,25 @@ export default function WaveStructurePanel({ impl }: WaveStructurePanelProps): J
                     })}
                     <span className="text-xs text-muted-foreground ml-1">
                       {node.agentCount} parallel
+                    </span>
+                  </div>
+                </div>
+              ) : node.type === 'scaffold' ? (
+                <div>
+                  <div className="text-sm font-semibold text-foreground mb-2">{node.label}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div
+                      className="flex items-center justify-center w-12 h-12 rounded-lg font-semibold text-base border-2"
+                      style={{
+                        backgroundColor: 'rgba(245,158,11,0.1)',
+                        borderColor: 'rgba(245,158,11,0.4)',
+                        color: '#d97706',
+                      }}
+                    >
+                      S
+                    </div>
+                    <span className="text-xs text-muted-foreground ml-1">
+                      {node.scaffoldFiles} interface {node.scaffoldFiles === 1 ? 'file' : 'files'}
                     </span>
                   </div>
                 </div>
