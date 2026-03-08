@@ -9,6 +9,7 @@ type State int
 
 const (
 	ScoutPending    State = iota // Scout agent is analyzing the codebase (SCOUT_PENDING)
+	ScoutValidating              // Scout has written the IMPL doc; E16 validation in progress (SCOUT_VALIDATING)
 	NotSuitable                  // feature was rejected by the suitability gate; terminal
 	Reviewed                     // IMPL doc has been reviewed and approved by a human
 	ScaffoldPending              // Scaffold agent is creating shared type scaffold files
@@ -25,6 +26,8 @@ func (s State) String() string {
 	switch s {
 	case ScoutPending:
 		return "ScoutPending"
+	case ScoutValidating:
+		return "ScoutValidating"
 	case NotSuitable:
 		return "NotSuitable"
 	case Reviewed:
@@ -73,6 +76,7 @@ type IMPLDoc struct {
 	InterfaceContractsText string
 	DependencyGraphText    string
 	PostMergeChecklistText string
+	PreMortem              *PreMortem // parsed ## Pre-Mortem section; nil if absent
 }
 
 // FileOwnershipInfo holds parsed data for one row of the file ownership table.
@@ -129,4 +133,25 @@ type ScaffoldFile struct {
 	FilePath   string
 	Contents   string
 	ImportPath string
+}
+
+// PreMortemRow is one row of the ## Pre-Mortem risk table.
+type PreMortemRow struct {
+	Scenario   string
+	Likelihood string
+	Impact     string
+	Mitigation string
+}
+
+// PreMortem holds the parsed ## Pre-Mortem section.
+type PreMortem struct {
+	OverallRisk string        // "low", "medium", or "high"
+	Rows        []PreMortemRow
+}
+
+// ValidationError is one error returned by ValidateIMPLDoc (E16 Go validator).
+type ValidationError struct {
+	BlockType  string // e.g. "impl-file-ownership", "impl-dep-graph", "impl-wave-structure", "impl-completion-report"
+	LineNumber int    // 1-based line number of the opening fence in the IMPL doc
+	Message    string // human-readable description of the violation
 }
