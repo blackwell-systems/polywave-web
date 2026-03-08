@@ -5,8 +5,8 @@
 **SAW is the only agent coordination framework that solves merge conflicts by design — parallel agents own disjoint files, branches merge cleanly, and humans review the plan before any code is written.**
 
 Competitive positioning:
-- Chief: simple loop, great DX, serial execution — one agent, one task
-- Plan Cascade: parallel stories, rich desktop app, complex surface area, vague on merge safety
+- Single-agent tools (simple loop, great DX, serial execution — one agent, one task)
+- Parallel-capable tools (parallel stories, rich desktop app, complex surface area, vague on merge safety)
 - SAW: protocol-driven parallelism, hard merge safety guarantees, human review gate, zero merge conflicts by construction
 
 Distribution strategy: `/saw` skill + subagents for orchestration (already works, zero setup); Wails desktop app for rich wave monitoring with native OS distribution.
@@ -321,6 +321,22 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ---
 
+### v0.18.0-K — Large IMPL Doc Scalability
+
+**Why:** Phase 1+2 together produce 14-agent IMPL docs. The ReviewScreen already panels the doc into structured views so human readability isn't the problem. The problem is engine-side: every Wave agent launched receives the full doc as context — token waste that scales O(N²) with agent count. Agent A gets all 13 other agents' full prompts even though it only needs its own section and the shared contracts.
+
+**Scope:**
+- `GET /api/impl/{slug}/agent/{letter}/context` — serve the trimmed per-agent context payload: that agent's prompt section + interface contracts + file ownership table + scaffolds + quality gates. Used by the orchestrator at launch time.
+- Wave launch path: pass per-agent context payload instead of full IMPL doc when invoking Wave agents via `/api/wave/{slug}/start`
+- ReviewScreen: "Agent Context" toggle on each agent card — shows the trimmed payload that agent received at launch (debugging: "why did agent B miss the contract?")
+- Lazy-load IMPL doc sections in ReviewScreen: fetch and parse only the active panel, not the full doc on every view switch
+
+**Success criteria:**
+- 14-agent IMPL doc launches with the same per-agent context size as a 5-agent one
+- ReviewScreen initial load stays under 1 second regardless of IMPL doc length
+
+---
+
 ### v0.18.0-J — Pre-Wave Quality Gates Preview
 
 **Why:** v0.18.0-F shows quality gate *results* after wave completion. But Scout writes the `## Quality Gates` section at planning time — the gates are configured before any agent launches. Surfacing them during review gives the user a chance to adjust gate configuration before approving, and sets expectations for what will block the merge.
@@ -365,7 +381,27 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ### v0.19.5 — Multi-Provider Backends
 
-OpenAI, LiteLLM, Ollama support via `--backend` flag. Auto-detection from env vars. Tool-use format translation layer.
+SAW agents are Claude-native today. This milestone decouples the engine from Anthropic's API so any model with tool-use support can run Scout, Wave, and Scaffold agents.
+
+**Providers:**
+- **OpenAI** — GPT-4o, o3, o4-mini via OpenAI API
+- **LiteLLM** — proxy gateway covering 100+ models; single config for team deployments
+- **Ollama** — local inference (Llama 3, Qwen, Mistral, etc.); fully air-gapped option
+- **Kimi** (Moonshot AI) — strong code reasoning, long context; competitive on cost
+- **Google Gemini** — Gemini 2.5 Pro via Vertex AI or AI Studio
+- Any provider with OpenAI-compatible `/v1/chat/completions` endpoint
+
+**Interface:**
+- `--backend claude|openai|litellm|ollama|gemini|kimi` flag on all `saw` commands
+- Auto-detection from env vars: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MOONSHOT_API_KEY`, `OLLAMA_HOST`
+- Per-agent model override: Scout on Claude Opus, Wave agents on a cheaper model
+- `saw backends list` — show detected providers and their status
+
+**Translation layer:**
+- Normalize tool-use format across providers (Claude's `tool_use` vs OpenAI's `tool_calls`)
+- Streaming response normalization (SSE format differs per provider)
+- Token counting abstraction (each provider has different counting semantics)
+- Retry/backoff per provider's rate limit headers
 
 ### v0.20.0 — MCP Server
 
