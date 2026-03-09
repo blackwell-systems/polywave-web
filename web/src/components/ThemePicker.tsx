@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react'
-import { THEMES, ThemeDef } from '../lib/themes'
-
-export type ThemeId = string  // open — any theme id from themes.ts, plus 'default'
+import { useState, useEffect, useRef } from 'react'
+import { THEMES, ThemeDef, varToHsl } from '../lib/themes'
 
 const ALL_THEME_CLASSES = THEMES.map(t => `theme-${t.id}`)
 const STORAGE_KEY = 'saw-theme'
@@ -13,9 +11,7 @@ function isDarkMode(): boolean {
 function applyTheme(id: string) {
   const html = document.documentElement
   ALL_THEME_CLASSES.forEach(cls => html.classList.remove(cls))
-  if (id !== 'default') {
-    html.classList.add(`theme-${id}`)
-  }
+  if (id !== 'default') html.classList.add(`theme-${id}`)
 }
 
 function themeMode(id: string): 'light' | 'dark' | 'default' {
@@ -23,52 +19,175 @@ function themeMode(id: string): 'light' | 'dark' | 'default' {
   return THEMES.find(t => t.id === id)?.mode ?? 'dark'
 }
 
-export default function ThemePicker(): JSX.Element {
-  const [theme, setTheme] = useState<string>(() => {
-    return localStorage.getItem(STORAGE_KEY) ?? 'default'
-  })
-  const [dark, setDark] = useState<boolean>(isDarkMode)
+function SwatchDot({ theme, active, onClick }: { theme: ThemeDef; active: boolean; onClick: () => void }) {
+  const bg      = varToHsl(theme.vars['--background'] ?? '0 0% 20%')
+  const accent  = varToHsl(theme.vars['--primary']    ?? '0 0% 60%')
+  const border  = varToHsl(theme.vars['--border']     ?? '0 0% 40%')
 
-  // Watch for dark class changes (triggered by DarkModeToggle)
+  return (
+    <button
+      title={theme.label}
+      onClick={onClick}
+      style={{
+        width: 28,
+        height: 28,
+        borderRadius: 6,
+        background: bg,
+        border: active ? `2px solid ${accent}` : `1.5px solid ${border}`,
+        position: 'relative',
+        flexShrink: 0,
+        boxShadow: active ? `0 0 0 2px ${accent}` : undefined,
+        cursor: 'pointer',
+        overflow: 'hidden',
+      }}
+    >
+      {/* accent stripe at bottom */}
+      <span style={{
+        position: 'absolute',
+        bottom: 0, left: 0, right: 0,
+        height: 7,
+        background: accent,
+        opacity: 0.85,
+      }} />
+    </button>
+  )
+}
+
+export default function ThemePicker(): JSX.Element {
+  const [theme, setTheme]   = useState<string>(() => localStorage.getItem(STORAGE_KEY) ?? 'default')
+  const [dark, setDark]     = useState<boolean>(isDarkMode)
+  const [open, setOpen]     = useState(false)
+  const [search, setSearch] = useState('')
+  const popoverRef          = useRef<HTMLDivElement>(null)
+  const btnRef              = useRef<HTMLButtonElement>(null)
+
+  // Watch dark class changes
   useEffect(() => {
-    const observer = new MutationObserver(() => setDark(isDarkMode()))
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
-    return () => observer.disconnect()
+    const obs = new MutationObserver(() => setDark(isDarkMode()))
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
   }, [])
 
-  // Reset theme to default when mode flips and current theme doesn't belong to new mode
+  // Reset on mode flip if current theme doesn't match new mode
   useEffect(() => {
     const mode = themeMode(theme)
     if (mode === 'default') return
-    if ((mode === 'light' && dark) || (mode === 'dark' && !dark)) {
-      setTheme('default')
-    }
+    if ((mode === 'light' && dark) || (mode === 'dark' && !dark)) setTheme('default')
   }, [dark])
 
-  // Apply theme class + persist whenever theme changes
+  // Apply + persist
   useEffect(() => {
     applyTheme(theme)
     localStorage.setItem(STORAGE_KEY, theme)
   }, [theme])
 
-  // Apply on mount (handles page reload)
-  useEffect(() => {
-    applyTheme(localStorage.getItem(STORAGE_KEY) ?? 'default')
-  }, [])
+  // Apply on mount
+  useEffect(() => { applyTheme(localStorage.getItem(STORAGE_KEY) ?? 'default') }, [])
 
-  const visible: ThemeDef[] = THEMES.filter(t => dark ? t.mode === 'dark' : t.mode === 'light')
+  // Close popover on outside click
+  useEffect(() => {
+    if (!open) return
+    const handler = (e: MouseEvent) => {
+      if (!popoverRef.current?.contains(e.target as Node) &&
+          !btnRef.current?.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [open])
+
+  const q = search.toLowerCase()
+  const visible = THEMES.filter(t =>
+    t.mode === (dark ? 'dark' : 'light') &&
+    (q === '' || t.label.toLowerCase().includes(q))
+  )
+
+  const currentTheme = THEMES.find(t => t.id === theme)
+  const label = currentTheme?.label ?? 'Default'
+
+  function pick(id: string) {
+    setTheme(id)
+    setOpen(false)
+    setSearch('')
+  }
 
   return (
-    <select
-      value={theme}
-      onChange={e => setTheme(e.target.value)}
-      className="text-xs px-2 py-1 rounded-md border border-border bg-background text-foreground hover:bg-muted transition-colors cursor-pointer"
-      title="Color theme"
-    >
-      <option value="default">Default</option>
-      {visible.map(t => (
-        <option key={t.id} value={t.id}>{t.label}</option>
-      ))}
-    </select>
+    <div className="relative flex items-stretch">
+      <button
+        ref={btnRef}
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-2 px-3 text-xs text-foreground hover:bg-muted transition-colors border-r border-border"
+        title="Color theme"
+      >
+        {currentTheme && (
+          <span style={{
+            width: 12, height: 12, borderRadius: 3, flexShrink: 0,
+            background: varToHsl(currentTheme.vars['--primary'] ?? '0 0% 60%'),
+          }} />
+        )}
+        {label}
+      </button>
+
+      {open && (
+        <div
+          ref={popoverRef}
+          className="absolute top-full right-0 z-50 mt-1 bg-popover border border-border rounded-lg shadow-xl flex flex-col"
+          style={{ width: 280, maxHeight: '70vh' }}
+        >
+          {/* Search */}
+          <div className="px-3 py-2 border-b border-border shrink-0">
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search themes…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full text-xs bg-background border border-border rounded px-2 py-1 outline-none focus:ring-1 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+            />
+          </div>
+
+          {/* Default option */}
+          <div className="px-3 pt-2 pb-1 shrink-0">
+            <button
+              onClick={() => pick('default')}
+              className={`w-full text-left text-xs px-2 py-1 rounded transition-colors ${
+                theme === 'default'
+                  ? 'bg-primary/10 text-primary font-medium'
+                  : 'text-muted-foreground hover:bg-muted'
+              }`}
+            >
+              Default
+            </button>
+          </div>
+
+          {/* Swatch grid */}
+          <div className="overflow-y-auto px-3 pb-3">
+            {visible.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-4 text-center">No themes match</p>
+            ) : (
+              <div
+                className="grid gap-1.5"
+                style={{ gridTemplateColumns: 'repeat(auto-fill, 28px)' }}
+              >
+                {visible.map(t => (
+                  <SwatchDot
+                    key={t.id}
+                    theme={t}
+                    active={t.id === theme}
+                    onClick={() => pick(t.id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Hover label — shown at bottom */}
+          <div className="px-3 py-1.5 border-t border-border shrink-0 text-xs text-muted-foreground truncate">
+            {currentTheme ? currentTheme.label : 'Default'}
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

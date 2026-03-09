@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest",
+    "themes:update": "node scripts/fetch-base16-themes.mjs"
   },
   "dependencies": {
     "@radix-ui/react-tabs": "^1.1.13",
