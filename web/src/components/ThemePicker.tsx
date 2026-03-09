@@ -31,17 +31,17 @@ function SwatchDot({ theme, active, onClick, onHover }: {
       onClick={onClick}
       onMouseEnter={() => onHover(theme.label)}
       onMouseLeave={() => onHover(null)}
+      className="group relative"
       style={{
         width: 28,
         height: 28,
         borderRadius: 6,
         background: bg,
         border: active ? `2px solid ${accent}` : `1.5px solid ${border}`,
-        position: 'relative',
         flexShrink: 0,
         boxShadow: active ? `0 0 0 2px ${accent}` : undefined,
         cursor: 'pointer',
-        overflow: 'hidden',
+        overflow: 'visible',
       }}
     >
       {/* accent stripe at bottom */}
@@ -49,9 +49,15 @@ function SwatchDot({ theme, active, onClick, onHover }: {
         position: 'absolute',
         bottom: 0, left: 0, right: 0,
         height: 7,
+        borderRadius: '0 0 4px 4px',
         background: accent,
         opacity: 0.85,
+        overflow: 'hidden',
       }} />
+      {/* floating label on hover */}
+      <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-popover border border-border px-1.5 py-0.5 text-[10px] text-foreground opacity-0 group-hover:opacity-100 z-50 shadow-sm">
+        {theme.label}
+      </span>
     </button>
   )
 }
@@ -112,8 +118,6 @@ export default function ThemePicker(): JSX.Element {
 
   function pick(id: string) {
     setTheme(id)
-    setOpen(false)
-    setSearch('')
   }
 
   return (
