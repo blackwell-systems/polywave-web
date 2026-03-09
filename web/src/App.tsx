@@ -238,7 +238,19 @@ export default function App() {
           </div>
         ) : (
           <>
-            <div className="flex flex-col overflow-y-auto shrink-0 border-r relative bg-muted" style={{ width: leftWidthPx }}>
+            {/* Outer wrapper: positioning context for the toggle button, no overflow */}
+            <div className="relative shrink-0" style={{ width: leftWidthPx }}>
+              {/* Inner div: scroll container, separate from button positioning */}
+              <div className="flex flex-col overflow-y-auto h-full border-r bg-muted w-full">
+                <ImplList
+                  entries={entries}
+                  selectedSlug={selectedSlug}
+                  onSelect={handleSelect}
+                  onDelete={handleDelete}
+                  loading={loading}
+                  repos={repos}
+                />
+              </div>
               <button
                 onClick={() => setSidebarCollapsed(true)}
                 title="Collapse sidebar"
@@ -246,14 +258,6 @@ export default function App() {
               >
                 <ChevronLeft size={12} />
               </button>
-              <ImplList
-                entries={entries}
-                selectedSlug={selectedSlug}
-                onSelect={handleSelect}
-                onDelete={handleDelete}
-                loading={loading}
-                repos={repos}
-              />
             </div>
             <div {...dividerProps} />
           </>
