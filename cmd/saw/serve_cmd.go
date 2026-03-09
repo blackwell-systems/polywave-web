@@ -65,11 +65,27 @@ func runServe(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	if !*noBrowser {
-		openBrowser("http://" + *addr)
+	// Auto-detect TLS: if server.crt and server.key exist in the repo root,
+	// serve HTTPS (which enables HTTP/2 automatically via Go's stdlib).
+	certFile := filepath.Join(repoRoot, "server.crt")
+	keyFile := filepath.Join(repoRoot, "server.key")
+	_, certErr := os.Stat(certFile)
+	_, keyErr := os.Stat(keyFile)
+	useTLS := certErr == nil && keyErr == nil
+
+	scheme := "http"
+	if useTLS {
+		scheme = "https"
 	}
 
-	fmt.Printf("saw serve: listening on http://%s\n", *addr)
+	if !*noBrowser {
+		openBrowser(scheme + "://" + *addr)
+	}
+
+	fmt.Printf("saw serve: listening on %s://%s\n", scheme, *addr)
+	if useTLS {
+		return s.StartTLS(ctx, certFile, keyFile)
+	}
 	return s.Start(ctx)
 }
 

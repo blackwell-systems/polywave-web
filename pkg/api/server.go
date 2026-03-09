@@ -111,14 +111,29 @@ func New(cfg Config) *Server {
 // error occurs. Callers (cmd/saw/serve_cmd.go) pass a context that is
 // cancelled on SIGINT.
 func (s *Server) Start(ctx context.Context) error {
+	return s.StartTLS(ctx, "", "")
+}
+
+// StartTLS starts the server. When certFile and keyFile are both non-empty it
+// serves HTTPS (enabling HTTP/2 automatically via Go's stdlib). When they are
+// empty it falls back to plain HTTP/1.1.
+func (s *Server) StartTLS(ctx context.Context, certFile, keyFile string) error {
 	srv := &http.Server{
 		Addr:    s.cfg.Addr,
 		Handler: s.mux,
 	}
 
+	useTLS := certFile != "" && keyFile != ""
+
 	errCh := make(chan error, 1)
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		var err error
+		if useTLS {
+			err = srv.ListenAndServeTLS(certFile, keyFile)
+		} else {
+			err = srv.ListenAndServe()
+		}
+		if err != nil && err != http.ErrServerClosed {
 			errCh <- err
 		}
 	}()

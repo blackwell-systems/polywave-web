@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.24.0] - 2026-03-09
+
+### Added
+
+- **Automatic TLS + HTTP/2** (`pkg/api/server.go`, `cmd/saw/serve_cmd.go`) — `saw serve` now auto-detects `server.crt` and `server.key` in the repo root. When both files exist, it serves HTTPS via `ListenAndServeTLS`, which automatically enables HTTP/2 in Go's stdlib. This eliminates the browser HTTP/1.1 6-connection-per-origin limit that caused Settings saves (and other POST requests) to hang indefinitely when multiple SSE `EventSource` connections were open. Plain HTTP/1.1 is the fallback when no cert files are found.
+- **`Server.StartTLS(ctx, certFile, keyFile string) error`** (`pkg/api/server.go`) — new method; `Start` delegates to `StartTLS("", "")` for backwards compatibility.
+
+### Fixed
+
+- **Settings save button hang** — POST `/api/config` was blocked by exhausted HTTP/1.1 connection slots (browsers limit 6 concurrent connections per origin; the wave events, scout events, revise events, chat events, and global events SSE streams consumed all slots). HTTP/2 multiplexes all streams over a single connection, resolving the hang.
+
+---
+
 ## [0.23.0] - 2026-03-09
 
 ### Changed
