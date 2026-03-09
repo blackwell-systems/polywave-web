@@ -240,22 +240,29 @@ export default function App() {
 
   return (
     <>
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
-      <header className="flex items-stretch justify-between h-14 border-b shrink-0">
-        <div className="flex items-stretch">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-background via-background to-muted/20 overflow-hidden">
+      <header className="relative flex items-stretch justify-between h-16 backdrop-blur-xl bg-background/80 border-b border-border/50 shrink-0 shadow-sm">
+        {/* Gradient overlay for visual depth */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-violet-500/5 pointer-events-none" />
+        
+        <div className="relative flex items-stretch">
           <button
             onClick={() => setLiveView(v => v === 'scout' ? null : 'scout')}
-            className="flex items-center justify-center text-sm font-medium px-6 transition-colors border-r bg-blue-50/60 hover:bg-blue-100/80 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 dark:border-blue-800"
+            className="group relative flex items-center justify-center text-sm font-semibold px-8 transition-all duration-200 border-r border-border/50 overflow-hidden"
           >
-            New Plan
+            {/* Gradient background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-violet-500 opacity-90 group-hover:opacity-100 transition-opacity" />
+            {/* Shine effect on hover */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+            <span className="relative text-white drop-shadow-sm">New Plan</span>
           </button>
           <button
             onClick={() => setShowPalette(true)}
-            className="flex items-center gap-2 px-4 text-xs text-muted-foreground border-r border-border hover:bg-muted hover:text-foreground transition-colors"
+            className="flex items-center gap-2 px-5 text-xs text-muted-foreground border-r border-border/50 hover:bg-muted/50 hover:text-foreground transition-all duration-150 group"
             title="Search plans (⌘K)"
           >
-            <Search size={13} />
-            <kbd className="font-mono text-[10px] hidden sm:inline">⌘K</kbd>
+            <Search size={14} className="group-hover:scale-110 transition-transform" />
+            <kbd className="font-mono text-[10px] hidden sm:inline px-1.5 py-0.5 rounded bg-muted/50 border border-border/50 group-hover:border-border transition-colors">⌘K</kbd>
           </button>
         </div>
         <div className="flex items-stretch">
@@ -273,11 +280,11 @@ export default function App() {
                   <Pencil size={11} className="opacity-0 group-hover:opacity-50 transition-opacity shrink-0" />
                 </button>
                 {pickerOpen === field && (
-                  <div className="absolute top-full left-0 mt-1 z-50 bg-popover border border-border rounded-md shadow-lg p-2 w-64">
+                  <div className="absolute top-full left-0 mt-2 z-50 bg-popover/95 backdrop-blur-xl border border-border rounded-lg shadow-2xl p-3 w-72 animate-in fade-in slide-in-from-top-2 duration-200">
                     <input
                       autoFocus
                       list="header-model-options"
-                      className="w-full text-sm px-2 py-1 bg-background border border-border rounded text-foreground outline-none focus:ring-1 focus:ring-ring font-mono"
+                      className="w-full text-sm px-3 py-2 bg-background/50 backdrop-blur border border-border rounded-md text-foreground outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 font-mono transition-all"
                       value={pickerValue}
                       onChange={e => setPickerValue(e.target.value)}
                       onKeyDown={e => {
@@ -296,14 +303,23 @@ export default function App() {
           })}
           <ThemePicker />
           <DarkModeToggle />
-          <button onClick={() => setShowSettings(s => !s)} title="Settings" className="flex items-center justify-center px-4 border-l border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+          <button 
+            onClick={() => setShowSettings(s => !s)} 
+            title="Settings" 
+            className="flex items-center justify-center px-4 border-l border-border/50 text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-150 hover:scale-105"
+          >
             <Settings size={16} />
           </button>
           <div
             title={sseConnected ? 'Live updates connected' : 'Live updates disconnected'}
-            className={`flex items-center justify-center px-3 border-l border-border`}
+            className="flex items-center justify-center px-4 border-l border-border/50"
           >
-            <span className={`w-2 h-2 rounded-full ${sseConnected ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]' : 'bg-muted-foreground/40'}`} />
+            <div className="relative">
+              <span className={`block w-2 h-2 rounded-full transition-all duration-300 ${sseConnected ? 'bg-green-500' : 'bg-muted-foreground/40'}`} />
+              {sseConnected && (
+                <span className="absolute inset-0 w-2 h-2 rounded-full bg-green-500 animate-ping" />
+              )}
+            </div>
           </div>
         </div>
       </header>
