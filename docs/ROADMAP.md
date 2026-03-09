@@ -30,7 +30,7 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ---
 
-## Current Status (v0.19.0)
+## Current Status (v0.20.3)
 
 ### ✅ Shipped
 
@@ -58,6 +58,8 @@ scout-and-wave-app/      Wails desktop app (future)
 - Desktop notifications: browser Notification API, fires on scout/wave/revise complete
 - Auto-refresh sidebar: IMPL list refreshes immediately on scout complete
 - Delete IMPL: hover ✕ button with confirm dialog, removes IMPL doc from disk
+- StubReportPanel: E20 stub scan output with "clean" or "stubs detected" badges
+- QualityGatesPanel: E21 gate definitions with command/required/optional/description table
 
 **Streaming**
 - PTY + `--output-format stream-json` pipeline: per-event real-time streaming
@@ -484,20 +486,27 @@ generation 4+: cycle with saturation variation
 ## Current Focus
 
 **Completed recently:**
+- ✅ v0.20.3 — Multi-repo visual hierarchy (three-level: repo → wave → agent)
+- ✅ v0.20.2 — Sticky footer for action buttons
 - ✅ v0.20.0 — Golden angle color system (26 colors, multi-generation IDs, dark mode)
 - ✅ v0.17.0-A — Merge button (POST /api/wave/{slug}/merge with SSE streaming)
 - ✅ v0.17.0-B — Post-merge test runner (reads test_command, streams output)
 - ✅ v0.17.0-C — File diff viewer (FileDiffPanel with syntax highlighting)
+- ✅ v0.17.0-C — StubReportPanel (E20 stub scan output)
+- ✅ v0.17.0-C — QualityGatesPanel (E21 gate definitions)
 - ✅ v0.18.0-A — Scout context panel (attach files, add constraints)
 - ✅ v0.18.0-B — Chat with Claude (Q&A about IMPL doc before approval)
 - ✅ v0.18.0-C — Settings screen (repo, agent models, quality gates, appearance)
+
 
 **Next:** Finish Phase 1 — close the remaining GUI loop gaps
 - v0.17.0-D — **Worktree manager** (clean up stale branches in GUI)
 
 **After that:** Remaining Phase 2 intelligence features
-- v0.18.0-F — Quality gates panel (show gate results after wave completion)
 - v0.18.0-K — Large IMPL doc scalability (lazy-load panels, per-agent context trim)
+- v0.18.0-D — Failure type action buttons (transient/fixable/needs_replan/escalate/timeout)
+- v0.18.0-H — NOT SUITABLE full research view
+- v0.18.0-I — Scaffold build failure detail
 
 **Then:** v0.19.5 — Wails desktop app. Engine extraction complete — import `scout-and-wave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
 
