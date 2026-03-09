@@ -201,6 +201,7 @@ func mapFileOwnership(ownership map[string]etypes.FileOwnershipInfo) []FileOwner
 			Wave:      info.Wave,
 			Action:    info.Action,
 			DependsOn: info.DependsOn,
+			Repo:      info.Repo,
 		})
 	}
 	return entries

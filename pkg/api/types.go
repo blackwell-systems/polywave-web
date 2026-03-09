@@ -47,6 +47,7 @@ type FileOwnershipEntry struct {
 	Wave      int    `json:"wave"`
 	Action    string `json:"action"`     // "new", "modify", "delete", or ""
 	DependsOn string `json:"depends_on"` // populated when 4th column is "Depends On"
+	Repo      string `json:"repo,omitempty"` // 5th column for cross-repo waves (e.g. "scout-and-wave-web")
 }
 
 // WaveInfo describes one wave in the IMPL doc.

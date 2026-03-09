@@ -11,6 +11,7 @@ export interface FileOwnershipEntry {
   wave: number
   action: string // "new", "modify", "delete", or ""
   depends_on: string // populated when 4th column is "Depends On"
+  repo?: string // 5th column for cross-repo waves (e.g. "scout-and-wave-web")
 }
 
 export interface WaveInfo {

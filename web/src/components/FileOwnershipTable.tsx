@@ -56,6 +56,7 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
       ? e.depends_on && e.depends_on !== ''
       : e.action && e.action !== 'unknown'
   )
+  const hasRepo = fileOwnership.some(e => e.repo && e.repo !== "")
 
   const sorted = [...fileOwnership].sort((a, b) => {
     const isAScaffold = a.agent.toLowerCase() === 'scaffold'
@@ -108,6 +109,7 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[50%]">File</TableHead>
                     <TableHead>Agent</TableHead>
+                    {hasRepo && <TableHead>Repo</TableHead>}
                     {hasWaves && <TableHead className={`w-[80px] ${isScaffoldGroup ? 'opacity-0' : ''}`}>Wave</TableHead>}
                     {hasCol4 && <TableHead>{col4Label}</TableHead>}
                   </TableRow>
@@ -137,6 +139,11 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
                         {hasCol4 && (
                           <TableCell className="capitalize text-sm opacity-70">
                             {isCol4DependsOn ? (entry.depends_on || '') : (entry.action || '')}
+                          </TableCell>
+                        )}
+                        {hasRepo && (
+                          <TableCell className="text-sm opacity-70">
+                            {entry.repo || ""}
                           </TableCell>
                         )}
                       </TableRow>
