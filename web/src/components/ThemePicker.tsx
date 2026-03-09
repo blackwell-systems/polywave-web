@@ -19,15 +19,18 @@ function themeMode(id: string): 'light' | 'dark' | 'default' {
   return THEMES.find(t => t.id === id)?.mode ?? 'dark'
 }
 
-function SwatchDot({ theme, active, onClick }: { theme: ThemeDef; active: boolean; onClick: () => void }) {
+function SwatchDot({ theme, active, onClick, onHover }: {
+  theme: ThemeDef; active: boolean; onClick: () => void; onHover: (label: string | null) => void
+}) {
   const bg      = varToHsl(theme.vars['--background'] ?? '0 0% 20%')
   const accent  = varToHsl(theme.vars['--primary']    ?? '0 0% 60%')
   const border  = varToHsl(theme.vars['--border']     ?? '0 0% 40%')
 
   return (
     <button
-      title={theme.label}
       onClick={onClick}
+      onMouseEnter={() => onHover(theme.label)}
+      onMouseLeave={() => onHover(null)}
       style={{
         width: 28,
         height: 28,
@@ -54,10 +57,11 @@ function SwatchDot({ theme, active, onClick }: { theme: ThemeDef; active: boolea
 }
 
 export default function ThemePicker(): JSX.Element {
-  const [theme, setTheme]   = useState<string>(() => localStorage.getItem(STORAGE_KEY) ?? 'default')
-  const [dark, setDark]     = useState<boolean>(isDarkMode)
-  const [open, setOpen]     = useState(false)
-  const [search, setSearch] = useState('')
+  const [theme, setTheme]       = useState<string>(() => localStorage.getItem(STORAGE_KEY) ?? 'default')
+  const [dark, setDark]         = useState<boolean>(isDarkMode)
+  const [open, setOpen]         = useState(false)
+  const [search, setSearch]     = useState('')
+  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null)
   const popoverRef          = useRef<HTMLDivElement>(null)
   const btnRef              = useRef<HTMLButtonElement>(null)
 
@@ -176,15 +180,16 @@ export default function ThemePicker(): JSX.Element {
                     theme={t}
                     active={t.id === theme}
                     onClick={() => pick(t.id)}
+                    onHover={setHoveredLabel}
                   />
                 ))}
               </div>
             )}
           </div>
 
-          {/* Hover label — shown at bottom */}
+          {/* Label footer — shows hovered theme name, falls back to active */}
           <div className="px-3 py-1.5 border-t border-border shrink-0 text-xs text-muted-foreground truncate">
-            {currentTheme ? currentTheme.label : 'Default'}
+            {hoveredLabel ?? currentTheme?.label ?? 'Default'}
           </div>
         </div>
       )}
