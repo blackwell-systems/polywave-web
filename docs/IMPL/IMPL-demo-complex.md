@@ -55,7 +55,7 @@ Recommendation: Clear win. The complex dependency structure still allows signifi
 
 ### Dependency Graph
 
-```
+```yaml type=impl-dep-graph
 Wave 1 (4 parallel agents, all roots):
 
     [A] pkg/db/schema.go + migrations/
@@ -306,10 +306,10 @@ type EventTracker interface {
 ### File Ownership
 
 | File | Agent | Wave | Action | Depends On |
+|------|-------|------|--------|------------|
 | `pkg/types/entities.go` | Scaffold | 0 | new | - |
 | `pkg/api/contracts.go` | Scaffold | 0 | new | - |
 | `web/src/types/api.ts` | Scaffold | 0 | new | - |
-|------|-------|------|--------|------------|
 | `pkg/db/schema.go` | A | 1 | new | - |
 | `migrations/001_create_users.sql` | A | 1 | new | - |
 | `migrations/002_create_payments.sql` | A | 1 | new | - |
@@ -350,7 +350,7 @@ type EventTracker interface {
 
 ### Wave Structure
 
-```
+```yaml type=impl-wave-structure
 Wave 1:  [A] [B] [C] [D]    <- 4 parallel agents (all roots)
          |   |   |   |
        schema API auth cache
