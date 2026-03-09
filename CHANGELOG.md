@@ -12,6 +12,23 @@ All notable changes to this project will be documented in this file.
 
 - **Model badges always visible** — previously hidden when `saw.config.json` was absent (all states empty string). Now initialized to `claude-sonnet-4-6` so badges render on first launch before any config is saved.
 
+## [0.28.0] - 2026-03-09
+
+### Added
+
+- **Agent Observatory** — real-time tool call visibility in WaveBoard. Each agent card now displays a live ToolFeed showing Read/Write/Edit/Bash/Glob/Grep tool invocations with durations and error states. Color-coded tool badges (Read=blue, Write=amber, Edit=violet, Bash=orange, Glob/Grep=gray), compact scrolling feed (max-h-40), animated pulsing indicators for running tools, duration badges on completion (ms/seconds formatting).
+- **`AgentToolCallData` and `ToolCallEntry` types** (`web/src/types.ts`) — frontend interfaces for SSE tool call events and state management
+- **`agent_tool_call` SSE listener** (`web/src/hooks/useWaveEvents.ts`) — bidirectional update logic: `is_result=false` creates new entry with `status: 'running'`, `is_result=true` updates matching entry with duration and final status; maintains newest-first ordering with 50-entry cap per agent
+- **`ToolFeed` component** (`web/src/components/ToolFeed.tsx`) — compact tool call list with explicit Tailwind class maps for JIT compatibility
+- **`AgentCard` integration** — ToolFeed renders below output `<pre>` block when agent is running/complete and has tool calls
+- **`AgentToolCallPayload` SSE type** (`pkg/api/types.go`) — server-side payload struct mirroring engine `ToolCallEvent` shape
+
+### Implementation
+
+Delivered via 2-wave SAW run (5 agents across 2 repos). Wave 1: backend types + CLI parsing layer. Wave 2: orchestrator wiring + frontend component. Zero merge conflicts. ~60 min end-to-end.
+
+---
+
 ---
 
 ## [0.26.0] - 2026-03-09
