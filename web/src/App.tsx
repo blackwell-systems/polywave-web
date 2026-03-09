@@ -89,9 +89,9 @@ export default function App() {
       } else if (config.repo?.path) {
         setRepos([{ name: 'repo', path: config.repo.path }])
       }
-      setScoutModel(config.agent?.scout_model ?? '')
-      setWaveModel(config.agent?.wave_model ?? '')
-      setChatModel(config.agent?.chat_model ?? '')
+      setScoutModel(config.agent?.scout_model || 'claude-sonnet-4-6')
+      setWaveModel(config.agent?.wave_model || 'claude-sonnet-4-6')
+      setChatModel(config.agent?.chat_model || 'claude-sonnet-4-6')
     }).catch(() => {})
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission()
