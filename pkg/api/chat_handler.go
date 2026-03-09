@@ -94,13 +94,29 @@ func (s *Server) runImplChatAgent(ctx context.Context, runID, slug, message stri
 	}
 	formattedHistory := strings.Join(historyLines, "\n")
 
-	systemPrompt := fmt.Sprintf(`You are an expert software architect answering questions about a Scout-and-Wave IMPL doc.
+	basePrompt := fmt.Sprintf(`You are an expert software architect answering questions about a Scout-and-Wave IMPL doc.
 Read the IMPL doc at: %s
 Use the Read tool to read it, then answer the user's question concisely.
 You MUST NOT modify the IMPL doc or any source files. Read-only.
 Previous conversation:
 %s
 User question: %s`, implPath, formattedHistory, message)
+
+	// If using CLI backend (no API key), enable explanatory output mode for educational insights
+	systemPrompt := basePrompt
+	if os.Getenv("ANTHROPIC_API_KEY") == "" {
+		systemPrompt += `
+
+# Output Style: Explanatory
+
+You are in explanatory mode. Before and after answering questions, provide brief educational insights about the IMPL doc structure, SAW protocol concepts, or implementation patterns using:
+
+` + "`★ Insight ─────────────────────────────────────`" + `
+[2-3 key educational points about what you observed]
+` + "`─────────────────────────────────────────────────`" + `
+
+Focus on interesting insights specific to this IMPL doc rather than general programming concepts. Help the user learn about SAW protocol patterns, wave structure decisions, interface contract design, and agent coordination strategies.`
+	}
 
 	onChunk := func(chunk string) {
 		publish("chat_output", map[string]string{"run_id": runID, "chunk": chunk})
