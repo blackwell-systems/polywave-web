@@ -110,8 +110,8 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
                     <TableHead className="w-[50%]">File</TableHead>
                     <TableHead>Agent</TableHead>
                     {hasWaves && <TableHead className={`w-[80px] ${isScaffoldGroup ? 'opacity-0' : ''}`}>Wave</TableHead>}
-                    {hasRepo && <TableHead>Repo</TableHead>}
                     {hasCol4 && <TableHead>{col4Label}</TableHead>}
+                    {hasRepo && <TableHead>Repo</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -136,14 +136,14 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
                             )}
                           </TableCell>
                         )}
-                        {hasRepo && (
-                          <TableCell className="text-sm opacity-70">
-                            {entry.repo || ""}
-                          </TableCell>
-                        )}
                         {hasCol4 && (
                           <TableCell className="capitalize text-sm opacity-70">
                             {isCol4DependsOn ? (entry.depends_on || '') : (entry.action || '')}
+                          </TableCell>
+                        )}
+                        {hasRepo && (
+                          <TableCell className="text-sm opacity-70">
+                            {entry.repo || ""}
                           </TableCell>
                         )}
                       </TableRow>
