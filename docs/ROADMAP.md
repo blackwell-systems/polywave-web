@@ -82,12 +82,12 @@ scout-and-wave-app/      Wails desktop app (future)
 
 | Trigger | Current workaround | Fix | Status |
 |---|---|---|---|
-| Wave completes | `saw merge` in terminal | Merge button in WaveBoard | Pending |
-| Merge succeeds | `go test` / `npm test` in terminal | Inline test runner | Pending |
+| Wave completes | `saw merge` in terminal | Merge button in WaveBoard | ✅ Shipped (v0.17.0-A) |
+| Merge succeeds | `go test` / `npm test` in terminal | Inline test runner | ✅ Shipped (v0.17.0-B) |
 | Want to see changes | Open IDE | File diff viewer | Pending |
 | Scout/revise hung | Kill process in terminal | Cancel button | ✅ Shipped |
 | Old worktrees pile up | `git branch -D` in terminal | Worktree manager | Pending |
-| Want to configure SAW | Edit JSON | Settings screen | Pending |
+| Want to configure SAW | Edit JSON | Settings screen | ✅ Shipped (v0.18.0-C) |
 
 ---
 
@@ -423,11 +423,19 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 
 ## Agent Color System (Cross-Cutting)
 
-### Unified Deterministic Agent Color Palette
+### ✅ Unified Deterministic Agent Color Palette — SHIPPED (v0.20.0)
 
-**Current state:** `lib/agentColors.ts` maps agent letters A–K to a fixed hand-picked palette. WaveBoard and WaveStructurePanel use it; FileOwnershipTable does not. Colors are not consistent across all surfaces.
+**Status:** Complete. Golden angle color system with 26 base colors and multi-generation ID support shipped in v0.20.0.
 
-**Problem:** Three surfaces (wave structure boxes, file ownership table rows, WaveBoard agent cards) should use the same color per agent. Currently they don't. Additionally, the fixed A–K palette breaks down if a wave ever exceeds 11 agents, and multi-generation agent IDs (A2, B3) are not handled at all.
+**What shipped:**
+- Golden angle hue calculation for 26 distinct colors (A-Z)
+- Multi-generation ID support (A2, B3, A3, etc.)
+- Dark mode awareness with automatic lightness adjustment
+- FileOwnershipTable refactored to use centralized system
+- DependencyGraphPanel regex fix for multi-generation parsing
+- All components now consistent across surfaces
+
+**Original problem statement (now resolved):** Fixed A–K palette (11 colors) broke down beyond 11 agents. FileOwnershipTable used local color arrays. Multi-generation IDs (A2, B3) not supported.
 
 **Design:**
 
@@ -475,10 +483,20 @@ generation 4+: cycle with saturation variation
 
 ## Current Focus
 
-**Next:** v0.17.0 — close the GUI loop. Merge button first (biggest impact), then test runner, diff viewer, worktree manager.
+**Completed recently:**
+- ✅ v0.20.0 — Golden angle color system (26 colors, multi-generation IDs, dark mode)
+- ✅ v0.17.0-A — Merge button (POST /api/wave/{slug}/merge with SSE streaming)
+- ✅ v0.17.0-B — Post-merge test runner (reads test_command, streams output)
+- ✅ v0.18.0-C — Settings screen (repo, agent models, quality gates, appearance)
 
-**After that:** v0.18.0 — deepen the intelligence. Scout context, chat-with-Claude, settings screen.
+**Next:** Finish Phase 1 — close the remaining GUI loop gaps
+- v0.17.0-C — **File diff viewer** (click file → see changes without IDE)
+- v0.17.0-D — **Worktree manager** (clean up stale branches in GUI)
 
-**Then:** v0.19.5 — Wails desktop app. Engine extraction is done — import `scout-and-wave-go`, replace HTTP + SSE with Wails bindings and events, React frontend carries over unchanged. Ships as a native cross-platform app.
+**After that:** Phase 2 intelligence features
+- v0.18.0-A — Scout context panel (attach files, add constraints)
+- v0.18.0-B — Chat with Claude about the plan (Q&A before approval)
 
-**Goal:** By v0.19.5, SAW is installable in one command on Mac, Windows, and Linux with no server to run and full OS integration.
+**Then:** v0.19.5 — Wails desktop app. Engine extraction complete — import `scout-and-wave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
+
+**Goal:** By v0.19.5, SAW is installable in one command on Mac/Windows/Linux with full OS integration.
