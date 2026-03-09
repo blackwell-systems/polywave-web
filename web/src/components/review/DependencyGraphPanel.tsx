@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { getAgentColor } from '../../lib/agentColors'
+import { getAgentColor, resetThemeCache } from '../../lib/agentColors'
 
 interface DependencyGraphPanelProps {
   dependencyGraphText?: string
@@ -143,8 +143,19 @@ function layoutNodes(waves: ParsedWave[]): { nodes: NodePos[]; width: number; he
 export default function DependencyGraphPanel({ dependencyGraphText }: DependencyGraphPanelProps): JSX.Element {
   const svgRef = useRef<SVGSVGElement>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; agent: ParsedAgent } | null>(null)
+  const [, setThemeTick] = useState(0)
 
   const handleMouseLeave = useCallback(() => setTooltip(null), [])
+
+  // Re-render when dark mode or color theme changes so agent colors update
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      resetThemeCache()
+      setThemeTick(t => t + 1)
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [])
 
   // Close tooltip on scroll
   useEffect(() => {

@@ -36,6 +36,98 @@
     --accent-foreground: 0 0% 98%;
   }
 
+}
+
+/* ── Theme overrides — plain CSS outside @layer so Tailwind never purges them ── */
+
+.theme-github-light {
+    --background: 0 0% 100%;
+    --foreground: 215 14% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 14% 11%;
+    --muted: 210 17% 95%;
+    --muted-foreground: 215 8% 47%;
+    --border: 216 12% 84%;
+    --input: 216 12% 84%;
+    --ring: 212 92% 45%;
+    --primary: 212 92% 45%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 210 17% 95%;
+    --accent-foreground: 215 14% 11%;
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 215 14% 11%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 14% 11%;
+  }
+
+  .theme-solarized-light {
+    --background: 44 87% 94%;
+    --foreground: 194 14% 38%;
+    --card: 44 77% 90%;
+    --card-foreground: 194 14% 38%;
+    --muted: 44 62% 87%;
+    --muted-foreground: 180 7% 60%;
+    --border: 44 40% 82%;
+    --input: 44 40% 82%;
+    --ring: 205 69% 49%;
+    --primary: 205 69% 49%;
+    --primary-foreground: 44 87% 94%;
+    --accent: 44 62% 87%;
+    --accent-foreground: 194 14% 38%;
+    --secondary: 44 62% 87%;
+    --secondary-foreground: 194 14% 38%;
+    --destructive: 1 71% 52%;
+    --destructive-foreground: 0 0% 98%;
+    --popover: 44 77% 90%;
+    --popover-foreground: 194 14% 38%;
+  }
+
+  .theme-one-light {
+    --background: 220 23% 97%;
+    --foreground: 221 15% 26%;
+    --card: 0 0% 100%;
+    --card-foreground: 221 15% 26%;
+    --muted: 220 14% 93%;
+    --muted-foreground: 220 9% 55%;
+    --border: 220 12% 86%;
+    --input: 220 12% 86%;
+    --ring: 207 82% 56%;
+    --primary: 207 82% 56%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 220 14% 93%;
+    --accent-foreground: 221 15% 26%;
+    --secondary: 220 14% 93%;
+    --secondary-foreground: 221 15% 26%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 15% 26%;
+  }
+
+  .theme-catppuccin-latte {
+    --background: 220 23% 95%;
+    --foreground: 234 16% 35%;
+    --card: 220 23% 97%;
+    --card-foreground: 234 16% 35%;
+    --muted: 220 22% 92%;
+    --muted-foreground: 233 10% 47%;
+    --border: 220 22% 86%;
+    --input: 220 22% 86%;
+    --ring: 220 91% 54%;
+    --primary: 220 91% 54%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 220 22% 92%;
+    --accent-foreground: 234 16% 35%;
+    --secondary: 220 22% 92%;
+    --secondary-foreground: 234 16% 35%;
+    --destructive: 347 87% 44%;
+    --destructive-foreground: 0 0% 98%;
+    --popover: 220 23% 97%;
+    --popover-foreground: 234 16% 35%;
+  }
+
   /* ── Named dark themes ─────────────────────────────────────────── */
 
   .dark.theme-gruvbox-dark {
@@ -181,7 +273,6 @@
     --popover: 222 13% 21%;
     --popover-foreground: 219 14% 71%;
   }
-}
 
 @layer base {
   * {

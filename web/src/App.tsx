@@ -36,11 +36,11 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
 
-  const [rightWidthPx, setRightWidthPx] = useState(380)
+  const [rightWidthPx, setRightWidthPx] = useState(() => Math.min(340, Math.round(window.innerWidth * 0.30)))
   const rightDividerMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     const onMove = (mv: MouseEvent) => {
-      setRightWidthPx(Math.max(280, Math.min(window.innerWidth - mv.clientX, window.innerWidth * 0.55)))
+      setRightWidthPx(Math.max(240, Math.min(window.innerWidth - mv.clientX, window.innerWidth * 0.30)))
     }
     const onUp = () => {
       document.removeEventListener('mousemove', onMove)
