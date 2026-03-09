@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.29.0] - 2026-03-09
+
+### Added
+
+- **ModelPicker component** (`web/src/components/ModelPicker.tsx`) — dedicated UI for provider + model selection in Settings. Provider dropdown (CLI, Bedrock API, Anthropic API, OpenAI, Ollama, LM Studio) + model name input with context-aware suggestions. Constructs full `provider:model` string internally (e.g. `bedrock:claude-sonnet-4-5`). Eliminates need to manually type provider prefixes.
+- **Model name validation** (`pkg/api/config_handler.go`) — `validateModelName()` enforces regex whitelist (`^[a-zA-Z0-9:._/-]+$`) and 200-char length limit on POST /api/config. Returns 400 Bad Request with descriptive error on validation failure. Validates `scout_model`, `wave_model`, and `chat_model` before persisting to `saw.config.json`.
+
+### Changed
+
+- **SettingsScreen refactor** (`web/src/components/SettingsScreen.tsx`) — replaced plain text inputs with ModelPicker component for all three model fields. Removed hardcoded `MODEL_OPTIONS` datalist (now in ModelPicker). Cleaner UX: users select provider from dropdown rather than typing prefixes.
+
+### Security
+
+- **Config API input sanitization** — POST /api/config now blocks malicious model names containing shell metacharacters or path traversal sequences. Prevents command injection attacks via Settings UI.
+
 ## [0.28.0] - 2026-03-09
 
 ### Added

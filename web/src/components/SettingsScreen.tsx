@@ -3,19 +3,9 @@ import { X } from 'lucide-react'
 import { getConfig, saveConfig } from '../api'
 import { SAWConfig, RepoEntry } from '../types'
 import DirPicker from './DirPicker'
+import ModelPicker from './ModelPicker'
 import { Button } from './ui/button'
 
-const MODEL_OPTIONS = [
-  { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
-  { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
-  { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5' },
-  { value: 'ollama:qwen2.5-coder:32b', label: 'Ollama — Qwen2.5-Coder 32B (local)' },
-  { value: 'ollama:qwen2.5-coder:14b', label: 'Ollama — Qwen2.5-Coder 14B (local)' },
-  { value: 'ollama:deepseek-coder-v2', label: 'Ollama — DeepSeek-Coder V2 (local)' },
-  { value: 'ollama:llama3.1:70b', label: 'Ollama — Llama 3.1 70B (local)' },
-  { value: 'ollama:granite3.1-dense:8b', label: 'Ollama — Granite 3.1 8B (local)' },
-  { value: 'lmstudio:local-model', label: 'LM Studio — local model' },
-]
 
 interface SettingsScreenProps {
   onClose: () => void
@@ -181,50 +171,24 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
       {/* Agent section */}
       <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3">
         <h3 className="text-sm font-medium">Agent</h3>
-        <datalist id="model-options">
-          {MODEL_OPTIONS.map(o => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </datalist>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-muted-foreground" htmlFor="settings-scout-model">
-            Scout model
-          </label>
-          <input
-            id="settings-scout-model"
-            list="model-options"
-            value={config.agent.scout_model}
-            onChange={e => setConfig(c => ({ ...c, agent: { ...c.agent, scout_model: e.target.value } }))}
-            className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            placeholder="e.g. claude-sonnet-4-6 or ollama:qwen2.5-coder:32b"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-muted-foreground" htmlFor="settings-wave-model">
-            Wave model
-          </label>
-          <input
-            id="settings-wave-model"
-            list="model-options"
-            value={config.agent.wave_model}
-            onChange={e => setConfig(c => ({ ...c, agent: { ...c.agent, wave_model: e.target.value } }))}
-            className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            placeholder="e.g. claude-sonnet-4-6 or ollama:qwen2.5-coder:32b"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-muted-foreground" htmlFor="settings-chat-model">
-            Chat model
-          </label>
-          <input
-            id="settings-chat-model"
-            list="model-options"
-            value={config.agent.chat_model ?? ''}
-            onChange={e => setConfig(c => ({ ...c, agent: { ...c.agent, chat_model: e.target.value } }))}
-            className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-            placeholder="e.g. claude-sonnet-4-6 or ollama:qwen2.5-coder:32b"
-          />
-        </div>
+        <ModelPicker
+          id="settings-scout-model"
+          label="Scout model"
+          value={config.agent.scout_model}
+          onChange={v => setConfig(c => ({ ...c, agent: { ...c.agent, scout_model: v } }))}
+        />
+        <ModelPicker
+          id="settings-wave-model"
+          label="Wave model"
+          value={config.agent.wave_model}
+          onChange={v => setConfig(c => ({ ...c, agent: { ...c.agent, wave_model: v } }))}
+        />
+        <ModelPicker
+          id="settings-chat-model"
+          label="Chat model"
+          value={config.agent.chat_model ?? ''}
+          onChange={v => setConfig(c => ({ ...c, agent: { ...c.agent, chat_model: v } }))}
+        />
       </div>
 
       {/* Quality Gates section */}
