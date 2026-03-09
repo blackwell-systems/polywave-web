@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.22.0] - 2026-03-09
+
+### Added
+
+- **`agent.scout_model` / `agent.wave_model` wired from `saw.config.json`** (`pkg/api/scout.go`, `pkg/api/wave_runner.go`) — both run-start handlers now read the config file and pass `ScoutModel` / `WaveModel` into the engine's `RunScoutOpts` / `RunWaveOpts`. Per-agent `**model:**` fields in IMPL docs can now route to any provider prefix the engine supports (e.g. `openai:gpt-4o`).
+
+### Changed
+
+- **`MODEL_OPTIONS` in `SettingsScreen`** (`web/src/components/SettingsScreen.tsx`) — updated to current model IDs: `claude-opus-4-6`, `claude-sonnet-4-6`, `claude-haiku-4-5-20251001`. Stale 4.5 Opus/Sonnet IDs removed.
+
+---
+
 ## [0.21.0] - 2026-03-09
 
 ### Added
