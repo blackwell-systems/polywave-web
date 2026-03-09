@@ -9,8 +9,8 @@
     "path": ""
   },
   "agent": {
-    "scout_model": "bedrock:claude-sonnet-4-5",
-    "wave_model": "Bedrock:",
+    "scout_model": "claude-opus-4-6",
+    "wave_model": "claude-haiku-4-5-20251001",
     "chat_model": "claude-haiku-4-5-20251001"
   },
   "quality": {

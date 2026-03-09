@@ -14,9 +14,19 @@ import { useResizableDivider } from './hooks/useResizableDivider'
 import { ChevronLeft, ChevronRight, Settings, Search, Pencil } from 'lucide-react'
 
 const MODEL_OPTIONS = [
-  'claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5-20251001',
+  // CLI (shells out to claude command — can be Bedrock or Max Plan)
+  'cli:claude-sonnet-4-5', 'cli:claude-opus-4-6', 'cli:claude-haiku-4-5',
+  // Bedrock API (direct API calls with full IDs)
+  'bedrock:claude-sonnet-4-5', 'bedrock:claude-opus-4-6', 'bedrock:claude-haiku-4-5',
+  // Anthropic API (Max Plan)
+  'anthropic:claude-sonnet-4-6', 'anthropic:claude-opus-4-6', 'anthropic:claude-haiku-4-5-20251001',
+  // OpenAI
+  'openai:gpt-4o', 'openai:gpt-4o-mini', 'openai:o1', 'openai:o1-mini',
+  // Ollama (local)
   'ollama:qwen2.5-coder:32b', 'ollama:qwen2.5-coder:14b', 'ollama:deepseek-coder-v2',
-  'ollama:llama3.1:70b', 'ollama:granite3.1-dense:8b', 'lmstudio:local-model',
+  'ollama:llama3.1:70b', 'ollama:granite3.1-dense:8b',
+  // LM Studio (local)
+  'lmstudio:local-model',
 ]
 
 export default function App() {
