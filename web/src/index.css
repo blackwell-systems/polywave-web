@@ -105,7 +105,7 @@
 
   /* Custom scrollbar styling — uses CSS vars so it follows the active theme */
   * {
-    scrollbar-width: thin;
+    scrollbar-width: auto;  /* Firefox: allow default/wider scrollbars (not forced thin) */
     scrollbar-color: hsl(var(--primary)) hsl(var(--background));
   }
 
