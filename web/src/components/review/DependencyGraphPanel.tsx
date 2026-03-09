@@ -302,11 +302,14 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
                   key={node.agent.letter}
                   onMouseEnter={(e) => {
                     const rect = (e.currentTarget as SVGGElement).getBoundingClientRect()
-                    setTooltip({
-                      x: rect.left + rect.width / 2,
-                      y: rect.top,
-                      agent: node.agent,
-                    })
+                    const svgRect = svgRef.current?.getBoundingClientRect()
+                    if (svgRect) {
+                      setTooltip({
+                        x: rect.left + rect.width / 2,
+                        y: svgRect.top + node.y,
+                        agent: node.agent,
+                      })
+                    }
                   }}
                   className="cursor-pointer"
                 >
