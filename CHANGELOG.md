@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.19.2] - 2026-03-08
+
+### Fixed
+
+**File Ownership table column order corrections**
+
+- **FileOwnershipTable.tsx canonical column order** — Fixed column order to match protocol spec: `File | Agent | Wave | Depends On | Repo` (with Repo last). Previously had multiple incorrect orderings across iterations (Repo before Wave, Agent header missing, DependsOn/Repo swapped). Parser reads by column position not header name, so wrong order caused silent data corruption (Repo data appeared in Agent field). Final implementation uses canonical 5-column order with conditional rendering (`hasWaves`, `hasCol4`, `hasRepo`).
+- **IMPL-engine-extraction.md table reordered** — Corrected file ownership table from wrong format `| File | Repo | Agent | Wave | Depends On |` to canonical `| File | Agent | Wave | Depends On | Repo |`. All 33 data rows reordered to match. This doc was written before E16 validator existed, but exposed validator gap (see protocol repo v0.14.8).
+
+**Context:** Multi-repo display debugging revealed parser reads columns by position. Wrong column order in IMPL doc and UI caused Repo/Agent field swap. Fixed in 4-layer pipeline: Go engine parser, API serialization, TypeScript types, UI rendering.
+
+---
+
 ## [0.19.1] - 2026-03-08
 
 ### Fixed
