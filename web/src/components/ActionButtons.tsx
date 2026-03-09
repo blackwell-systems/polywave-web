@@ -9,7 +9,7 @@ const btnBase = "inline-flex items-center justify-center rounded-md text-sm font
 
 export default function ActionButtons({ onApprove, onReject, onRequestChanges, onAskClaude }: ActionButtonsProps): JSX.Element {
   return (
-    <div className="flex items-center gap-3 pt-4 border-t">
+    <div className="flex items-center gap-3">
       <button onClick={onApprove} className={`${btnBase} bg-green-50/60 hover:bg-green-100/80 text-green-700 border-green-200 dark:bg-green-950/40 dark:hover:bg-green-900/60 dark:text-green-400 dark:border-green-800`}>
         Approve
       </button>
