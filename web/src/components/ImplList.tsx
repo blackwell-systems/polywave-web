@@ -140,17 +140,26 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
         variant="ghost"
         size="sm"
         className={cn(
-          'flex-1 justify-start font-mono text-xs pr-6 gap-1.5',
+          'flex-1 justify-start font-mono text-xs pr-6 gap-1.5 flex-col items-start h-auto py-1.5',
           isSelected && 'bg-primary/10 border-l-2 border-primary rounded-none',
           isComplete && !isSelected && 'opacity-40 text-muted-foreground line-through hover:opacity-80 hover:no-underline'
         )}
         disabled={loading}
         onClick={() => onSelect(e.slug)}
       >
-        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isComplete ? 'bg-primary/40' : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'}`} />
-        {isComplete ? '✓ ' : ''}{e.slug}
-        {isMultiRepo(e.slug) && (
-          <span className="text-[9px] px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 ml-1 font-mono">multirepo</span>
+        <div className="flex items-center gap-1.5 w-full">
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isComplete ? 'bg-primary/40' : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'}`} />
+          <span className="truncate">{isComplete ? '✓ ' : ''}{e.slug}</span>
+          {isMultiRepo(e.slug) && (
+            <span className="text-[9px] px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-mono shrink-0">multirepo</span>
+          )}
+        </div>
+        {(e.wave_count ?? 0) > 0 && (
+          <div className="flex items-center gap-2 pl-3 font-sans not-italic" style={{ textDecoration: 'none' }}>
+            <span className="text-[10px] text-muted-foreground/70">
+              {e.wave_count} {e.wave_count === 1 ? 'wave' : 'waves'} · {e.agent_count} {e.agent_count === 1 ? 'agent' : 'agents'}
+            </span>
+          </div>
         )}
       </Button>
       <button

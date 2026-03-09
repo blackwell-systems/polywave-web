@@ -17,10 +17,18 @@ import (
 // Real:     "status: complete" or "status: partial" or "status: blocked"
 var completionStatusRe = regexp.MustCompile(`(?m)^status: (complete|partial|blocked)$`)
 
+// waveHeaderRe matches top-level wave section headers (## Wave N).
+var waveHeaderRe = regexp.MustCompile(`(?m)^## Wave \d+\b`)
+
+// agentSectionRe matches per-agent section headers (### Wave N Agent X or ### Agent X).
+var agentSectionRe = regexp.MustCompile(`(?m)^### (?:Wave \d+ )?Agent [A-Z]\b`)
+
 // implListEntry is one item in the GET /api/impl response.
 type implListEntry struct {
-	Slug      string `json:"slug"`
-	DocStatus string `json:"doc_status"` // "active" or "complete"
+	Slug       string `json:"slug"`
+	DocStatus  string `json:"doc_status"`  // "active" or "complete"
+	WaveCount  int    `json:"wave_count"`  // number of waves (0 if not yet planned)
+	AgentCount int    `json:"agent_count"` // total agents across all waves
 }
 
 // handleListImpls serves GET /api/impl and returns a JSON array of impl entries.
@@ -38,6 +46,7 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 			slug := strings.TrimSuffix(strings.TrimPrefix(name, "IMPL-"), ".md")
 			status := "active"
 			// Quick scan: explicit SAW:COMPLETE tag, or infer from completion reports.
+			var waveCount, agentCount int
 			if data, err := os.ReadFile(filepath.Join(s.cfg.IMPLDir, name)); err == nil {
 				text := string(data)
 				if strings.Contains(text, "SAW:COMPLETE") {
@@ -45,8 +54,10 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 				} else if inferComplete(text) {
 					status = "complete"
 				}
+				waveCount = len(waveHeaderRe.FindAllString(text, -1))
+				agentCount = len(agentSectionRe.FindAllString(text, -1))
 			}
-			result = append(result, implListEntry{Slug: slug, DocStatus: status})
+			result = append(result, implListEntry{Slug: slug, DocStatus: status, WaveCount: waveCount, AgentCount: agentCount})
 		}
 	}
 	if result == nil {

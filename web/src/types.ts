@@ -84,6 +84,8 @@ export interface IMPLDocResponse {
 export interface IMPLListEntry {
   slug: string
   doc_status: string // "active" or "complete" (lowercase)
+  wave_count?: number
+  agent_count?: number
 }
 
 // SSE event data shapes
