@@ -279,41 +279,41 @@ err := engine.RunScout(ctx, engine.RunScoutOpts{
 ## File Ownership
 
 ```yaml type=impl-file-ownership
-| File | Repo | Agent | Wave | Depends On |
-|------|------|-------|------|------------|
-| go.mod | scout-and-wave-go | Scaffold | 0 | — |
-| go.sum | scout-and-wave-go | Scaffold | 0 | — |
-| pkg/types/types.go | scout-and-wave-go | A | 1 | Scaffold |
-| internal/git/commands.go | scout-and-wave-go | B | 1 | — |
-| pkg/protocol/parser.go | scout-and-wave-go | C | 1 | A |
-| pkg/protocol/updater.go | scout-and-wave-go | C | 1 | A |
-| pkg/protocol/validator.go | scout-and-wave-go | C | 1 | A |
-| pkg/protocol/types.go | scout-and-wave-go | C | 1 | A |
-| pkg/worktree/manager.go | scout-and-wave-go | D | 1 | B |
-| pkg/agent/backend/backend.go | scout-and-wave-go | E | 1 | A |
-| pkg/agent/backend/api/client.go | scout-and-wave-go | E | 1 | A |
-| pkg/agent/backend/cli/client.go | scout-and-wave-go | E | 1 | A |
-| pkg/agent/runner.go | scout-and-wave-go | E | 1 | A, C |
-| pkg/agent/completion.go | scout-and-wave-go | E | 1 | A, C |
-| pkg/agent/stream.go | scout-and-wave-go | E | 1 | A |
-| pkg/agent/tools.go | scout-and-wave-go | E | 1 | A |
-| pkg/orchestrator/orchestrator.go | scout-and-wave-go | F | 2 | A, B, C, D, E |
-| pkg/orchestrator/events.go | scout-and-wave-go | F | 2 | A |
-| pkg/orchestrator/merge.go | scout-and-wave-go | F | 2 | A, B, C |
-| pkg/orchestrator/verification.go | scout-and-wave-go | F | 2 | A |
-| pkg/orchestrator/transitions.go | scout-and-wave-go | F | 2 | A |
-| pkg/orchestrator/state.go | scout-and-wave-go | F | 2 | A |
-| pkg/orchestrator/setters.go | scout-and-wave-go | F | 2 | A |
-| pkg/git/activity.go | scout-and-wave-go | F | 2 | B |
-| pkg/engine/runner.go | scout-and-wave-go | F | 2 | A, B, C, D, E |
-| pkg/api/wave_runner.go | scout-and-wave-web | G | 2 | F |
-| pkg/api/scout.go | scout-and-wave-web | G | 2 | F |
-| pkg/api/impl_edit.go | scout-and-wave-web | G | 2 | F |
-| pkg/api/git_activity.go | scout-and-wave-web | G | 2 | F |
-| cmd/saw/commands.go | scout-and-wave-web | G | 2 | F |
-| cmd/saw/merge_cmd.go | scout-and-wave-web | G | 2 | F |
-| go.mod | scout-and-wave-web | H | 2 | F |
-| go.sum | scout-and-wave-web | H | 2 | F |
+| File | Agent | Wave | Depends On | Repo |
+|------|-------|------|------------|------|
+| go.mod | Scaffold | 0 | — | scout-and-wave-go |
+| go.sum | Scaffold | 0 | — | scout-and-wave-go |
+| pkg/types/types.go | A | 1 | Scaffold | scout-and-wave-go |
+| internal/git/commands.go | B | 1 | — | scout-and-wave-go |
+| pkg/protocol/parser.go | C | 1 | A | scout-and-wave-go |
+| pkg/protocol/updater.go | C | 1 | A | scout-and-wave-go |
+| pkg/protocol/validator.go | C | 1 | A | scout-and-wave-go |
+| pkg/protocol/types.go | C | 1 | A | scout-and-wave-go |
+| pkg/worktree/manager.go | D | 1 | B | scout-and-wave-go |
+| pkg/agent/backend/backend.go | E | 1 | A | scout-and-wave-go |
+| pkg/agent/backend/api/client.go | E | 1 | A | scout-and-wave-go |
+| pkg/agent/backend/cli/client.go | E | 1 | A | scout-and-wave-go |
+| pkg/agent/runner.go | E | 1 | A, C | scout-and-wave-go |
+| pkg/agent/completion.go | E | 1 | A, C | scout-and-wave-go |
+| pkg/agent/stream.go | E | 1 | A | scout-and-wave-go |
+| pkg/agent/tools.go | E | 1 | A | scout-and-wave-go |
+| pkg/orchestrator/orchestrator.go | F | 2 | A, B, C, D, E | scout-and-wave-go |
+| pkg/orchestrator/events.go | F | 2 | A | scout-and-wave-go |
+| pkg/orchestrator/merge.go | F | 2 | A, B, C | scout-and-wave-go |
+| pkg/orchestrator/verification.go | F | 2 | A | scout-and-wave-go |
+| pkg/orchestrator/transitions.go | F | 2 | A | scout-and-wave-go |
+| pkg/orchestrator/state.go | F | 2 | A | scout-and-wave-go |
+| pkg/orchestrator/setters.go | F | 2 | A | scout-and-wave-go |
+| pkg/git/activity.go | F | 2 | B | scout-and-wave-go |
+| pkg/engine/runner.go | F | 2 | A, B, C, D, E | scout-and-wave-go |
+| pkg/api/wave_runner.go | G | 2 | F | scout-and-wave-web |
+| pkg/api/scout.go | G | 2 | F | scout-and-wave-web |
+| pkg/api/impl_edit.go | G | 2 | F | scout-and-wave-web |
+| pkg/api/git_activity.go | G | 2 | F | scout-and-wave-web |
+| cmd/saw/commands.go | G | 2 | F | scout-and-wave-web |
+| cmd/saw/merge_cmd.go | G | 2 | F | scout-and-wave-web |
+| go.mod | H | 2 | F | scout-and-wave-web |
+| go.sum | H | 2 | F | scout-and-wave-web |
 ```
 
 ---
