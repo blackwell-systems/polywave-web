@@ -18,12 +18,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: blackwell-systems/scout-and-wave-go
-          path: ../scout-and-wave-go
+          path: .engine
 
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Update replace directive for CI
+        run: go mod edit -replace github.com/blackwell-systems/scout-and-wave-go=./.engine
 
       - name: Verify dependencies
         run: go mod verify
