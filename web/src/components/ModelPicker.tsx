@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Terminal, Cloud, Sparkles, Bot, Server, MonitorPlay } from 'lucide-react'
 
 interface ModelPickerProps {
   value: string
@@ -8,12 +9,12 @@ interface ModelPickerProps {
 }
 
 const PROVIDERS = [
-  { value: 'cli', label: 'CLI (Bedrock or Max Plan)' },
-  { value: 'bedrock', label: 'Bedrock API (direct)' },
-  { value: 'anthropic', label: 'Anthropic API (Max Plan)' },
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'ollama', label: 'Ollama (local)' },
-  { value: 'lmstudio', label: 'LM Studio (local)' },
+  { value: 'cli', label: 'CLI (Bedrock or Max Plan)', icon: Terminal, color: 'text-slate-600 dark:text-slate-400' },
+  { value: 'bedrock', label: 'Bedrock API (direct)', icon: Cloud, color: 'text-orange-600 dark:text-orange-400' },
+  { value: 'anthropic', label: 'Anthropic API (Max Plan)', icon: Sparkles, color: 'text-purple-600 dark:text-purple-400' },
+  { value: 'openai', label: 'OpenAI', icon: Bot, color: 'text-green-600 dark:text-green-400' },
+  { value: 'ollama', label: 'Ollama (local)', icon: Server, color: 'text-blue-600 dark:text-blue-400' },
+  { value: 'lmstudio', label: 'LM Studio (local)', icon: MonitorPlay, color: 'text-cyan-600 dark:text-cyan-400' },
 ]
 
 const MODEL_SUGGESTIONS: Record<string, string[]> = {
@@ -67,17 +68,25 @@ export default function ModelPicker({ value, onChange, label, id }: ModelPickerP
         {label}
       </label>
       <div className="flex gap-2">
-        <select
-          value={selectedProvider}
-          onChange={e => handleProviderChange(e.target.value)}
-          className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer w-48"
-        >
-          {PROVIDERS.map(p => (
-            <option key={p.value} value={p.value}>
-              {p.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative w-48">
+          <select
+            value={selectedProvider}
+            onChange={e => handleProviderChange(e.target.value)}
+            className="w-full text-sm pl-9 pr-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer appearance-none"
+          >
+            {PROVIDERS.map(p => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+          {(() => {
+            const current = PROVIDERS.find(p => p.value === selectedProvider)
+            if (!current) return null
+            const Icon = current.icon
+            return <Icon size={16} className={`absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${current.color}`} />
+          })()}
+        </div>
         <div className="flex-1">
           <input
             id={id}
