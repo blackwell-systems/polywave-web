@@ -84,12 +84,12 @@ export default function ModelPicker({ value, onChange, label, id }: ModelPickerP
       <label className="text-xs text-muted-foreground" htmlFor={id}>
         {label}
       </label>
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <div className="relative w-48">
           <select
             value={selectedProvider}
             onChange={e => handleProviderChange(e.target.value)}
-            className="w-full text-sm pl-9 pr-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer appearance-none"
+            className="w-full h-[34px] text-sm pl-9 pr-8 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer appearance-none"
           >
             {PROVIDERS.map(p => (
               <option key={p.value} value={p.value}>
@@ -103,6 +103,9 @@ export default function ModelPicker({ value, onChange, label, id }: ModelPickerP
             const Icon = current.icon
             return <Icon size={16} className={`absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none ${current.color}`} />
           })()}
+          <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-muted-foreground" width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <path d="M3 5L6 8L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
         <div className="flex-1">
           <input
@@ -112,7 +115,7 @@ export default function ModelPicker({ value, onChange, label, id }: ModelPickerP
             onChange={e => handleModelChange(e.target.value)}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
-            className="w-full text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full h-[34px] text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             placeholder="Model name"
           />
           <datalist id={`${id}-suggestions`}>
