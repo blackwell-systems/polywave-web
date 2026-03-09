@@ -165,7 +165,8 @@ export async function fetchFileDiff(slug: string, agent: string, wave: number, f
 export async function getConfig(): Promise<SAWConfig> {
   const r = await fetch(`/api/config`)
   if (!r.ok) throw new Error(await r.text())
-  return r.json()
+  const data = await r.json()
+  return { ...data, repos: data.repos ?? [] }
 }
 
 export interface BrowseResult {

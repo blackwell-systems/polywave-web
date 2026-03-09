@@ -2,10 +2,29 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 )
+
+// validateModelName ensures model name contains only safe characters.
+// Returns error if validation fails (injection prevention).
+func validateModelName(model string) error {
+	if model == "" {
+		return nil // empty is allowed (falls back to defaults)
+	}
+	if len(model) > 200 {
+		return fmt.Errorf("model name too long (max 200 chars)")
+	}
+	// Allow alphanumeric, hyphens, dots, colons, underscores, slashes
+	matched, _ := regexp.MatchString(`^[a-zA-Z0-9:._/-]+$`, model)
+	if !matched {
+		return fmt.Errorf("model name contains invalid characters")
+	}
+	return nil
+}
 
 // handleGetConfig serves GET /api/config.
 // Reads saw.config.json from the repo root and returns it as SAWConfig JSON.
@@ -46,6 +65,20 @@ func (s *Server) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	var cfg SAWConfig
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
 		http.Error(w, "invalid config JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Validate model names to prevent injection attacks
+	if err := validateModelName(cfg.Agent.ScoutModel); err != nil {
+		http.Error(w, "invalid scout_model: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := validateModelName(cfg.Agent.WaveModel); err != nil {
+		http.Error(w, "invalid wave_model: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := validateModelName(cfg.Agent.ChatModel); err != nil {
+		http.Error(w, "invalid chat_model: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
