@@ -55,7 +55,7 @@ function SwatchDot({ theme, active, onClick, onHover }: {
         overflow: 'hidden',
       }} />
       {/* floating label on hover */}
-      <span className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-popover border border-border px-1.5 py-0.5 text-[10px] text-foreground opacity-0 group-hover:opacity-100 z-50 shadow-sm">
+      <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-900 px-2 py-1 text-xs font-medium text-zinc-100 opacity-0 group-hover:opacity-100 z-50 shadow-lg">
         {theme.label}
       </span>
     </button>
