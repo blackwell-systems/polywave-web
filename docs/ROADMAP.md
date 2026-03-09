@@ -487,15 +487,17 @@ generation 4+: cycle with saturation variation
 - ✅ v0.20.0 — Golden angle color system (26 colors, multi-generation IDs, dark mode)
 - ✅ v0.17.0-A — Merge button (POST /api/wave/{slug}/merge with SSE streaming)
 - ✅ v0.17.0-B — Post-merge test runner (reads test_command, streams output)
+- ✅ v0.17.0-C — File diff viewer (FileDiffPanel with syntax highlighting)
+- ✅ v0.18.0-A — Scout context panel (attach files, add constraints)
+- ✅ v0.18.0-B — Chat with Claude (Q&A about IMPL doc before approval)
 - ✅ v0.18.0-C — Settings screen (repo, agent models, quality gates, appearance)
 
 **Next:** Finish Phase 1 — close the remaining GUI loop gaps
-- v0.17.0-C — **File diff viewer** (click file → see changes without IDE)
 - v0.17.0-D — **Worktree manager** (clean up stale branches in GUI)
 
-**After that:** Phase 2 intelligence features
-- v0.18.0-A — Scout context panel (attach files, add constraints)
-- v0.18.0-B — Chat with Claude about the plan (Q&A before approval)
+**After that:** Remaining Phase 2 intelligence features
+- v0.18.0-F — Quality gates panel (show gate results after wave completion)
+- v0.18.0-K — Large IMPL doc scalability (lazy-load panels, per-agent context trim)
 
 **Then:** v0.19.5 — Wails desktop app. Engine extraction complete — import `scout-and-wave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
 
