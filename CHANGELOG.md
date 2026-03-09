@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.3] - 2026-03-08
+
+### Changed
+
+**Multi-repo visual hierarchy in File Ownership**
+
+- **Three-level visual hierarchy** — File Ownership table now distinguishes repo (outer) → wave (middle) → agent (inner) levels when multiple repos are present. Repo level uses left accent border (4px), subtle background tint (2-3% opacity), and colored dot + repo name header. Wave level uses colored border wrapper around table. Agent level uses row background color (15% opacity).
+- **REPO_COLORS palette** — 5-color cycle for repo-level styling: blue, purple, teal, rose, orange. Each includes `border`, `bg`, `text`, `dot` Tailwind classes for consistent theming.
+- **Conditional repo column** — Repo column only appears when `hasMultipleRepos = repos.length > 1`. Single-repo mode shows flat wave-grouped structure without repo headers or column.
+- **Grouped rendering** — When multi-repo, entries first grouped by repo, then by wave within each repo. Each repo gets visual container with colored left border, background tint, and header row (dot + repo name).
+
+### Fixed
+
+**demo-complex IMPL doc parsing**
+
+- **Table separator position** — File Ownership table separator moved from line 312 (after Scaffold rows) to line 309 (immediately after header row). Parser requires separator immediately after header; wrong position caused all data rows to be skipped.
+- **Typed block markers added** — Added `type=impl-dep-graph` to Dependency Graph block (line 58) and `type=impl-wave-structure` to Wave Structure block (line 353). Required for v0.10.0+ protocol validation.
+- **Action column removed** — Demo had 5-column format `| File | Agent | Wave | Action | Depends On |`. Parser reads by position not header name; column 5 was interpreted as Repo, causing every unique dependency value ("A", "B", "A, B") to be treated as a repo name and triggering multi-repo grouping. Fixed by removing Action column, producing canonical 4-column format: `| File | Agent | Wave | Depends On |`.
+
+---
+
 ## [0.20.2] - 2026-03-08
 
 ### Changed
@@ -246,7 +267,7 @@ All notable changes to this project will be documented in this file.
 
 **E16 validator sub-rules (E16A/E16C)**
 - **E16A: required block presence** — `ValidateIMPLDoc` now enforces that `impl-file-ownership`, `impl-dep-graph`, and `impl-wave-structure` blocks all appear when any typed block is present; fires only when `blockCount > 0` so pre-v0.10.0 docs are unaffected
-- **E16C: out-of-band dep graph detection** — plain fenced blocks whose content matches `[A-Z]` agent refs and the word `Wave` produce a `warning`-type `ValidationError` (not an exit-1 error); prompts author to move the content into a typed `impl-dep-graph` block
+- **E16C: out-of-band dep graph detection** — plain fenced blocks whose content matches `[A-Z]` agent refs and the word `Wave` produce a `warning`-type `ValidationError` (not an exit 1 error); prompts author to move the content into a typed `impl-dep-graph` block
 
 **v0.10.0 protocol support**
 - **Typed-block dispatch** — parser detects `` ```yaml type=impl-* `` fenced blocks as canonical section anchors; heading-based detection retained as fallback for pre-v0.10.0 docs
