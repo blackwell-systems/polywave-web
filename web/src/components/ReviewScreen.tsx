@@ -117,8 +117,8 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
   return (
     <div className="h-full bg-background flex overflow-hidden">
-      <div className={`${showChat ? 'flex-1' : 'w-full'} overflow-y-auto`}>
-      <div className="max-w-[1600px] mx-auto px-4 py-8">
+      <div className={`${showChat ? 'flex-1' : 'w-full'} overflow-y-auto pb-24`}>
+      <div className="max-w-[1600px] mx-auto px-4 py-8 pb-4">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Plan Review</h1>
@@ -218,11 +218,6 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 )}
               </div>
             </div>
-
-            {/* Action buttons - always interactive, fixed at bottom */}
-            <div className="mt-8">
-              <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} onAskClaude={() => setShowChat(v => !v)} />
-            </div>
           </>
         )}
       </div>
@@ -239,6 +234,15 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
       {activePanels.includes('context-viewer') && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
           <ContextViewerPanel onClose={() => togglePanel('context-viewer')} />
+        </div>
+      )}
+
+      {/* Sticky footer with action buttons */}
+      {!isNotSuitable && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm shadow-lg">
+          <div className={`max-w-[1600px] mx-auto px-4 py-4 ${showChat ? 'pr-[calc(1rem+420px)]' : ''}`}>
+            <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} onAskClaude={() => setShowChat(v => !v)} />
+          </div>
         </div>
       )}
     </div>

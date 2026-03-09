@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.20.2] - 2026-03-08
+
+### Changed
+
+**Sticky footer for action buttons**
+
+- **Fixed action button positioning** — Approve, Reject, Request Changes, and Ask Claude buttons now appear in a sticky footer at the bottom of the viewport. Always visible regardless of scroll position. Uses `fixed bottom-0` with backdrop blur, border, and shadow for clear visual separation.
+- **Responsive to chat panel** — Footer automatically adjusts width when chat panel is open (adds right margin to prevent overlap with 420px chat sidebar).
+- **Content padding adjustment** — Added bottom padding (pb-24) to scrollable content area to prevent action buttons from obscuring the last panel.
+- **NOT SUITABLE state preserved** — Footer only appears for suitable features; not-suitable research panel continues to show its own "Archive" action inline.
+
+---
+
 ## [0.20.1] - 2026-03-08
 
 ### Changed
