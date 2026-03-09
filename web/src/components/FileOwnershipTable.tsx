@@ -8,21 +8,13 @@ import {
   TableRow,
 } from './ui/table'
 import { Badge } from './ui/badge'
+import { getAgentColor, getAgentColorWithOpacity } from '../lib/agentColors'
 
 interface FileOwnershipTableProps {
   fileOwnership: FileOwnershipEntry[]
   col4Name?: string
   onFileClick?: (file: string, agent: string, wave: number) => void
 }
-
-// Agent-level colors (background) - inner hierarchy
-const AGENT_COLORS = [
-  { bg: 'bg-blue-100 dark:bg-blue-950', text: 'text-gray-800 dark:text-blue-200' },
-  { bg: 'bg-purple-100 dark:bg-purple-950', text: 'text-gray-800 dark:text-purple-200' },
-  { bg: 'bg-orange-100 dark:bg-orange-950', text: 'text-gray-800 dark:text-orange-200' },
-  { bg: 'bg-teal-100 dark:bg-teal-950', text: 'text-gray-800 dark:text-teal-200' },
-  { bg: 'bg-pink-100 dark:bg-pink-950', text: 'text-gray-800 dark:text-pink-200' },
-]
 
 // Wave-level colors (border wrapper + badge) - outer hierarchy
 const WAVE_COLORS = {
@@ -33,10 +25,6 @@ const WAVE_COLORS = {
   4: { border: 'border-rose-500', badge: 'border-rose-500 text-rose-700 dark:border-rose-600 dark:text-rose-400' },
 } as const
 
-function getAgentColor(agentIndex: number) {
-  return AGENT_COLORS[agentIndex % AGENT_COLORS.length]
-}
-
 function getWaveColor(wave: number) {
   if (wave in WAVE_COLORS) return WAVE_COLORS[wave as keyof typeof WAVE_COLORS]
   return WAVE_COLORS[4]
@@ -46,7 +34,7 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
   // Build agent color map (excluding Scaffold which gets grey)
   const agents = Array.from(new Set(fileOwnership.map(e => e.agent))).sort()
   const nonScaffoldAgents = agents.filter(a => a.toLowerCase() !== 'scaffold')
-  const agentColorMap = new Map(nonScaffoldAgents.map((agent, i) => [agent, getAgentColor(i)]))
+  const agentColorMap = new Map(nonScaffoldAgents.map((agent) => [agent, getAgentColor(agent)]))
 
   const hasWaves = fileOwnership.some(e => e.wave > 0)
   const isCol4DependsOn = col4Name ? col4Name.toLowerCase().includes('depends') : false
@@ -117,13 +105,17 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
                 <TableBody>
                   {group.entries.map((entry, idx) => {
                     const isScaffold = entry.agent.toLowerCase() === 'scaffold'
-                    const agentColors = isScaffold
-                      ? { bg: 'bg-gray-100 dark:bg-gray-800', text: 'text-gray-800 dark:text-gray-300' }
-                      : agentColorMap.get(entry.agent) ?? AGENT_COLORS[0]
+                    const agentColor = isScaffold
+                      ? '#6b7280' // gray fallback for Scaffold
+                      : agentColorMap.get(entry.agent) ?? '#6b7280'
+                    const bgColor = getAgentColorWithOpacity(isScaffold ? 'scaffold' : entry.agent, 0.15)
                     return (
                       <TableRow
                         key={idx}
-                        className={`${agentColors.bg} ${agentColors.text}`}
+                        style={{
+                          backgroundColor: bgColor,
+                          color: agentColor,
+                        }}
                       >
                         <TableCell className="font-mono text-xs">{entry.file}</TableCell>
                         <TableCell className="font-medium">{entry.agent}</TableCell>
