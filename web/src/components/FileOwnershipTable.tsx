@@ -108,7 +108,7 @@ export default function FileOwnershipTableNew({ fileOwnership, col4Name, onFileC
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[50%]">File</TableHead>
-                    {hasRepo && <TableHead>Repo</TableHead>}
+                    <TableHead>Agent</TableHead>
                     {hasWaves && <TableHead className={`w-[80px] ${isScaffoldGroup ? 'opacity-0' : ''}`}>Wave</TableHead>}
                     {hasRepo && <TableHead>Repo</TableHead>}
                     {hasCol4 && <TableHead>{col4Label}</TableHead>}
