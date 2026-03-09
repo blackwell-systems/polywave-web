@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.21.0] - 2026-03-09
+
+### Added
+
+**Stage State Machine** — 8-stage execution pipeline tracking persisted per-slug to `.saw-state/{slug}.json`, emitting `stage_transition` SSE events, and rendered as a live timeline strip in WaveBoard.
+
+- **`pkg/api/stage_state.go`** — `ExecutionStage` constants (`scaffold`, `wave_execute`, `wave_merge`, `wave_verify`, `wave_gate`, `complete`, `failed`), `StageStatus` (`running` / `complete` / `failed`), `StageEntry`/`StageStateFile` types, `stageManager` struct with mutex-protected `transition()`, `Read()`, `Clear()`. Upsert-in-place: terminal status updates find and overwrite the matching `running` entry rather than appending.
+- **`GET /api/wave/{slug}/state`** — returns current stage entries as JSON for page-load hydration.
+- **`pkg/api/wave_runner.go`** — `runWaveLoop` extended with `onStage func(ExecutionStage, StageStatus, int, string)` callback. 17 transition points added across scaffold, per-wave execute/merge/verify/gate, and final complete. `makeStageCallback()` combines file persistence + SSE publish in one closure. `handleWaveStart` clears previous state and wires the callback.
+- **`pkg/api/server.go`** — `stages *stageManager` field, initialized in `New()`, route registered.
+- **`web/src/components/StageTimeline.tsx`** — compact pipeline strip with `StatusDot` (pulsing blue for running, ✓ green, ✗ red), `stageLabel()` mapping stage+wave_num to human label ("Wave 1 Execute"), renders as a flex-wrap row of icon+label pairs.
+- **`web/src/hooks/useWaveEvents.ts`** — `StageEntry` interface, `stageEntries: StageEntry[]` on `AppWaveState`, `stage_transition` SSE listener with upsert-in-place logic matching the backend pattern.
+- **`StageTimeline`** rendered above the progress bar in `WaveBoard`.
+
+**Scout output markdown rendering** — scout output is now rendered as syntax-highlighted markdown instead of raw `<pre>` text.
+
+- `ReactMarkdown` with custom dark terminal component overrides: `h1`/`h2`/`h3`, `p`, inline/block `code`, `ul`/`ol`, `table`, `blockquote`, `hr`, `strong`, `em`.
+- Block vs inline code distinguished by `className?.startsWith('language-')` (react-markdown v10 compatible — `inline` prop removed).
+
+**Typewriter animation for scout output** — masks chunk-level CLI latency by revealing text via `requestAnimationFrame` at ~60 fps.
+
+- `displayed` state lags behind `output`; `useEffect([output, displayed])` self-chains via `rAF`. Step size: `Math.max(4, Math.floor(backlog / 6))` — catches up fast with large backlogs, smooth at low lag.
+- Scroll `useEffect` dependency changed from `output` to `displayed` so autoscroll tracks visible text, not buffered text.
+
+**Wave/agent count badges on impl list entries** — each sidebar entry shows `N waves · M agents` when the IMPL doc has wave structure.
+
+- `implListEntry` in `pkg/api/impl.go` extended with `WaveCount` and `AgentCount`. Populated by two package-level regexes (`waveHeaderRe`, `agentSectionRe`) applied to file content already read for status check — zero extra I/O.
+- `IMPLListEntry` in `web/src/types.ts` extended with optional `wave_count?` and `agent_count?`.
+- `EntryRow` renders a second line in `text-[10px] text-muted-foreground/70` when `wave_count > 0`.
+
+### Fixed
+
+**Sidebar collapse button horizontal scroll** — the collapse `ChevronLeft` button used `translate-x-1/2` on an element inside a container with `overflow-y: auto`, which forces `overflow-x: auto` on the same element and clips the translated button. Fixed by separating concerns: outer wrapper div (no overflow, positioning context) + inner div (scroll container only). Button is now a sibling of the scroll container, not a child.
+
+---
+
 ## [0.20.3] - 2026-03-08
 
 ### Changed
