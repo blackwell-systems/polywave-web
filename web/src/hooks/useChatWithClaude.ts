@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { startImplChat, subscribeChatEvents } from '../api'
 
 export interface ChatMessage {
@@ -21,6 +21,11 @@ export function useChatWithClaude(slug: string): {
     messages: [],
     running: false,
   })
+
+  // Reset chat history when slug changes (switching to a different IMPL)
+  useEffect(() => {
+    setState({ messages: [], running: false })
+  }, [slug])
 
   const sendMessage = useCallback(async (text: string) => {
     setState(prev => ({
