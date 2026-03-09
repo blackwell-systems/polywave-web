@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import MarkdownContent from './MarkdownContent'
+import AgentContextToggle from './AgentContextToggle'
 
 interface AgentPrompt {
   agent: string
@@ -9,9 +10,10 @@ interface AgentPrompt {
 
 interface AgentPromptsPanelProps {
   agentPrompts?: AgentPrompt[]
+  slug?: string  // Optional: if provided, shows "View Full Context" button per agent
 }
 
-export default function AgentPromptsPanel({ agentPrompts }: AgentPromptsPanelProps): JSX.Element {
+export default function AgentPromptsPanel({ agentPrompts, slug }: AgentPromptsPanelProps): JSX.Element {
   if (!agentPrompts || agentPrompts.length === 0) {
     return (
       <Card>
@@ -42,6 +44,11 @@ export default function AgentPromptsPanel({ agentPrompts }: AgentPromptsPanelPro
               </summary>
               <CardContent className="pt-0">
                 <MarkdownContent>{ap.prompt}</MarkdownContent>
+                {slug && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <AgentContextToggle slug={slug} agent={ap.agent} wave={ap.wave} />
+                  </div>
+                )}
               </CardContent>
             </details>
           </Card>
