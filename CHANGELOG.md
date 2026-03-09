@@ -8,9 +8,11 @@ All notable changes to this project will be documented in this file.
 
 **Sticky footer for action buttons**
 
-- **Fixed action button positioning** — Approve, Reject, Request Changes, and Ask Claude buttons now appear in a sticky footer at the bottom of the viewport. Always visible regardless of scroll position. Uses `fixed bottom-0` with backdrop blur, border, and shadow for clear visual separation.
-- **Responsive to chat panel** — Footer automatically adjusts width when chat panel is open (adds right margin to prevent overlap with 420px chat sidebar).
-- **Content padding adjustment** — Added bottom padding (pb-24) to scrollable content area to prevent action buttons from obscuring the last panel.
+- **Fixed action button positioning** — Approve, Reject, Request Changes, and Ask Claude buttons now appear in a sticky footer at the bottom of the viewport. Always visible regardless of scroll position. Three-layer nesting structure: outer `fixed` div for positioning, middle div for full-width background (`bg-background/95 backdrop-blur-sm`), inner `max-w-[1600px] mx-auto` div for content constraint.
+- **Centered button layout** — Buttons horizontally centered within content area using `flex justify-center`. Matches visual hierarchy of centered content rather than left-aligned.
+- **Responsive to chat panel** — Footer outer div adjusts right edge: `right-0` when chat closed, `right-[420px]` when chat open. Footer spans same width as main content's `flex-1` container.
+- **Clean appearance** — Removed `border-t` and `pt-4` from ActionButtons component. No visual separator line above buttons, just semi-transparent background for subtle distinction.
+- **Content padding adjustment** — Added bottom padding (`pb-20`) to scrollable content area to prevent action buttons from obscuring the last panel.
 - **NOT SUITABLE state preserved** — Footer only appears for suitable features; not-suitable research panel continues to show its own "Archive" action inline.
 
 ---
