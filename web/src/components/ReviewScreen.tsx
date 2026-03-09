@@ -53,6 +53,21 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const [showRevise, setShowRevise] = useState(false)
   const [showChat, setShowChat] = useState(false)
   const [diffTarget, setDiffTarget] = useState<{ agent: string; wave: number; file: string } | null>(null)
+  const [chatWidthPx, setChatWidthPx] = useState(420)
+
+  const chatDividerMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    const onMove = (mv: MouseEvent) => {
+      setChatWidthPx(Math.max(280, Math.min(window.innerWidth - mv.clientX, window.innerWidth * 0.55)))
+    }
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }
+
   const [activePanels, setActivePanels] = useState<PanelKey[]>(() => {
     const defaults: PanelKey[] = []
     if (impl.pre_mortem) {
@@ -225,9 +240,16 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
       {/* Chat Panel — right sidebar */}
       {showChat && (
-        <div className="w-[420px] flex-shrink-0 border-l border-gray-200 dark:border-gray-700 flex flex-col">
-          <ChatPanel slug={slug} onClose={() => setShowChat(false)} />
-        </div>
+        <>
+          <div
+            onMouseDown={chatDividerMouseDown}
+            style={{ width: '4px', flexShrink: 0, alignSelf: 'stretch' }}
+            className="cursor-col-resize select-none bg-border hover:bg-primary/30 transition-colors"
+          />
+          <div className="flex-shrink-0 border-l border-gray-200 dark:border-gray-700 flex flex-col" style={{ width: chatWidthPx }}>
+            <ChatPanel slug={slug} onClose={() => setShowChat(false)} />
+          </div>
+        </>
       )}
 
       {/* Context Viewer — modal overlay */}
@@ -239,7 +261,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
       {/* Sticky footer with action buttons */}
       {!isNotSuitable && (
-        <div className={`fixed bottom-0 left-0 z-50 ${showChat ? 'right-[420px]' : 'right-0'}`}>
+        <div className="fixed bottom-0 left-0 z-50" style={{ right: showChat ? `${chatWidthPx}px` : 0 }}>
           <div className="bg-background/95 backdrop-blur-sm">
             <div className="max-w-[1600px] mx-auto px-4 py-3 flex justify-center">
               <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} onAskClaude={() => setShowChat(v => !v)} />
