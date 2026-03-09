@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.23.0] - 2026-03-09
+
+### Changed
+
+- **Model fields in Settings are now free-text inputs with autocomplete** (`web/src/components/SettingsScreen.tsx`) — replaced `<select>` dropdowns with `<input list="...">` + `<datalist>` so any model string can be typed (e.g. `ollama:qwen2.5-coder:32b`, `openai:gpt-4o`, `lmstudio:phi-4`). Common options still appear as suggestions.
+- **Added local model suggestions to `MODEL_OPTIONS`** — Ollama entries for Qwen2.5-Coder 32B/14B, DeepSeek-Coder V2, Llama 3.1 70B, Granite 3.1 8B; LM Studio placeholder.
+- **Fixed stale default model** — initial state was `claude-sonnet-4-5`; corrected to `claude-sonnet-4-6`.
+
+---
+
 ## [0.22.0] - 2026-03-09
 
 ### Added
