@@ -96,3 +96,12 @@ body {
     background: hsl(var(--primary) / 0.8);
   }
 }
+
+/* Panel fade-in animation */
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.panel-animate {
+  animation: panel-in 150ms ease-out both;
+}

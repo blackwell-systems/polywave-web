@@ -5,6 +5,7 @@ import { WaveMergeState, WaveTestState } from '../hooks/useWaveEvents'
 import AgentCard from './AgentCard'
 import ProgressBar from './ProgressBar'
 import ImplEditor from './ImplEditor'
+import StageTimeline from './StageTimeline'
 import { AgentStatus, RepoEntry } from '../types'
 import { mergeWave, runWaveTests, rerunAgent } from '../api'
 
@@ -195,6 +196,9 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
             </span>
           )}
         </div>
+
+        {/* Stage timeline — shows pipeline progress */}
+        <StageTimeline entries={state.stageEntries} />
 
         {/* Overall progress bar */}
         {totalAgents > 0 && (

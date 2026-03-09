@@ -20,13 +20,14 @@ type Config struct {
 type Server struct {
 	cfg           Config
 	mux           *http.ServeMux
-	broker        *sseBroker   // unexported; used by wave.go handlers
+	broker        *sseBroker    // unexported; used by wave.go handlers
 	globalBroker  *globalBroker // fans out global SSE events (impl_list_updated, etc.)
-	activeRuns    sync.Map     // slug -> struct{}; tracks in-progress wave runs
-	scoutRuns     sync.Map     // runID -> context.CancelFunc; tracks in-progress scout runs
-	reviseCancels sync.Map     // runID -> context.CancelFunc; tracks in-progress revise runs
-	mergingRuns   sync.Map     // slug -> struct{}; tracks in-progress merge operations
-	testingRuns   sync.Map     // slug -> struct{}; tracks in-progress test runs
+	activeRuns    sync.Map      // slug -> struct{}; tracks in-progress wave runs
+	scoutRuns     sync.Map      // runID -> context.CancelFunc; tracks in-progress scout runs
+	reviseCancels sync.Map      // runID -> context.CancelFunc; tracks in-progress revise runs
+	mergingRuns   sync.Map      // slug -> struct{}; tracks in-progress merge operations
+	testingRuns   sync.Map      // slug -> struct{}; tracks in-progress test runs
+	stages        *stageManager // per-slug stage state persistence
 }
 
 // New creates a Server with the given Config and registers all routes.
@@ -38,6 +39,7 @@ func New(cfg Config) *Server {
 			clients: make(map[string][]chan SSEEvent),
 		},
 		globalBroker: newGlobalBroker(),
+		stages:       newStageManager(cfg.IMPLDir),
 	}
 
 	// Watch the IMPL directory for new/changed docs so connected clients
@@ -92,6 +94,9 @@ func New(cfg Config) *Server {
 
 	// v0.18.0-K — Per-agent context payload
 	s.mux.HandleFunc("GET /api/impl/{slug}/agent/{letter}/context", s.handleGetAgentContext)
+
+	// v0.19.0 — Stage state machine
+	s.mux.HandleFunc("GET /api/wave/{slug}/state", s.handleWaveState)
 
 	sub, err := fs.Sub(staticFiles, "dist")
 	if err != nil {

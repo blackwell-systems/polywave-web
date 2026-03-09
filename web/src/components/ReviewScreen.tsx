@@ -179,7 +179,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
               <div className="space-y-6">
                 {/* Wave Structure + Dependency Graph pair */}
                 {(activePanels.includes('wave-structure') || activePanels.includes('dependency-graph')) && (
-                  <div className={`grid gap-6 ${
+                  <div className={`panel-animate grid gap-6 ${
                     activePanels.includes('wave-structure') && activePanels.includes('dependency-graph')
                       ? 'grid-cols-1 md:grid-cols-2'
                       : 'grid-cols-1'
@@ -193,17 +193,17 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 {/* TODO: onFileClick wired here; FileOwnershipPanel does not yet declare this prop — will activate after Wave 1 merge */}
                 {activePanels.includes('file-ownership') && (() => {
                   const AnyFileOwnershipPanel = FileOwnershipPanel as any
-                  return <AnyFileOwnershipPanel impl={impl} repos={repos} onFileClick={(agent: string, wave: number, file: string) => setDiffTarget({ agent, wave, file })} />
+                  return <div className="panel-animate"><AnyFileOwnershipPanel impl={impl} repos={repos} onFileClick={(agent: string, wave: number, file: string) => setDiffTarget({ agent, wave, file })} /></div>
                 })()}
 
                 {/* Interface Contracts — full width */}
                 {activePanels.includes('interface-contracts') && (
-                  <InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} />
+                  <div className="panel-animate"><InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} /></div>
                 )}
 
                 {/* Agent Prompts + Scaffolds pair */}
                 {(activePanels.includes('agent-prompts') || activePanels.includes('scaffolds')) && (
-                  <div className={`grid gap-6 ${
+                  <div className={`panel-animate grid gap-6 ${
                     activePanels.includes('agent-prompts') && activePanels.includes('scaffolds')
                       ? 'grid-cols-1 md:grid-cols-2'
                       : 'grid-cols-1'
@@ -214,20 +214,20 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 )}
 
                 {/* Pre-Mortem — full width */}
-                {activePanels.includes('pre-mortem') && <PreMortemPanel preMortem={impl.pre_mortem} />}
+                {activePanels.includes('pre-mortem') && <div className="panel-animate"><PreMortemPanel preMortem={impl.pre_mortem} /></div>}
 
                 {/* Known Issues — full width */}
-                {activePanels.includes('known-issues') && <KnownIssuesPanel knownIssues={(impl as any).known_issues} />}
+                {activePanels.includes('known-issues') && <div className="panel-animate"><KnownIssuesPanel knownIssues={(impl as any).known_issues} /></div>}
 
                 {/* Stub Report — full width */}
-                {activePanels.includes('stub-report') && <StubReportPanel stubReportText={impl.stub_report_text} />}
+                {activePanels.includes('stub-report') && <div className="panel-animate"><StubReportPanel stubReportText={impl.stub_report_text} /></div>}
 
                 {/* Post-Merge Checklist — full width */}
-                {activePanels.includes('post-merge-checklist') && <PostMergeChecklistPanel checklistText={(impl as any).post_merge_checklist_text} />}
+                {activePanels.includes('post-merge-checklist') && <div className="panel-animate"><PostMergeChecklistPanel checklistText={(impl as any).post_merge_checklist_text} /></div>}
 
                 {/* Quality Gates — full width */}
                 {activePanels.includes('quality-gates') && (
-                  <QualityGatesPanel gatesText={(impl as any).quality_gates_text ?? ''} />
+                  <div className="panel-animate"><QualityGatesPanel gatesText={(impl as any).quality_gates_text ?? ''} /></div>
                 )}
               </div>
             </div>

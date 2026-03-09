@@ -9,8 +9,9 @@ import ThemePicker from './components/ThemePicker'
 import LiveRail from './components/LiveRail'
 import { LiveView } from './components/LiveRail'
 import SettingsScreen from './components/SettingsScreen'
+import CommandPalette from './components/CommandPalette'
 import { useResizableDivider } from './hooks/useResizableDivider'
-import { ChevronLeft, ChevronRight, Settings } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Settings, Search } from 'lucide-react'
 
 export default function App() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null)
@@ -24,6 +25,9 @@ export default function App() {
   const [repos, setRepos] = useState<RepoEntry[]>([])
   const [activeRepoIndex, setActiveRepoIndex] = useState<number>(0)
   const activeRepo: RepoEntry | null = repos[activeRepoIndex] ?? null
+
+  const [sseConnected, setSseConnected] = useState(false)
+  const [showPalette, setShowPalette] = useState(false)
 
   function handleReposChange(updated: RepoEntry[]): void {
     setRepos(updated)
@@ -54,7 +58,10 @@ export default function App() {
   // with any external changes (CLI scout runs, wave completion, approve/reject).
   useEffect(() => {
     const es = new EventSource('/api/events')
+    es.onopen = () => setSseConnected(true)
+    es.onerror = () => setSseConnected(false)
     es.addEventListener('impl_list_updated', () => {
+      setSseConnected(true)
       listImpls().then(setEntries).catch(() => {})
     })
     return () => es.close()
@@ -72,6 +79,18 @@ export default function App() {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission()
     }
+  }, [])
+
+  // Command palette keyboard shortcut (⌘K / Ctrl+K)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setShowPalette(v => !v)
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
   }, [])
 
   async function handleSelect(selected: string) {
@@ -182,6 +201,14 @@ export default function App() {
           >
             New Plan
           </button>
+          <button
+            onClick={() => setShowPalette(true)}
+            className="flex items-center gap-2 px-4 text-xs text-muted-foreground border-r border-border hover:bg-muted hover:text-foreground transition-colors"
+            title="Search plans (⌘K)"
+          >
+            <Search size={13} />
+            <kbd className="font-mono text-[10px] hidden sm:inline">⌘K</kbd>
+          </button>
         </div>
         <div className="flex items-stretch">
           <ThemePicker />
@@ -189,6 +216,12 @@ export default function App() {
           <button onClick={() => setShowSettings(s => !s)} title="Settings" className="flex items-center justify-center px-4 border-l border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
             <Settings size={16} />
           </button>
+          <div
+            title={sseConnected ? 'Live updates connected' : 'Live updates disconnected'}
+            className={`flex items-center justify-center px-3 border-l border-border`}
+          >
+            <span className={`w-2 h-2 rounded-full ${sseConnected ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.6)]' : 'bg-muted-foreground/40'}`} />
+          </div>
         </div>
       </header>
       <div className="flex flex-1 min-h-0">
@@ -229,14 +262,31 @@ export default function App() {
         {/* Center column */}
         <div className="flex-1 overflow-y-auto min-w-0">
           {error && <p className="text-destructive text-sm p-4">{error}</p>}
-          {loading && <p className="text-muted-foreground text-sm p-4">Loading...</p>}
+          {loading && (
+            <div className="p-6 space-y-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="animate-pulse h-5 bg-muted rounded w-1/3" />
+                  <div className="animate-pulse h-3 bg-muted rounded w-2/3" />
+                  <div className="animate-pulse h-3 bg-muted rounded w-1/2" />
+                </div>
+              ))}
+            </div>
+          )}
           {rejected && <p className="text-orange-600 text-sm p-4">Plan rejected.</p>}
           {!loading && impl !== null && selectedSlug !== null && (
             <ReviewScreen slug={selectedSlug} impl={impl} onApprove={handleApprove} onReject={handleReject} onRefreshImpl={handleSelect} repos={repos} />
           )}
           {!loading && impl === null && !error && (
-            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-              Select a plan from the list to review.
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="text-muted-foreground/30">
+                <rect x="6" y="8" width="36" height="32" rx="3" stroke="currentColor" strokeWidth="2"/>
+                <path d="M14 18h20M14 24h14M14 30h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-foreground">No plan selected</p>
+                <p className="text-xs text-muted-foreground mt-1">Select a plan from the sidebar or create a new one with New Plan</p>
+              </div>
             </div>
           )}
         </div>
@@ -277,6 +327,14 @@ export default function App() {
         </div>
       </>,
       document.body
+    )}
+
+    {showPalette && (
+      <CommandPalette
+        entries={entries}
+        onSelect={(slug) => { handleSelect(slug); setShowPalette(false) }}
+        onClose={() => setShowPalette(false)}
+      />
     )}
     </>
   )

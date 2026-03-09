@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { IMPLListEntry, RepoEntry } from '../types'
+import { useState, useRef, useEffect } from 'react'
+import { IMPLListEntry, RepoEntry, IMPLDocResponse } from '../types'
+import { fetchImpl } from '../api'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
 
@@ -69,27 +70,87 @@ interface EntryRowProps {
   onRequestDelete: (slug: string) => void
 }
 
+function HoverCard({ slug }: { slug: string; anchorRef?: React.RefObject<HTMLDivElement> }) {
+  const [data, setData] = useState<IMPLDocResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchImpl(slug).then(d => { setData(d); setLoading(false) }).catch(() => setLoading(false))
+  }, [slug])
+
+  const totalAgents = data?.waves.reduce((sum, w) => sum + w.agents.length, 0) ?? 0
+
+  return (
+    <div className="absolute left-full top-0 ml-2 z-50 w-56 bg-popover border border-border rounded-lg shadow-xl p-3 text-xs pointer-events-none">
+      <p className="font-medium text-foreground truncate mb-2">{slug}</p>
+      {loading ? (
+        <div className="space-y-1.5">
+          <div className="animate-pulse h-3 bg-muted rounded w-3/4" />
+          <div className="animate-pulse h-3 bg-muted rounded w-1/2" />
+        </div>
+      ) : data ? (
+        <div className="space-y-1 text-muted-foreground">
+          <div className="flex justify-between">
+            <span>Status</span>
+            <span className={`font-medium ${data.doc_status === 'complete' ? 'text-primary' : 'text-green-500'}`}>
+              {data.doc_status}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span>Waves</span>
+            <span className="font-medium text-foreground">{data.waves.length}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Agents</span>
+            <span className="font-medium text-foreground">{totalAgents}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Suitability</span>
+            <span className={`font-medium ${data.suitability.verdict === 'SUITABLE' ? 'text-green-500' : data.suitability.verdict === 'NOT SUITABLE' ? 'text-destructive' : 'text-muted-foreground'}`}>
+              {data.suitability.verdict === 'SUITABLE' ? '✓' : data.suitability.verdict === 'NOT SUITABLE' ? '✗' : '?'}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <p className="text-muted-foreground">Failed to load</p>
+      )}
+    </div>
+  )
+}
+
 function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: EntryRowProps): JSX.Element {
   const isSelected = e.slug === selectedSlug
   const isComplete = e.doc_status === 'complete'
+  const [showCard, setShowCard] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const rowRef = useRef<HTMLDivElement>(null)
+
+  const handleMouseEnter = () => {
+    timerRef.current = setTimeout(() => setShowCard(true), 400)
+  }
+  const handleMouseLeave = () => {
+    if (timerRef.current) clearTimeout(timerRef.current)
+    setShowCard(false)
+  }
+
   return (
-    <div className="group relative flex items-center">
+    <div className="group relative flex items-center" ref={rowRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      {showCard && <HoverCard slug={e.slug} anchorRef={rowRef} />}
       <Button
         variant="ghost"
         size="sm"
         className={cn(
-          'flex-1 justify-start font-mono text-xs pr-6',
+          'flex-1 justify-start font-mono text-xs pr-6 gap-1.5',
           isSelected && 'bg-primary/10 border-l-2 border-primary rounded-none',
           isComplete && !isSelected && 'opacity-40 text-muted-foreground line-through hover:opacity-80 hover:no-underline'
         )}
         disabled={loading}
         onClick={() => onSelect(e.slug)}
       >
-        {isComplete ? '\u2713 ' : ''}{e.slug}
+        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isComplete ? 'bg-primary/40' : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'}`} />
+        {isComplete ? '✓ ' : ''}{e.slug}
         {isMultiRepo(e.slug) && (
-          <>
-            <span className="text-[9px] px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 ml-1 font-mono">multirepo</span>
-          </>
+          <span className="text-[9px] px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 ml-1 font-mono">multirepo</span>
         )}
       </Button>
       <button

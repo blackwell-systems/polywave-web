@@ -33,9 +33,13 @@ func (s *Server) handleWaveStart(w http.ResponseWriter, r *http.Request) {
 	implPath := s.cfg.IMPLDir + "/IMPL-" + slug + ".md"
 	publish := s.makePublisher(slug)
 
+	// Clear previous stage state so the timeline starts fresh for this run.
+	s.stages.Clear(slug)
+	onStage := s.makeStageCallback(slug, publish)
+
 	go func() {
 		defer s.activeRuns.Delete(slug)
-		runWaveLoopFunc(implPath, slug, s.cfg.RepoPath, publish)
+		runWaveLoopFunc(implPath, slug, s.cfg.RepoPath, publish, onStage)
 		// Notify all sidebar clients that doc status may have changed
 		// (e.g. COMPLETE marker written, waves finished).
 		s.globalBroker.broadcast("impl_list_updated")
@@ -49,9 +53,16 @@ func (s *Server) handleWaveStart(w http.ResponseWriter, r *http.Request) {
 // publishes a "wave_gate_pending" SSE event and blocks for up to 30 minutes
 // waiting for a proceed signal via gateChannels.
 //
+// onStage is called at each stage transition; it handles both file persistence
+// and SSE broadcast via the closure created in handleWaveStart.
+//
 // On any error the function publishes "run_failed" and returns.
 // On success it publishes "run_complete".
-func runWaveLoop(implPath, slug, repoPath string, publish func(event string, data interface{})) {
+func runWaveLoop(
+	implPath, slug, repoPath string,
+	publish func(event string, data interface{}),
+	onStage func(ExecutionStage, StageStatus, int, string),
+) {
 	publish("run_started", map[string]string{"slug": slug, "impl_path": implPath})
 
 	// Parse the IMPL doc via the engine to get wave structure.
@@ -68,12 +79,15 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 	ctx := context.Background()
 
 	// Run scaffold agent if needed (engine handles the check internally).
+	onStage(StageScaffold, StageStatusRunning, 0, "")
 	if err := engine.RunScaffold(ctx, implPath, repoPath, "", func(ev engine.Event) {
 		publish(ev.Event, ev.Data)
 	}); err != nil {
+		onStage(StageScaffold, StageStatusFailed, 0, err.Error())
 		publish("run_failed", map[string]string{"error": err.Error()})
 		return
 	}
+	onStage(StageScaffold, StageStatusComplete, 0, "")
 
 	waves := doc.Waves
 	totalAgents := 0
@@ -94,29 +108,39 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 		enginePublisher := func(ev engine.Event) {
 			publish(ev.Event, ev.Data)
 		}
+
+		onStage(StageWaveExecute, StageStatusRunning, waveNum, "")
 		if err := engine.RunSingleWave(ctx, opts, waveNum, enginePublisher); err != nil {
+			onStage(StageWaveExecute, StageStatusFailed, waveNum, err.Error())
 			publish("run_failed", map[string]string{"error": err.Error()})
 			return
 		}
+		onStage(StageWaveExecute, StageStatusComplete, waveNum, "")
 
+		onStage(StageWaveMerge, StageStatusRunning, waveNum, "")
 		if err := engine.MergeWave(ctx, engine.RunMergeOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			WaveNum:  waveNum,
 		}); err != nil {
+			onStage(StageWaveMerge, StageStatusFailed, waveNum, err.Error())
 			publish("run_failed", map[string]string{"error": err.Error()})
 			return
 		}
+		onStage(StageWaveMerge, StageStatusComplete, waveNum, "")
 
 		testCmd := doc.TestCommand
 		if testCmd != "" {
+			onStage(StageWaveVerify, StageStatusRunning, waveNum, "")
 			if err := engine.RunVerification(ctx, engine.RunVerificationOpts{
 				RepoPath:    repoPath,
 				TestCommand: testCmd,
 			}); err != nil {
+				onStage(StageWaveVerify, StageStatusFailed, waveNum, err.Error())
 				publish("run_failed", map[string]string{"error": err.Error()})
 				return
 			}
+			onStage(StageWaveVerify, StageStatusComplete, waveNum, "")
 		}
 
 		completedLetters := make([]string, 0, len(wave.Agents))
@@ -140,6 +164,7 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 			gateCh := make(chan bool, 1)
 			gateChannels.Store(slug, gateCh)
 
+			onStage(StageWaveGate, StageStatusRunning, waveNum, "")
 			publish("wave_gate_pending", map[string]interface{}{
 				"wave":      waveNum,
 				"next_wave": nextWaveNum,
@@ -151,11 +176,13 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 			case ok := <-gateCh:
 				gateChannels.Delete(slug)
 				if !ok {
+					onStage(StageWaveGate, StageStatusFailed, waveNum, "gate cancelled or timed out")
 					publish("run_failed", map[string]string{
 						"error": "gate cancelled or timed out",
 					})
 					return
 				}
+				onStage(StageWaveGate, StageStatusComplete, waveNum, "")
 				publish("wave_gate_resolved", map[string]interface{}{
 					"wave":   waveNum,
 					"action": "proceed",
@@ -163,6 +190,7 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 				})
 			case <-time.After(gateTimeout):
 				gateChannels.Delete(slug)
+				onStage(StageWaveGate, StageStatusFailed, waveNum, "gate cancelled or timed out")
 				publish("run_failed", map[string]string{
 					"error": "gate cancelled or timed out",
 				})
@@ -171,6 +199,7 @@ func runWaveLoop(implPath, slug, repoPath string, publish func(event string, dat
 		}
 	}
 
+	onStage(StageComplete, StageStatusComplete, 0, "")
 	publish("run_complete", map[string]interface{}{
 		"status": "success",
 		"waves":  len(waves),
@@ -233,5 +262,20 @@ func (s *Server) makePublisher(slug string) func(event string, data interface{})
 func (s *Server) makeEnginePublisher(slug string) func(engine.Event) {
 	return func(ev engine.Event) {
 		s.broker.Publish(slug, SSEEvent{Event: ev.Event, Data: ev.Data})
+	}
+}
+
+// makeStageCallback returns a closure that writes to the stage manager and
+// publishes a stage_transition SSE event in a single call.
+func (s *Server) makeStageCallback(slug string, publish func(string, interface{})) func(ExecutionStage, StageStatus, int, string) {
+	return func(stage ExecutionStage, status StageStatus, waveNum int, msg string) {
+		// Best-effort persistence — errors are non-fatal.
+		_ = s.stages.transition(slug, stage, status, waveNum, msg)
+		publish("stage_transition", map[string]interface{}{
+			"stage":    string(stage),
+			"status":   string(status),
+			"wave_num": waveNum,
+			"message":  msg,
+		})
 	}
 }

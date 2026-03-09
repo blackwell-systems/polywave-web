@@ -16,6 +16,15 @@ export interface WaveTestState {
 // AppWaveState is the composite state managed by the hook.
 // WaveState in types.ts is per-wave; we expose a top-level shape here
 // and also return the list of per-wave WaveState objects for WaveBoard grouping.
+export interface StageEntry {
+  stage: string
+  status: 'running' | 'complete' | 'failed' | 'skipped'
+  wave_num?: number
+  message?: string
+  started_at?: string
+  completed_at?: string
+}
+
 export interface AppWaveState {
   agents: AgentStatus[]
   scaffoldStatus: 'idle' | 'running' | 'complete'
@@ -28,6 +37,7 @@ export interface AppWaveState {
   waveGate?: { wave: number; nextWave: number }
   wavesMergeState: Map<number, WaveMergeState>
   wavesTestState: Map<number, WaveTestState>
+  stageEntries: StageEntry[]
 }
 
 // useWaveEvents subscribes to the SSE stream for a given slug and returns
@@ -43,6 +53,7 @@ export function useWaveEvents(slug: string): AppWaveState {
     waves: [],
     wavesMergeState: new Map(),
     wavesTestState: new Map(),
+    stageEntries: [],
   })
 
   const esRef = useRef<EventSource | null>(null)
@@ -264,6 +275,22 @@ export function useWaveEvents(slug: string): AppWaveState {
         const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '' }
         next.set(data.wave, { ...cur, status: 'fail', output: data.output })
         return { ...prev, wavesTestState: next }
+      })
+    })
+
+    es.addEventListener('stage_transition', (event: MessageEvent) => {
+      const entry = JSON.parse(event.data) as StageEntry
+      setState(prev => {
+        // Update existing running entry for same stage+wave, or append new.
+        const idx = prev.stageEntries.findIndex(
+          e => e.stage === entry.stage && e.wave_num === entry.wave_num && e.status === 'running'
+        )
+        if (idx >= 0 && entry.status !== 'running') {
+          const next = [...prev.stageEntries]
+          next[idx] = entry
+          return { ...prev, stageEntries: next }
+        }
+        return { ...prev, stageEntries: [...prev.stageEntries, entry] }
       })
     })
 
