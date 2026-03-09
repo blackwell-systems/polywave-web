@@ -174,7 +174,7 @@ export default function App() {
   return (
     <>
     <div className="h-screen flex flex-col bg-background overflow-hidden">
-      <header className="flex items-stretch justify-between h-12 border-b shrink-0">
+      <header className="flex items-stretch justify-between h-14 border-b shrink-0">
         <div className="flex items-stretch">
           <button
             onClick={() => setLiveView(v => v === 'scout' ? null : 'scout')}
