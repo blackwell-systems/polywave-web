@@ -43,7 +43,7 @@ export default function AgentPromptsPanel({ agentPrompts, slug }: AgentPromptsPa
                 </div>
               </summary>
               <CardContent className="pt-0">
-                <MarkdownContent>{ap.prompt}</MarkdownContent>
+                <MarkdownContent compact={false}>{ap.prompt}</MarkdownContent>
                 {slug && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <AgentContextToggle slug={slug} agent={ap.agent} wave={ap.wave} />

@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.37.0] - 2026-03-10
+
+### Improved
+
+- **Transitive reduction in dep graph** (`DependencyGraphPanel.tsx`) — SVG dependency graph now hides redundant transitive edges (if A→B→C, the direct A→C line is omitted). Full dependency data preserved in tooltips. Reduces visual clutter on dense graphs.
+- **Data-driven multi-repo badge** (`pkg/api/impl.go`, `ImplList.tsx`) — Sidebar "multirepo" badge now derived from actual file ownership `repo` field (2+ distinct repos) instead of keyword heuristics on the slug. Fixes false positive on `engine-protocol-gap`.
+- **Agent prompt readability** (`AgentPromptsPanel.tsx`) — Agent prompt panel now renders with relaxed spacing (`compact={false}`) for better human review of long-form markdown content.
+
+---
+
 ## [0.36.0] - 2026-03-10
 
 ### Fixed

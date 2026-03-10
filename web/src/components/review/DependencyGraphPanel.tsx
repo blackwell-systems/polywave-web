@@ -199,12 +199,51 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
   const { nodes, width, height } = layoutNodes(parsed)
   const nodeMap = new Map(nodes.map(n => [n.agent.letter, n]))
 
-  // Build edges — skip same-wave deps (they render backwards in column layout)
-  const edges: Array<{ from: NodePos; to: NodePos; color: string }> = []
+  // Build cross-wave adjacency for transitive reduction
+  const adjMap = new Map<string, Set<string>>()
   for (const node of nodes) {
+    const directDeps = new Set<string>()
     for (const dep of node.agent.dependencies) {
       const source = nodeMap.get(dep)
       if (source && source.agent.wave !== node.agent.wave) {
+        directDeps.add(dep)
+      }
+    }
+    adjMap.set(node.agent.letter, directDeps)
+  }
+
+  // Transitive reduction: drop edge A→C if A can reach C through other nodes
+  function isReachableWithout(from: string, target: string, excluded: string): boolean {
+    const visited = new Set<string>()
+    const stack = [from]
+    while (stack.length > 0) {
+      const cur = stack.pop()!
+      if (cur === target) return true
+      if (visited.has(cur)) continue
+      visited.add(cur)
+      const deps = adjMap.get(cur)
+      if (deps) {
+        for (const d of deps) {
+          if (!(cur === excluded && d === target)) {
+            stack.push(d)
+          }
+        }
+      }
+    }
+    return false
+  }
+
+  // Build edges — only direct (non-redundant) cross-wave dependencies
+  const edges: Array<{ from: NodePos; to: NodePos; color: string }> = []
+  for (const node of nodes) {
+    const deps = adjMap.get(node.agent.letter)
+    if (!deps) continue
+    for (const dep of deps) {
+      // Skip if reachable through other deps (transitive/redundant edge)
+      if (isReachableWithout(node.agent.letter, dep, node.agent.letter)) continue
+
+      const source = nodeMap.get(dep)
+      if (source) {
         const fill = getAgentFill(node.agent.letter)
         edges.push({ from: source, to: node, color: fill.border.replace('50', 'aa') })
       }

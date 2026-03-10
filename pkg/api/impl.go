@@ -28,10 +28,11 @@ var agentSectionRe = regexp.MustCompile(`(?m)^### (?:Wave \d+ )?Agent [A-Z]\b`)
 
 // implListEntry is one item in the GET /api/impl response.
 type implListEntry struct {
-	Slug       string `json:"slug"`
-	DocStatus  string `json:"doc_status"`  // "active" or "complete"
-	WaveCount  int    `json:"wave_count"`  // number of waves (0 if not yet planned)
-	AgentCount int    `json:"agent_count"` // total agents across all waves
+	Slug        string `json:"slug"`
+	DocStatus   string `json:"doc_status"`   // "active" or "complete"
+	WaveCount   int    `json:"wave_count"`   // number of waves (0 if not yet planned)
+	AgentCount  int    `json:"agent_count"`  // total agents across all waves
+	IsMultiRepo bool   `json:"is_multi_repo"` // true when file ownership spans 2+ repos
 }
 
 // handleListImpls serves GET /api/impl and returns a JSON array of impl entries.
@@ -54,6 +55,7 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 			}
 			status := "active"
 			var waveCount, agentCount int
+			var isMultiRepo bool
 			if strings.HasSuffix(name, ".yaml") {
 				if m, err := protocol.Load(filepath.Join(s.cfg.IMPLDir, name)); err == nil {
 					for _, w := range m.Waves {
@@ -63,6 +65,13 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 					if m.State == protocol.StateComplete {
 						status = "complete"
 					}
+					repos := make(map[string]struct{})
+					for _, fo := range m.FileOwnership {
+						if fo.Repo != "" {
+							repos[fo.Repo] = struct{}{}
+						}
+					}
+					isMultiRepo = len(repos) >= 2
 				}
 			} else {
 				// Quick scan: explicit SAW:COMPLETE tag, or infer from completion reports.
@@ -75,9 +84,19 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 					}
 					waveCount = len(waveHeaderRe.FindAllString(text, -1))
 					agentCount = len(agentSectionRe.FindAllString(text, -1))
+					// Detect multi-repo from file ownership table Repo column
+					if doc, err := engine.ParseIMPLDoc(filepath.Join(s.cfg.IMPLDir, name)); err == nil {
+						repos := make(map[string]struct{})
+						for _, info := range doc.FileOwnership {
+							if info.Repo != "" {
+								repos[info.Repo] = struct{}{}
+							}
+						}
+						isMultiRepo = len(repos) >= 2
+					}
 				}
 			}
-			result = append(result, implListEntry{Slug: slug, DocStatus: status, WaveCount: waveCount, AgentCount: agentCount})
+			result = append(result, implListEntry{Slug: slug, DocStatus: status, WaveCount: waveCount, AgentCount: agentCount, IsMultiRepo: isMultiRepo})
 		}
 	}
 	if result == nil {

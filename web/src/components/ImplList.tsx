@@ -4,12 +4,6 @@ import { fetchImpl } from '../api'
 import { Button } from './ui/button'
 import { cn } from '@/lib/utils'
 
-const MULTI_REPO_KEYWORDS = ['cross-repo', 'multi-repo', 'engine', 'extraction']
-
-function isMultiRepo(slug: string): boolean {
-  return MULTI_REPO_KEYWORDS.some((kw) => slug.includes(kw))
-}
-
 interface ImplListProps {
   entries: IMPLListEntry[]
   selectedSlug: string | null
@@ -150,7 +144,7 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
         <div className="flex items-center gap-1.5 w-full">
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isComplete ? 'bg-primary/40' : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'}`} />
           <span className="truncate">{isComplete ? '✓ ' : ''}{e.slug}</span>
-          {isMultiRepo(e.slug) && (
+          {e.is_multi_repo && (
             <span className="text-[9px] px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-mono shrink-0">multirepo</span>
           )}
         </div>

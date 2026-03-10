@@ -86,6 +86,7 @@ export interface IMPLListEntry {
   doc_status: string // "active" or "complete" (lowercase)
   wave_count?: number
   agent_count?: number
+  is_multi_repo?: boolean
 }
 
 // SSE event data shapes

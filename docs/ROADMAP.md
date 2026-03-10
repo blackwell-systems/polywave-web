@@ -270,10 +270,10 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 - v0.17.0-D — **Worktree manager** (clean up stale branches in GUI)
 
 **Then:** Phase 2 intelligence features
-- ~~v0.18.0-D — Failure type action buttons~~ *(shipped v0.35.0)*
-- v0.18.0-I — Scaffold build failure detail (UI only — API shipped v0.33.0)
-- v0.18.0-G — CONTEXT.md viewer
+- v0.18.0-E — Stub Report Panel
+- v0.18.0-F — Quality Gates Panel
 - v0.18.0-H — NOT SUITABLE full research view
+- v0.18.0-I — Scaffold build failure detail (UI only — API shipped v0.33.0)
 - v0.18.0-K — Large IMPL doc scalability
 
 **Then:** v0.19.5 — Wails desktop app. Engine extraction complete — import `scout-and-wave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
