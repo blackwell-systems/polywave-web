@@ -98,6 +98,9 @@ func New(cfg Config) *Server {
 	// v0.19.0 — Stage state machine
 	s.mux.HandleFunc("GET /api/wave/{slug}/state", s.handleWaveState)
 
+	// v0.32.0 — Manifest routes (validate, load, wave, completion)
+	s.RegisterManifestRoutes()
+
 	sub, err := fs.Sub(staticFiles, "dist")
 	if err != nil {
 		panic("saw: failed to sub embed.FS: " + err.Error())
