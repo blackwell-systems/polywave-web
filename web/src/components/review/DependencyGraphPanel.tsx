@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { getAgentColor, resetThemeCache } from '../../lib/agentColors'
 
@@ -142,6 +143,7 @@ function layoutNodes(waves: ParsedWave[]): { nodes: NodePos[]; width: number; he
 
 export default function DependencyGraphPanel({ dependencyGraphText }: DependencyGraphPanelProps): JSX.Element {
   const svgRef = useRef<SVGSVGElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; agent: ParsedAgent } | null>(null)
   const [, setThemeTick] = useState(0)
 
@@ -215,7 +217,7 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
         <CardTitle>Dependency Graph</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-x-auto relative">
+        <div ref={containerRef} className="overflow-x-auto relative">
           <svg
             ref={svgRef}
             width={width}
@@ -300,18 +302,15 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
               return (
                 <g
                   key={node.agent.letter}
+                  className="cursor-pointer"
                   onMouseEnter={(e) => {
                     const rect = (e.currentTarget as SVGGElement).getBoundingClientRect()
-                    const svgRect = svgRef.current?.getBoundingClientRect()
-                    if (svgRect) {
-                      setTooltip({
-                        x: rect.left + rect.width / 2,
-                        y: svgRect.top + node.y,
-                        agent: node.agent,
-                      })
-                    }
+                    setTooltip({
+                      x: rect.left + rect.width / 2,
+                      y: rect.top,
+                      agent: node.agent,
+                    })
                   }}
-                  className="cursor-pointer"
                 >
                   <rect
                     x={node.x}
@@ -341,28 +340,29 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
             })}
           </svg>
 
-          {/* Tooltip */}
-          {tooltip && (
-            <div
-              className="fixed z-50 pointer-events-none"
-              style={{
-                left: tooltip.x,
-                top: tooltip.y - 8,
-                transform: 'translate(-50%, -100%)',
-              }}
-            >
-              <div className="bg-foreground text-background border border-foreground/20 rounded-lg shadow-xl p-3 max-w-[240px]">
-                <div className="font-semibold text-sm mb-1">{tooltip.agent.letter === 'Scaffold' ? 'Scaffold Agent' : `Agent ${tooltip.agent.letter}`}</div>
-                <div className="text-xs opacity-80">{tooltip.agent.description}</div>
-                {tooltip.agent.dependencies.length > 0 && (
-                  <div className="text-xs opacity-70 mt-1">
-                    depends on: {tooltip.agent.dependencies.map(d => `[${d}]`).join(' ')}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Tooltip - render outside scrollable container */}
         </div>
+        {tooltip && createPortal(
+          <div
+            className="fixed z-[9999] pointer-events-none"
+            style={{
+              left: tooltip.x,
+              top: tooltip.y - 8,
+              transform: 'translate(-50%, -100%)',
+            }}
+          >
+            <div className="bg-foreground text-background border border-foreground/20 rounded-lg shadow-xl p-3 max-w-[240px]">
+              <div className="font-semibold text-sm mb-1">{tooltip.agent.letter === 'Scaffold' ? 'Scaffold Agent' : `Agent ${tooltip.agent.letter}`}</div>
+              <div className="text-xs opacity-80">{tooltip.agent.description}</div>
+              {tooltip.agent.dependencies.length > 0 && (
+                <div className="text-xs opacity-70 mt-1">
+                  depends on: {tooltip.agent.dependencies.map(d => `[${d}]`).join(' ')}
+                </div>
+              )}
+            </div>
+          </div>,
+          document.body,
+        )}
       </CardContent>
     </Card>
   )
