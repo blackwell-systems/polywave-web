@@ -55,6 +55,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "set-completion":
+		if err := runSetCompletion(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "--version", "-version":
 		fmt.Printf("saw %s\n", version)
 	case "--help", "-help", "help":
@@ -79,6 +84,7 @@ Commands:
   serve           Start a local HTTP server for reviewing IMPL docs
   validate        Validate a YAML IMPL manifest against protocol invariants
   extract-context Extract agent-specific context from an IMPL manifest as JSON
+  set-completion  Register a completion report for an agent in a manifest
 
 Global flags:
   --version   Print version and exit
