@@ -71,10 +71,13 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
   const [activePanels, setActivePanels] = useState<PanelKey[]>(() => {
     const defaults: PanelKey[] = []
+    defaults.push('wave-structure', 'dependency-graph', 'file-ownership')
+    if ((impl as any).scaffolds_detail?.length > 0) {
+      defaults.push('scaffolds')
+    }
     if (impl.pre_mortem) {
       defaults.push('pre-mortem')
     }
-    defaults.push('wave-structure', 'dependency-graph', 'file-ownership')
     return defaults
   })
   const [isStuck, setIsStuck] = useState(false)
@@ -203,16 +206,14 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                   <div className="panel-animate"><InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} /></div>
                 )}
 
-                {/* Agent Prompts + Scaffolds pair */}
-                {(activePanels.includes('agent-prompts') || activePanels.includes('scaffolds')) && (
-                  <div className={`panel-animate grid gap-6 ${
-                    activePanels.includes('agent-prompts') && activePanels.includes('scaffolds')
-                      ? 'grid-cols-1 md:grid-cols-2'
-                      : 'grid-cols-1'
-                  }`}>
-                    {activePanels.includes('agent-prompts') && <AgentContextPanel impl={impl} slug={slug} />}
-                    {activePanels.includes('scaffolds') && <ScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} />}
-                  </div>
+                {/* Agent Prompts — full width */}
+                {activePanels.includes('agent-prompts') && (
+                  <div className="panel-animate"><AgentContextPanel impl={impl} slug={slug} /></div>
+                )}
+
+                {/* Scaffolds — full width, above pre-mortem */}
+                {activePanels.includes('scaffolds') && (
+                  <div className="panel-animate"><ScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} /></div>
                 )}
 
                 {/* Pre-Mortem — full width */}

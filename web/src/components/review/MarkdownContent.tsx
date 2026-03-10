@@ -8,6 +8,26 @@ interface MarkdownContentProps {
   compact?: boolean  // default true for review panels, false for chat
 }
 
+/** Guess language from code content when no fence tag is provided. */
+function guessLanguage(code: string): string | null {
+  const trimmed = code.trimStart()
+  // Go: type/func/package/import keywords, := operator
+  if (/^(type |func |package |import |var |const )/.test(trimmed) || /\s:=\s/.test(code)) return 'go'
+  // TypeScript/JavaScript: interface/export/import/const with types
+  if (/^(interface |export |import \{|type .* = )/.test(trimmed)) return 'typescript'
+  // Python: def/class/import with colon
+  if (/^(def |class |from |import )/.test(trimmed)) return 'python'
+  // Rust: fn/pub/use/struct/impl
+  if (/^(fn |pub |use |struct |impl |mod )/.test(trimmed)) return 'rust'
+  // YAML: key: value pattern
+  if (/^\w[\w-]*:(\s|$)/.test(trimmed)) return 'yaml'
+  // JSON: starts with { or [
+  if (/^[{\[]/.test(trimmed)) return 'json'
+  // Shell: starts with $ or #! or common commands
+  if (/^(\$\s|#!\/|cd |mkdir |npm |go |git )/.test(trimmed)) return 'bash'
+  return null
+}
+
 export default function MarkdownContent({ children, compact = true }: MarkdownContentProps): JSX.Element {
   const [isDark, setIsDark] = useState(false)
 
@@ -39,10 +59,13 @@ export default function MarkdownContent({ children, compact = true }: MarkdownCo
           code({ className, children: codeChildren, ...props }) {
             const match = /language-(\w+)/.exec(className || '')
             const code = String(codeChildren).replace(/\n$/, '')
-            if (match) {
+            const isBlock = code.includes('\n')
+            // Use explicit language, or auto-detect for multi-line code blocks
+            const lang = match?.[1] ?? (isBlock ? guessLanguage(code) : null)
+            if (lang) {
               return (
                 <SyntaxHighlighter
-                  language={match[1]}
+                  language={lang}
                   style={isDark ? vscDarkPlus : vs}
                   customStyle={{
                     fontSize: '0.75rem',

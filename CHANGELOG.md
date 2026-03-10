@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.39.0] - 2026-03-10
+
+### Improved
+
+- **Auto syntax highlighting** (`MarkdownContent.tsx`) — `guessLanguage()` heuristic auto-detects Go, TypeScript, Python, Rust, YAML, JSON, and bash in untagged code fences. Fixes highlighting for Interface Contracts, Agent Prompts, and any panel using `MarkdownContent` — no per-panel changes needed.
+- **Scaffolds panel redesign** (`ScaffoldsPanel.tsx`) — Replaced flat table with collapsible per-file cards. Contents rendered with Prism syntax highlighting (language auto-detected from file extension). Files auto-expand when 3 or fewer.
+- **Scaffolds default-on** (`ReviewScreen.tsx`) — Scaffolds panel activates by default when scaffold files exist. Renders full-width above Pre-Mortem instead of cramped 2-column grid with Agent Prompts.
+
+---
+
 ## [0.38.0] - 2026-03-10
 
 ### Added
