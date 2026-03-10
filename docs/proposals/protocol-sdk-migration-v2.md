@@ -2998,3 +2998,36 @@ This approach gets us shipping now (no framework dependency, no language boundar
 ### Key Insight
 
 SAW's value is not in the agent execution loop (any framework can do that). SAW's value is in the **coordination protocol** — wave sequencing, disjoint file ownership, interface contracts, manifest lifecycle, merge verification. No framework provides these. The Protocol SDK is the right investment because it codifies what's unique to SAW; agent execution is the commodity layer that can be delegated to whatever runtime fits best.
+
+---
+
+## Gap Closure Work
+
+### Agent C - Completion Report
+
+```yaml type=impl-completion-report
+status: complete
+repo: /Users/dayna.blackwell/code/scout-and-wave-web
+worktree: .claude/worktrees/gap-agent-C
+branch: gap-agent-C
+commit: 348a68d74873d497c7718a32d0732621e7577a86
+files_changed: []
+files_created:
+  - cmd/saw/update_prompt.go
+  - cmd/saw/validate_scaffolds.go
+  - cmd/saw/freeze_check.go
+interface_deviations: []
+out_of_scope_deps: []
+tests_added: []
+verification: PASS (go build + go vet)
+```
+
+**Summary:**
+Added three new CLI commands wrapping Protocol SDK functions:
+- `saw update-agent-prompt` — Updates agent prompt field in manifest (reads from stdin)
+- `saw validate-scaffolds` — Validates scaffold status and checks all committed (exits 1 if not)
+- `saw freeze-check` — Checks for freeze violations (exits 1 if found)
+
+All commands follow the established pattern from `validate.go` and `completion.go`. Each uses flag.NewFlagSet, loads manifest via protocol.Load(), calls the corresponding SDK function, and outputs JSON where appropriate.
+
+**Key implementation detail:** CheckFreeze returns ([]FreezeViolation, error) not just violations - caught during compilation and fixed.
