@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.45.0] - 2026-03-10
+
+### Added
+
+- **YAML structured sections migration Wave 3 complete** — UI panels now parse structured YAML for Quality Gates, Post-Merge Checklist, and Known Issues using `js-yaml` library. Added TypeScript interfaces for type safety: `QualityGates`, `PostMergeChecklist`, `KnownIssue`. Removed regex-based prose parsing (hard cutover). All 26 tests passing (including 12 new tests for structured YAML parsing).
+  - `QualityGatesPanel.tsx`: `parseQualityGates()` with `js-yaml`
+  - `PostMergeChecklistPanel.tsx`: `parsePostMergeChecklist()` with `js-yaml` (new component)
+  - `KnownIssuesPanel.tsx`: accepts structured data from API, removed prose parser
+  - `web/package.json`: added `js-yaml` + `@types/js-yaml` dependencies
+
+---
+
 ## [0.44.0] - 2026-03-10
 
 ### Context
