@@ -30,15 +30,15 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ---
 
-## Current Status (v0.33.0)
+## Current Status (v0.35.0)
 
-**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E23 execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`scout-and-wave-go` standalone module), cross-repo wave support.
+**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E23 execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`scout-and-wave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`).
 
-**Web UI** — 3-column layout, Scout launcher, ReviewScreen (15+ panels), WaveBoard, RevisePanel, GitActivity, CommandPalette, Settings, ThemePicker, SVG dep graph, wave gate, cancellation, desktop notifications, ManifestValidation panel.
+**Web UI** — 3-column layout, Scout launcher, ReviewScreen (15+ panels), WaveBoard (failure-type action buttons, notes callout, scope-hint reruns), RevisePanel, GitActivity, CommandPalette, Settings, ThemePicker, SVG dep graph, wave gate, cancellation, desktop notifications, ManifestValidation panel.
 
 **Streaming** — PTY + `--output-format stream-json` pipeline, JSON fragment reassembly, SSE broker (2048-channel).
 
-**API** — 28 routes covering scout, wave, merge, test, diff, worktree, chat, config, context, scaffold rerun, manifest validate/load/wave/completion.
+**API** — 30 routes covering scout (+ rerun), wave, single-agent rerun, merge, test, diff, worktree, chat, config, context, scaffold rerun, manifest validate/load/wave/completion.
 
 See CHANGELOG.md for full version history.
 
@@ -76,24 +76,9 @@ See CHANGELOG.md for full version history.
 
 ## Phase 2: Deepen the Intelligence (v0.18.0)
 
-### v0.18.0-D — Failure Type Action Buttons
+### v0.18.0-D — Failure Type Action Buttons *(shipped v0.35.0)*
 
-**Why:** A blocked wave is currently a dead end in the UI — you see `status: blocked` with no path forward. Protocol v0.12.0 added `failure_type: transient | fixable | needs_replan | escalate` and v0.13.0 added `timeout` to completion reports. The UI can now offer the right action per failure type instead of leaving the user to figure it out.
-
-**Scope:**
-- WaveBoard failed agent cards: parse `failure_type` from completion report, show action button per type
-  - `transient` → "Retry" button (POST `/api/wave/{slug}/agent/{letter}/rerun`)
-  - `fixable` → "Fix + Retry" button — surfaces agent's free-form notes describing the fix, then re-runs
-  - `needs_replan` → "Re-Scout" button — launches a new scout run with the agent's completion report as additional context
-  - `escalate` → "Escalate" badge — no button, highlights for human attention
-  - `timeout` → "Retry (scope down)" button — surfaces agent's partial completion summary showing what was finished, prompts user to confirm before re-running with a scope-reduction note injected into the retry prompt
-- If `failure_type` is absent from a `partial`/`blocked` report, treat as `escalate` (backward compat)
-- Parse `failure_type` from the `impl-completion-report` typed block in IMPL doc
-
-**Success criteria:**
-- No blocked wave requires a terminal to resolve
-- The correct recovery action is one click
-- Timeout retries show partial completion context before the user confirms
+**Shipped.** WaveBoard renders per-failure-type action buttons (transient→Retry, fixable→Fix+Retry with notes callout, needs_replan→Re-Scout, escalate→badge with notes, timeout→Retry with scope-hint). Backend: `handleWaveAgentRerun` calls `engine.RunSingleAgent` for true single-agent reruns; `POST /api/scout/{slug}/rerun` endpoint added. Notes field added to `CompletionReport` (Go) and `AgentStatus`/`AgentFailedData` (TypeScript), threaded through SSE.
 
 ---
 
@@ -295,7 +280,7 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 - v0.17.0-D — **Worktree manager** (clean up stale branches in GUI)
 
 **Then:** Phase 2 intelligence features
-- v0.18.0-D — Failure type action buttons (transient/fixable/needs_replan/escalate/timeout)
+- ~~v0.18.0-D — Failure type action buttons~~ *(shipped v0.35.0)*
 - v0.18.0-I — Scaffold build failure detail (UI only — API shipped v0.33.0)
 - v0.18.0-G — CONTEXT.md viewer
 - v0.18.0-H — NOT SUITABLE full research view
