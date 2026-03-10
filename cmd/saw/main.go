@@ -50,6 +50,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "extract-context":
+		if err := runExtractContext(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "--version", "-version":
 		fmt.Printf("saw %s\n", version)
 	case "--help", "-help", "help":
@@ -66,13 +71,14 @@ func printUsage(w io.Writer) {
 	fmt.Fprint(w, `Usage: saw <command> [flags]
 
 Commands:
-  wave      Execute agents for a wave from an IMPL doc
-  status    Show current wave/agent status from an IMPL doc
-  scout     Run a Scout agent to generate an IMPL doc for a feature
-  scaffold  Run a Scaffold agent to set up worktrees from an IMPL doc
-  merge     Merge agent worktrees for a completed wave
-  serve     Start a local HTTP server for reviewing IMPL docs
-  validate  Validate a YAML IMPL manifest against protocol invariants
+  wave            Execute agents for a wave from an IMPL doc
+  status          Show current wave/agent status from an IMPL doc
+  scout           Run a Scout agent to generate an IMPL doc for a feature
+  scaffold        Run a Scaffold agent to set up worktrees from an IMPL doc
+  merge           Merge agent worktrees for a completed wave
+  serve           Start a local HTTP server for reviewing IMPL docs
+  validate        Validate a YAML IMPL manifest against protocol invariants
+  extract-context Extract agent-specific context from an IMPL manifest as JSON
 
 Global flags:
   --version   Print version and exit
