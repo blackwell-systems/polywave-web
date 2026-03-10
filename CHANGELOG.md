@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.31.0] - 2026-03-09
+
+### Added
+
+- **6 new CLI commands** for Protocol SDK operations:
+  - `saw mark-complete <impl-doc-path> [--date YYYY-MM-DD]` — write SAW:COMPLETE marker (E15). Wraps `protocol.WriteCompletionMarker()`.
+  - `saw run-gates <manifest-path> --wave <N> [--repo-dir <path>]` — execute quality gate checks (E21). JSON output of `GateResult[]`. Exit 1 if required gate fails. Wraps `protocol.RunGates()`.
+  - `saw check-conflicts <manifest-path>` — detect file ownership conflicts (I1/E11). JSON output of `OwnershipConflict[]`. Exit 1 if conflicts found. Wraps `protocol.DetectOwnershipConflicts()`.
+  - `saw update-agent-prompt <manifest-path> --agent <id>` — update agent task prompt from stdin (E8). Wraps `protocol.UpdateAgentPrompt()`.
+  - `saw validate-scaffolds <manifest-path>` — validate scaffold commit status (SKILL-04). JSON output of `ScaffoldStatus[]`. Exit 1 if any uncommitted. Wraps `protocol.ValidateScaffolds()`.
+  - `saw freeze-check <manifest-path>` — check interface contract freeze violations (E2/I2). JSON output of `FreezeViolation[]`. Exit 1 if violations. Wraps `protocol.CheckFreeze()`.
+- **main.go wiring** — 6 new case blocks in switch statement, updated `printUsage()` with all 19 commands.
+
+### Implementation
+
+CLI commands delivered by 2 gap-closure agents (B: mark-complete/run-gates/check-conflicts, C: update-prompt/validate-scaffolds/freeze-check). main.go wiring done inline by orchestrator. Total: 19 CLI subcommands covering all Protocol SDK operations.
+
+---
+
 ## [0.30.0] - 2026-03-09
 
 ### Added
