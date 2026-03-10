@@ -99,6 +99,23 @@ See CHANGELOG.md for full version history.
 
 ---
 
+### v0.18.0-E2 — Animated Dep Graph During Execution
+
+**Why:** The dependency graph SVG is static — it shows the planned structure but doesn't reflect live execution state. During wave runs, users have no visual indicator of which agents are running, complete, or failed without switching to the WaveBoard.
+
+**Scope:**
+- Pass agent status map (agent ID → `pending`/`running`/`complete`/`failed`) into `DependencyGraphPanel`
+- Derive status from SSE events via `useWaveEvents` hook
+- Node animations: pending (muted), running (pulsing glow via CSS `@keyframes`), complete (solid green + checkmark), failed (red + X)
+- Edge animations: grey when pending, colored when source agent completes (dependency satisfied)
+- Wave column backgrounds light up as waves activate
+- Scaffold node (Wave 0) animates independently during scaffold phase
+
+**Success criteria:**
+- Dep graph tells the full execution story at a glance without checking WaveBoard
+
+---
+
 ### v0.18.0-F — Quality Gates Panel
 
 **Why:** Protocol E21 (v0.12.0) defines a `## Quality Gates` section written by the Scout. The UI can show configured gates and their results after waves run.
@@ -271,6 +288,7 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 
 **Then:** Phase 2 intelligence features
 - v0.18.0-E — Stub Report Panel
+- v0.18.0-E2 — Animated dep graph during execution
 - v0.18.0-F — Quality Gates Panel
 - v0.18.0-H — NOT SUITABLE full research view
 - v0.18.0-I — Scaffold build failure detail (UI only — API shipped v0.33.0)

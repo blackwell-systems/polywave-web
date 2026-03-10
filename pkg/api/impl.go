@@ -171,7 +171,7 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 			KnownIssues:            mapKnownIssues(doc.KnownIssues),
 			ScaffoldsDetail:        mapScaffoldsDetail(doc.ScaffoldsDetail),
 			InterfaceContractsText: doc.InterfaceContractsText,
-			DependencyGraphText:    doc.DependencyGraphText,
+			DependencyGraphText:    injectScaffoldWave(doc.DependencyGraphText, len(scaffoldFiles) > 0),
 			PostMergeChecklistText: doc.PostMergeChecklistText,
 			StubReportText:         doc.StubReportText,
 			AgentPrompts:           extractAgentPrompts(doc.Waves),
@@ -205,6 +205,21 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
 
 // inferComplete returns true if all real agent completion reports in the raw
 // IMPL doc text show "status: complete". A "real" report has exactly one of
+// injectScaffoldWave prepends a "Wave 0 (scaffold)" section to the dep graph
+// text if scaffolds exist and the text doesn't already contain one. Also patches
+// "Wave 1 (parallel)" to "Wave 1 (depends on Wave 0)" so the parser draws edges.
+func injectScaffoldWave(text string, hasScaffolds bool) string {
+	if !hasScaffolds || strings.Contains(text, "Wave 0") {
+		return text
+	}
+	scaffold := "Wave 0 (scaffold)\n  [Scaffold] shared type definitions\n"
+	// Insert after opening code fence if present, otherwise prepend
+	if idx := strings.Index(text, "```\n"); idx >= 0 {
+		return text[:idx+4] + scaffold + text[idx+4:]
+	}
+	return scaffold + text
+}
+
 // complete/partial/blocked on its own line (not the template placeholder
 // "status: complete | partial | blocked"). Returns false if no real reports
 // are found or any report shows partial/blocked.
@@ -404,8 +419,15 @@ func implDocResponseFromManifest(slug string, m *protocol.IMPLManifest) IMPLDocR
 		}
 	}
 	depGraphBuf.WriteString("```\n")
+	// Add scaffold as Wave 0 if scaffolds exist
+	if len(m.Scaffolds) > 0 {
+		depGraphBuf.WriteString("Wave 0 (scaffold)\n")
+		depGraphBuf.WriteString("  [Scaffold] shared type definitions\n")
+	}
 	for _, w := range m.Waves {
-		if w.Number == 1 {
+		if w.Number == 1 && len(m.Scaffolds) > 0 {
+			depGraphBuf.WriteString(fmt.Sprintf("Wave %d (depends on Wave 0)\n", w.Number))
+		} else if w.Number == 1 {
 			depGraphBuf.WriteString(fmt.Sprintf("Wave %d (parallel)\n", w.Number))
 		} else {
 			depGraphBuf.WriteString(fmt.Sprintf("Wave %d (depends on Wave %d)\n", w.Number, w.Number-1))
@@ -423,6 +445,10 @@ func implDocResponseFromManifest(slug string, m *protocol.IMPLManifest) IMPLDocR
 			}
 			for d := range agentDeps[a.ID] {
 				deps[d] = true
+			}
+			// Wave 1 agents implicitly depend on Scaffold if scaffolds exist
+			if w.Number == 1 && len(m.Scaffolds) > 0 {
+				deps["Scaffold"] = true
 			}
 			if len(deps) > 0 {
 				depGraphBuf.WriteString("    depends on:")
