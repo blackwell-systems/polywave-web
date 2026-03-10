@@ -78,6 +78,9 @@ func TestHandleValidateManifest(t *testing.T) {
 	tmpDir := t.TempDir()
 	manifestPath := filepath.Join(tmpDir, "IMPL-test.yaml")
 	manifestYAML := `---
+title: Test Feature
+feature_slug: test
+verdict: SUITABLE
 waves:
   - number: 1
     agents:

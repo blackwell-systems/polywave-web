@@ -29,7 +29,7 @@ func capturePublish() (func(event string, data interface{}), func() []string) {
 func TestRunWaveLoop_PublishesRunFailed_OnBadPath(t *testing.T) {
 	publish, getEvents := capturePublish()
 
-	runWaveLoop("/nonexistent/IMPL-missing.md", "missing", "/nonexistent/repo", publish)
+	runWaveLoop("/nonexistent/IMPL-missing.md", "missing", "/nonexistent/repo", publish, func(ExecutionStage, StageStatus, int, string) {})
 
 	events := getEvents()
 	if len(events) < 2 {
@@ -54,14 +54,14 @@ func TestRunWaveLoop_PublishesRunStarted_ThenRunComplete(t *testing.T) {
 
 	// Override to a controlled no-op that publishes the expected sequence.
 	var published []string
-	runWaveLoopFunc = func(implPath, slug, repoPath string, publish func(string, interface{})) {
+	runWaveLoopFunc = func(implPath, slug, repoPath string, publish func(string, interface{}), onStage func(ExecutionStage, StageStatus, int, string)) {
 		publish("run_started", map[string]string{"slug": slug})
 		publish("run_complete", map[string]string{"status": "success"})
 		published = append(published, "run_started", "run_complete")
 	}
 
 	publish, getEvents := capturePublish()
-	runWaveLoopFunc("/some/IMPL.md", "test-slug", "/some/repo", publish)
+	runWaveLoopFunc("/some/IMPL.md", "test-slug", "/some/repo", publish, func(ExecutionStage, StageStatus, int, string) {})
 
 	events := getEvents()
 	if len(events) != 2 {

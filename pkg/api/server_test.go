@@ -605,7 +605,7 @@ func TestHandleWaveStart_Returns202(t *testing.T) {
 	// runWaveLoopFunc before restoring it, preventing a data race.
 	done := make(chan struct{})
 	orig := runWaveLoopFunc
-	runWaveLoopFunc = func(implPath, slug, repoPath string, publish func(string, interface{})) {
+	runWaveLoopFunc = func(implPath, slug, repoPath string, publish func(string, interface{}), onStage func(ExecutionStage, StageStatus, int, string)) {
 		defer close(done)
 	}
 	t.Cleanup(func() {
