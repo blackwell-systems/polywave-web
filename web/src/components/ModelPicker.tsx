@@ -107,7 +107,7 @@ export default function ModelPicker({ value, onChange, label, id }: ModelPickerP
             <path d="M3 5L6 8L9 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </div>
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <input
             id={id}
             list={`${id}-suggestions`}
@@ -115,9 +115,10 @@ export default function ModelPicker({ value, onChange, label, id }: ModelPickerP
             onChange={e => handleModelChange(e.target.value)}
             onFocus={handleInputFocus}
             onBlur={handleInputBlur}
-            className="w-full h-[34px] text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full h-[34px] text-sm pl-9 pr-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
             placeholder="Model name"
           />
+          <Sparkles size={16} className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-purple-600 dark:text-purple-400" />
           <datalist id={`${id}-suggestions`}>
             {suggestions.map(s => (
               <option key={s} value={s} />
