@@ -65,7 +65,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
   const totalAgents = displayAgents.length
   const completeAgents = displayAgents.filter(a => a.status === 'complete').length
 
-  async function handleRerun(agent: AgentStatus): Promise<void> {
+  async function handleRerun(agent: AgentStatus, opts?: { scopeHint?: string }): Promise<void> {
     // Optimistic update: mark agent as pending immediately
     setStatusOverrides(prev => {
       const next = new Map(prev)
@@ -73,7 +73,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
       return next
     })
     try {
-      await rerunAgent(slug, agent.wave, agent.agent)
+      await rerunAgent(slug, agent.wave, agent.agent, opts)
     } catch {
       // Revert optimistic update on error
       setStatusOverrides(prev => {
@@ -133,9 +133,16 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
     if (failureType === 'escalate') {
       return (
-        <span className="self-start text-xs font-medium px-2 py-1 rounded bg-orange-50 border border-orange-300 text-orange-700 dark:bg-orange-950 dark:border-orange-700 dark:text-orange-400">
-          Needs Manual Review
-        </span>
+        <div className="flex flex-col gap-1">
+          <span className="self-start text-xs font-medium px-2 py-1 rounded bg-orange-50 border border-orange-300 text-orange-700 dark:bg-orange-950 dark:border-orange-700 dark:text-orange-400">
+            Needs Manual Review
+          </span>
+          {agent.notes && (
+            <p className="text-xs text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded px-2 py-1 max-w-xs break-words">
+              {agent.notes}
+            </p>
+          )}
+        </div>
       )
     }
 
@@ -153,7 +160,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
     if (failureType === 'timeout') {
       return (
         <button
-          onClick={() => void handleRerun(agent)}
+          onClick={() => void handleRerun(agent, { scopeHint: 'Reduce scope: focus only on the files listed in your task. Skip any optional improvements.' })}
           className="self-start text-xs font-medium px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900 transition-colors"
         >
           &#x21BA; Retry (scope down)
@@ -163,12 +170,19 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
     if (failureType === 'fixable') {
       return (
-        <button
-          onClick={() => void handleRerun(agent)}
-          className="self-start text-xs font-medium px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900 transition-colors"
-        >
-          &#x21BA; Fix + Retry
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={() => void handleRerun(agent)}
+            className="self-start text-xs font-medium px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900 transition-colors"
+          >
+            &#x21BA; Fix + Retry
+          </button>
+          {agent.notes && (
+            <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded px-2 py-1 max-w-xs break-words">
+              {agent.notes}
+            </p>
+          )}
+        </div>
       )
     }
 

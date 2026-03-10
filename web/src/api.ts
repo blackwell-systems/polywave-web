@@ -132,11 +132,14 @@ export function subscribeReviseEvents(slug: string, runId: string): EventSource 
   return new EventSource(`/api/impl/${encodeURIComponent(slug)}/revise/${encodeURIComponent(runId)}/events`)
 }
 
-export async function rerunAgent(slug: string, wave: number, agentLetter: string): Promise<void> {
+export async function rerunAgent(slug: string, wave: number, agentLetter: string, opts?: { scopeHint?: string }): Promise<void> {
   const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/agent/${encodeURIComponent(agentLetter)}/rerun`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wave }),
+    body: JSON.stringify({
+      wave,
+      ...(opts?.scopeHint ? { scope_hint: opts.scopeHint } : {}),
+    }),
   })
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
 }

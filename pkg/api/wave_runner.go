@@ -249,19 +249,65 @@ func (s *Server) handleWaveGateProceed(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleWaveAgentRerun handles POST /api/wave/{slug}/agent/{letter}/rerun.
-// This is a stub — re-run is not yet implemented. Returns 202 Accepted with
-// a JSON body indicating the stub status.
-//
-// TODO: Full implementation required in a follow-up wave. The handler should
-// re-spawn the named agent worktree, re-run its assigned task, and update
-// the IMPL doc status accordingly.
+// Decodes the request body, then launches a single-agent rerun in a background
+// goroutine via engine.RunSingleAgent. Returns 202 immediately. SSE events
+// (agent_started, agent_complete, agent_failed) flow through the slug broker.
 func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	letter := r.PathValue("letter")
 
+	var body struct {
+		Wave      int    `json:"wave"`
+		ScopeHint string `json:"scope_hint"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if body.Wave < 1 {
+		http.Error(w, "wave must be >= 1", http.StatusBadRequest)
+		return
+	}
+
+	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".yaml")
+	if _, err := os.Stat(implPath); os.IsNotExist(err) {
+		// Fall back to .md extension for legacy IMPL docs.
+		implPath = filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".md")
+	}
+
+	// Read wave model from saw.config.json if present.
+	waveModel := ""
+	if cfgData, err := os.ReadFile(filepath.Join(s.cfg.RepoPath, "saw.config.json")); err == nil {
+		var sawCfg SAWConfig
+		if json.Unmarshal(cfgData, &sawCfg) == nil {
+			waveModel = sawCfg.Agent.WaveModel
+		}
+	}
+
+	opts := engine.RunWaveOpts{
+		IMPLPath:  implPath,
+		RepoPath:  s.cfg.RepoPath,
+		Slug:      slug,
+		WaveModel: waveModel,
+	}
+	enginePublisher := s.makeEnginePublisher(slug)
+
+	go func() {
+		if err := engine.RunSingleAgent(context.Background(), opts, body.Wave, letter, body.ScopeHint, enginePublisher); err != nil {
+			publish := s.makePublisher(slug)
+			publish("agent_failed", map[string]interface{}{
+				"agent":        letter,
+				"wave":         body.Wave,
+				"status":       "failed",
+				"failure_type": "rerun",
+				"message":      err.Error(),
+			})
+		}
+	}()
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
-	fmt.Fprintf(w, `{"status":"stub","message":"agent rerun not yet implemented","slug":%q,"agent":%q}`, slug, letter)
+	fmt.Fprintf(w, `{"status":"accepted","slug":%q,"agent":%q,"wave":%d}`, slug, letter, body.Wave)
 }
 
 // makePublisher creates a function that maps orchestrator events to SSE events.

@@ -58,6 +58,7 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("GET /api/git/{slug}/activity", s.handleGitActivity)
 	s.mux.HandleFunc("POST /api/wave/{slug}/start", s.handleWaveStart)
 	s.mux.HandleFunc("POST /api/scout/run", s.handleScoutRun)
+	s.mux.HandleFunc("POST /api/scout/{slug}/rerun", s.handleScoutRerun)
 	s.mux.HandleFunc("GET /api/scout/{runID}/events", s.handleScoutEvents)
 	s.mux.HandleFunc("POST /api/wave/{slug}/gate/proceed", s.handleWaveGateProceed)
 	s.mux.HandleFunc("POST /api/wave/{slug}/agent/{letter}/rerun", s.handleWaveAgentRerun)

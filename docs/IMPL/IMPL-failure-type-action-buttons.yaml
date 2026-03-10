@@ -1,0 +1,627 @@
+# IMPL: failure-type-action-buttons
+title: "v0.18.0-D — Failure Type Action Buttons"
+feature_slug: "failure-type-action-buttons"
+verdict: "SUITABLE_WITH_CAVEATS"
+test_command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./... && cd web && command npm test -- --run"
+lint_command: "go vet ./... && cd /Users/dayna.blackwell/code/scout-and-wave-web/web && command npm run lint"
+state: "SCOUT_PENDING"
+
+# Suitability Assessment
+# ----------------------
+# Verdict: SUITABLE_WITH_CAVEATS
+#
+# 1. File decomposition: YES — work splits cleanly across 4 files with disjoint ownership:
+#    Agent A: Go backend (wave_runner.go — rerun handler stub implementation, notes field on CompletionReport)
+#             + protocol types (notes field addition in scout-and-wave-go/pkg/protocol/types.go)
+#    Agent B: Frontend (WaveBoard.tsx — fixable notes display, timeout hint in handleRerun,
+#             api.ts — rerunAgent signature update, types.ts — notes field on AgentStatus)
+#    No file is owned by two agents.
+#
+# 2. Investigation-first: NO — all root causes are known from codebase inspection.
+#
+# 3. Interface discoverability: YES — the notes field shape is simple (string), the
+#    rerunAgent body shape is a trivial extension, and the SSE event shape is known.
+#
+# 4. Pre-implementation status check:
+#    Total items: 8 sub-features
+#    Already implemented (DONE): 5
+#      - renderFailureActionButton with all 5 failure types (WaveBoard.tsx lines 131-184)
+#      - failure_type on AgentStatus TypeScript type (types.ts line 155)
+#      - failure_type surfaced via agent_failed SSE event (useWaveEvents.ts line 152)
+#      - AgentCard.tsx shows failure_type badge label (AgentCard.tsx line 151)
+#      - rerunAgent() API client function calling correct endpoint (api.ts line 135)
+#    Partially implemented (PARTIAL): 1
+#      - handleWaveAgentRerun Go handler: route exists + stub 202 response, but is
+#        not actually re-spawning the agent (wave_runner.go lines 258-265)
+#    Not implemented (TO-DO): 2
+#      - notes field on CompletionReport (does not exist in protocol/types.go or types.ts)
+#      - timeout scope-reduction hint in rerunAgent request body (api.ts sends {wave:N} only)
+#      - POST /api/scout/{slug}/rerun endpoint (not registered in server.go)
+#
+#    Agent adjustments:
+#    - Agent A: "complete the implementation" — add notes to Go CompletionReport, implement
+#      handleWaveAgentRerun body (engine re-spawn call), add POST /api/scout/{slug}/rerun route
+#    - Agent B: "complete the implementation" — add notes to TypeScript AgentStatus, thread
+#      notes into the fixable display in WaveBoard.tsx, add scope_hint to rerunAgent call for timeout
+#
+#    Estimated time saved: ~15 min (avoided re-implementing 5 already-done items)
+#
+# 5. Parallelization value: MARGINAL but SUITABLE_WITH_CAVEATS.
+#    - Agent A (Go) and Agent B (TypeScript/React) are fully independent — no shared files.
+#    - Go test cycle: `go test ./...` runs in ~5-10s (small module).
+#    - Frontend test cycle: npm test in ~10-20s.
+#    - Total remaining work: ~60-90 min sequential; ~40-50 min parallel.
+#    - Caveat: Agent A's notes field addition in the Go protocol types (scout-and-wave-go repo)
+#      is a cross-repo change. Agent A must update both repos. The interface contract for the
+#      notes field must be agreed before launch — defined below.
+#
+# Estimated times:
+# - Scout phase: ~20 min (this doc)
+# - Agent execution: ~25 min (2 agents × ~25 min avg, running in parallel)
+# - Merge & verification: ~5 min
+# Total SAW time: ~50 min
+#
+# Sequential baseline: ~60-80 min
+# Time savings: ~15-25 min (~25% faster)
+# Recommendation: Marginal gains. Proceed — the IMPL doc also provides coordination value
+# as the interface contract for the notes field across Go and TypeScript.
+
+# Quality Gates
+quality_gates:
+  level: "standard"
+  gates:
+    - type: "build"
+      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./..."
+      required: true
+    - type: "lint"
+      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go vet ./..."
+      required: true
+    - type: "test"
+      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./..."
+      required: true
+    - type: "build"
+      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web/web && command npm run build"
+      required: true
+
+# Scaffolds
+# No scaffold files needed — the notes field is a simple string addition to existing structs.
+# No cross-agent shared types that don't already exist.
+
+# Interface Contracts
+interface_contracts:
+  - name: "CompletionReport.Notes"
+    description: |
+      New optional string field added to CompletionReport in the Go SDK (scout-and-wave-go).
+      Used by fixable failures to surface the agent's suggested fix text, and by escalate
+      to surface the escalation reason. Mirrors the existing failure_type field pattern.
+    definition: |
+      // In pkg/protocol/types.go (scout-and-wave-go repo):
+      type CompletionReport struct {
+        // ... existing fields ...
+        FailureType string `yaml:"failure_type,omitempty" json:"failure_type,omitempty"`
+        Notes       string `yaml:"notes,omitempty" json:"notes,omitempty"`  // NEW
+        Repo        string `yaml:"repo,omitempty" json:"repo,omitempty"`
+      }
+    location: "/Users/dayna.blackwell/code/scout-and-wave-go/pkg/protocol/types.go"
+
+  - name: "AgentStatus.notes"
+    description: |
+      New optional string field on the TypeScript AgentStatus interface, mirroring
+      CompletionReport.Notes. Populated from the agent_failed SSE event when the
+      backend includes notes in the failure payload.
+    definition: |
+      // In web/src/types.ts:
+      export interface AgentStatus {
+        agent: string
+        wave: number
+        files: string[]
+        status: AgentStatusValue
+        branch?: string
+        failure_type?: string
+        notes?: string        // NEW — agent's suggested fix or escalation context
+        message?: string
+        output?: string
+        startedAt?: number
+        toolCalls?: ToolCallEntry[]
+      }
+    location: "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/types.ts"
+
+  - name: "AgentFailedData.notes"
+    description: |
+      The agent_failed SSE event payload gains an optional notes field, emitted
+      by the Go engine when the agent's completion report includes notes.
+      useWaveEvents.ts must read this field and store it on AgentStatus.
+    definition: |
+      // In web/src/types.ts:
+      export interface AgentFailedData {
+        agent: string
+        wave: number
+        status: string
+        failure_type: string
+        notes?: string   // NEW — optional, omitted when empty
+        message: string
+      }
+    location: "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/types.ts"
+
+  - name: "rerunAgent (extended)"
+    description: |
+      The existing rerunAgent() function in api.ts gains an optional options bag
+      to pass a scope_hint for timeout reruns. The backend ignores unknown body
+      fields, so this is additive and backward-compatible.
+    definition: |
+      // In web/src/api.ts:
+      export async function rerunAgent(
+        slug: string,
+        wave: number,
+        agentLetter: string,
+        opts?: { scopeHint?: string }
+      ): Promise<void>
+      // Body sent: { wave: number, scope_hint?: string }
+    location: "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/api.ts"
+
+  - name: "handleWaveAgentRerun (implemented)"
+    description: |
+      The stub Go handler is replaced with a real implementation that reads the
+      wave number from the request body, locates the agent's task from the IMPL
+      manifest, and re-spawns a single-agent wave run. For timeout reruns, an
+      optional scope_hint string is prepended to the agent's task prompt.
+      The handler publishes agent_started / agent_complete / agent_failed SSE
+      events on the slug broker, matching the existing wave runner pattern.
+    definition: |
+      // POST /api/wave/{slug}/agent/{letter}/rerun
+      // Request body: { "wave": int, "scope_hint"?: string }
+      // Response: 202 Accepted
+      // SSE events published to slug broker: agent_started, agent_complete, agent_failed
+      func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request)
+    location: "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/wave_runner.go"
+
+  - name: "handleScoutRerun"
+    description: |
+      New route: POST /api/scout/{slug}/rerun. Triggers a fresh Scout run for
+      an existing slug. Uses the existing runScoutAgent machinery. Returns 202
+      with { run_id } for SSE subscription via GET /api/scout/{runID}/events.
+      The Re-Scout button in WaveBoard calls this (currently falls back to
+      onRescout prop or rerunAgent; this gives it a dedicated endpoint).
+    definition: |
+      // POST /api/scout/{slug}/rerun
+      // Request body: {} (empty — slug from path, feature description re-read from IMPL doc title)
+      // Response: 202 { "run_id": string }
+      func (s *Server) handleScoutRerun(w http.ResponseWriter, r *http.Request)
+    location: "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/scout.go"
+
+# File Ownership
+file_ownership:
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-go/pkg/protocol/types.go"
+    agent: "A"
+    wave: 1
+    action: "modify"
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/wave_runner.go"
+    agent: "A"
+    wave: 1
+    action: "modify"
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/scout.go"
+    agent: "A"
+    wave: 1
+    action: "modify"
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/server.go"
+    agent: "A"
+    wave: 1
+    action: "modify"
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/types.ts"
+    agent: "B"
+    wave: 1
+    action: "modify"
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/api.ts"
+    agent: "B"
+    wave: 1
+    action: "modify"
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/hooks/useWaveEvents.ts"
+    agent: "B"
+    wave: 1
+    action: "modify"
+  - file: "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/components/WaveBoard.tsx"
+    agent: "B"
+    wave: 1
+    action: "modify"
+
+# Waves
+waves:
+  - number: 1
+    agents:
+      - id: "A"
+        task: |
+          ## What to Implement
+
+          Complete three related backend items that were stubbed or missing:
+
+          ### 1. Add `notes` field to CompletionReport (scout-and-wave-go repo)
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-go/pkg/protocol/types.go`
+
+          Add an optional `Notes` string field to `CompletionReport`, immediately after
+          `FailureType`. This field carries the agent's suggested fix (for `fixable` failures)
+          or the escalation rationale (for `escalate` failures).
+
+          ```go
+          Notes string `yaml:"notes,omitempty" json:"notes,omitempty"`
+          ```
+
+          Place it between `FailureType` and `Repo`. No other changes to this file.
+
+          ### 2. Implement handleWaveAgentRerun (scout-and-wave-web repo)
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/wave_runner.go`
+
+          Replace the stub body of `handleWaveAgentRerun` (lines 258-265) with a real
+          implementation. The handler must:
+
+          a. Decode request body: `{ "wave": int, "scope_hint": string (optional) }`
+          b. Load the IMPL manifest from `s.cfg.IMPLDir + "/IMPL-" + slug + ".yaml"` using
+             the engine's `ParseIMPLDoc` or the manifest's `LoadManifest` helper already
+             present in `manifest_routes.go`.
+          c. Find the agent with matching letter in the specified wave.
+          d. Re-run that single agent using `engine.RunSingleWave` (or equivalent single-agent
+             call). If `scope_hint` is non-empty, prepend it to the agent task prompt before
+             re-running. Look at how `runWaveLoop` calls `engine.RunSingleWave` for the pattern.
+          e. Publish `agent_started`, then `agent_complete` or `agent_failed` SSE events
+             via `s.broker.Publish(slug, ...)` — matching the existing engine publisher pattern
+             (`s.makeEnginePublisher(slug)`).
+          f. Return 202 immediately (the run is async — publish SSE, don't block the HTTP handler).
+
+          IMPORTANT: The existing `handleWaveAgentRerun` currently returns 202 synchronously.
+          Keep that pattern — launch a goroutine, return 202 immediately.
+
+          The engine publishes `agent_started` / `agent_complete` / `agent_failed` events
+          already when `RunSingleWave` is called with an enginePublisher. Wire that up.
+
+          ### 3. Add POST /api/scout/{slug}/rerun route
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/scout.go`
+
+          Add a new handler `handleScoutRerun` for `POST /api/scout/{slug}/rerun`.
+          It should:
+          a. Read the slug from the path.
+          b. Load the manifest to retrieve the feature title (use `LoadManifest` from
+             `manifest_routes.go` — it's already in the `api` package).
+          c. If loading fails, fall back to using slug as the feature description.
+          d. Generate a runID (`fmt.Sprintf("%d", time.Now().UnixNano())`).
+          e. Store cancel func in `s.scoutRuns`, launch `s.runScoutAgent` in a goroutine
+             (exactly as `handleScoutRun` does), using the slug's repo path.
+          f. Return 202 with `{"run_id": "<runID>"}`.
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/server.go`
+
+          Register the new route in `New()`, after the existing scout routes:
+          ```go
+          s.mux.HandleFunc("POST /api/scout/{slug}/rerun", s.handleScoutRerun)
+          ```
+
+          ## Interfaces to Implement
+
+          - `CompletionReport.Notes string` — yaml:"notes,omitempty" json:"notes,omitempty"
+          - `handleWaveAgentRerun` — real implementation (202 + async goroutine + SSE)
+          - `handleScoutRerun` — new handler, POST /api/scout/{slug}/rerun, returns 202 + run_id
+
+          ## Interfaces to Call
+
+          - `engine.RunSingleWave(ctx, opts, waveNum, enginePublisher)` — existing in wave_runner.go
+          - `s.makeEnginePublisher(slug)` — existing in wave_runner.go
+          - `LoadManifest(yamlPath)` — existing in manifest_routes.go (same package)
+          - `s.runScoutAgent(ctx, runID, feature, repoOverride)` — existing in scout.go
+          - `s.broker.Publish(slug, SSEEvent{...})` — existing in wave.go
+
+          ## Tests to Write
+
+          Add to `pkg/api/wave_runner_test.go` (or a new `wave_runner_rerun_test.go`):
+
+          1. `TestHandleWaveAgentRerun_Returns202` — POST to rerun endpoint returns 202
+          2. `TestHandleWaveAgentRerun_BadBody` — malformed body returns 400
+
+          Add to `pkg/api/server_test.go` or `scout_test.go`:
+
+          3. `TestHandleScoutRerun_Returns202` — POST /api/scout/{slug}/rerun returns 202 with run_id
+          4. `TestHandleScoutRerun_UnknownSlug_UsesSlugAsFeature` — missing manifest falls back gracefully
+
+          ## Verification Gate
+
+          ```bash
+          cd /Users/dayna.blackwell/code/scout-and-wave-go
+          go build ./...
+          go vet ./...
+          go test ./pkg/protocol/... -run TestCompletion
+
+          cd /Users/dayna.blackwell/code/scout-and-wave-web
+          go build ./...
+          go vet ./...
+          go test ./pkg/api/... -run "TestHandleWaveAgentRerun|TestHandleScoutRerun"
+          ```
+
+          ## Constraints
+
+          - Do NOT change the `handleWaveStart` flow — only `handleWaveAgentRerun` changes.
+          - The rerun handler must be async (goroutine + immediate 202). Do not block.
+          - The `notes` field addition is append-only — do not reorder existing CompletionReport fields.
+          - Do not modify `failure.go` in the protocol repo — only `types.go`.
+          - The scout-and-wave-go repo uses a `replace` directive in the web repo's go.mod,
+            so changes to it are picked up automatically by `go build ./...` in the web repo.
+          - Keep the new `handleScoutRerun` in `scout.go` (same file as `handleScoutRun`),
+            not in a new file.
+          - server.go route registration: add the new scout rerun route in the scout routes
+            block (around line 60-61), not at the bottom.
+        files:
+          - "/Users/dayna.blackwell/code/scout-and-wave-go/pkg/protocol/types.go"
+          - "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/wave_runner.go"
+          - "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/scout.go"
+          - "/Users/dayna.blackwell/code/scout-and-wave-web/pkg/api/server.go"
+
+      - id: "B"
+        task: |
+          ## What to Implement
+
+          Complete three frontend items that were missing, then wire the fixable `notes`
+          display and timeout scope hint into the existing (already correct) action button
+          rendering in WaveBoard.tsx.
+
+          ### 1. Add `notes` field to TypeScript types
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-web/web/src/types.ts`
+
+          a. Add `notes?: string` to `AgentStatus` (after `failure_type?: string`, before `message?`):
+          ```typescript
+          export interface AgentStatus {
+            agent: string
+            wave: number
+            files: string[]
+            status: AgentStatusValue
+            branch?: string
+            failure_type?: string
+            notes?: string        // agent's suggested fix or escalation context
+            message?: string
+            output?: string
+            startedAt?: number
+            toolCalls?: ToolCallEntry[]
+          }
+          ```
+
+          b. Add `notes?: string` to `AgentFailedData` (after `failure_type`, before `message`):
+          ```typescript
+          export interface AgentFailedData {
+            agent: string
+            wave: number
+            status: string
+            failure_type: string
+            notes?: string
+            message: string
+          }
+          ```
+
+          ### 2. Thread notes through useWaveEvents.ts
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-web/web/src/hooks/useWaveEvents.ts`
+
+          In the `agent_failed` event listener (lines 146-161), add `notes` to the
+          upsert call:
+          ```typescript
+          es.addEventListener('agent_failed', (event: MessageEvent) => {
+            const data = JSON.parse(event.data) as {
+              agent: string
+              wave: number
+              status: string
+              failure_type: string
+              notes?: string    // ADD
+              message: string
+            }
+            setState(prev =>
+              upsertAgent(prev, data.agent, data.wave, {
+                status: 'failed',
+                failure_type: data.failure_type,
+                notes: data.notes,    // ADD
+                message: data.message,
+              })
+            )
+          })
+          ```
+
+          ### 3. Update rerunAgent to support scope_hint
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-web/web/src/api.ts`
+
+          Extend `rerunAgent` signature to accept an optional options bag:
+          ```typescript
+          export async function rerunAgent(
+            slug: string,
+            wave: number,
+            agentLetter: string,
+            opts?: { scopeHint?: string }
+          ): Promise<void> {
+            const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/agent/${encodeURIComponent(agentLetter)}/rerun`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                wave,
+                ...(opts?.scopeHint ? { scope_hint: opts.scopeHint } : {}),
+              }),
+            })
+            if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          }
+          ```
+
+          ### 4. Wire notes display and timeout hint in WaveBoard.tsx
+
+          File: `/Users/dayna.blackwell/code/scout-and-wave-web/web/src/components/WaveBoard.tsx`
+
+          The `renderFailureActionButton` function already exists and correctly renders
+          buttons for all 5 failure types. Make these two targeted changes:
+
+          **a. Show notes for `fixable` failures:**
+          In the `fixable` branch (currently just a button), add a notes callout below
+          the button when `agent.notes` is non-empty:
+          ```tsx
+          if (failureType === 'fixable') {
+            return (
+              <div className="flex flex-col gap-1">
+                <button
+                  onClick={() => void handleRerun(agent)}
+                  className="self-start text-xs font-medium px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900 transition-colors"
+                >
+                  &#x21BA; Fix + Retry
+                </button>
+                {agent.notes && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded px-2 py-1 max-w-xs break-words">
+                    {agent.notes}
+                  </p>
+                )}
+              </div>
+            )
+          }
+          ```
+
+          **b. Show notes prominently for `escalate` failures:**
+          The `escalate` branch currently shows only a badge. Add the notes below it:
+          ```tsx
+          if (failureType === 'escalate') {
+            return (
+              <div className="flex flex-col gap-1">
+                <span className="self-start text-xs font-medium px-2 py-1 rounded bg-orange-50 border border-orange-300 text-orange-700 dark:bg-orange-950 dark:border-orange-700 dark:text-orange-400">
+                  Needs Manual Review
+                </span>
+                {agent.notes && (
+                  <p className="text-xs text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded px-2 py-1 max-w-xs break-words">
+                    {agent.notes}
+                  </p>
+                )}
+              </div>
+            )
+          }
+          ```
+
+          **c. Pass scope_hint for `timeout` reruns:**
+          Update `handleRerun` call in the `timeout` branch to pass a scope hint:
+          ```tsx
+          if (failureType === 'timeout') {
+            return (
+              <button
+                onClick={() => void handleRerun(agent, { scopeHint: 'Reduce scope: focus only on the files listed in your task. Skip any optional improvements.' })}
+                className="self-start text-xs font-medium px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-900 transition-colors"
+              >
+                &#x21BA; Retry (scope down)
+              </button>
+            )
+          }
+          ```
+
+          Also update `handleRerun` in WaveBoard.tsx to accept and forward opts:
+          ```tsx
+          async function handleRerun(agent: AgentStatus, opts?: { scopeHint?: string }): Promise<void> {
+            setStatusOverrides(prev => {
+              const next = new Map(prev)
+              next.set(agentKey(agent.agent, agent.wave), 'pending')
+              return next
+            })
+            try {
+              await rerunAgent(slug, agent.wave, agent.agent, opts)
+            } catch {
+              setStatusOverrides(prev => {
+                const next = new Map(prev)
+                next.delete(agentKey(agent.agent, agent.wave))
+                return next
+              })
+            }
+          }
+          ```
+
+          ## Interfaces to Implement
+
+          - `AgentStatus.notes?: string` — TypeScript interface field
+          - `AgentFailedData.notes?: string` — TypeScript interface field
+          - `rerunAgent(slug, wave, agentLetter, opts?)` — extended signature with scopeHint
+          - `handleRerun(agent, opts?)` — extended internal function in WaveBoard.tsx
+
+          ## Interfaces to Call
+
+          - `rerunAgent` from `../api` — already imported in WaveBoard.tsx
+          - `upsertAgent` from useWaveEvents.ts internals — already there, just add notes field
+
+          ## Tests to Write
+
+          This is a frontend-only change for the TypeScript types and UI.
+          If the project has Vitest or Jest tests for components, add:
+
+          1. `WaveBoard.fixable-notes` — renders notes text below Fix+Retry button when agent.notes is set
+          2. `WaveBoard.escalate-notes` — renders notes text below badge when agent.notes is set
+          3. `WaveBoard.fixable-no-notes` — does not render notes element when agent.notes is undefined
+
+          Check `web/src/` for existing test files. If no component tests exist, skip this
+          and note it in the completion report.
+
+          ## Verification Gate
+
+          ```bash
+          cd /Users/dayna.blackwell/code/scout-and-wave-web/web
+          command npm run build
+          command npm run lint
+          ```
+
+          If a test script is configured in package.json:
+          ```bash
+          command npm test -- --run
+          ```
+
+          ## Constraints
+
+          - Do NOT change the button labels, CSS classes, or click handlers for `transient`,
+            `needs_replan` cases — those are already correct.
+          - The `needs_replan` / Re-Scout button currently calls `handleRescout` which falls
+            back to `rerunAgent`. Leave that behavior unchanged — do not wire it to the
+            new `/api/scout/{slug}/rerun` endpoint in this wave (that integration is a
+            follow-up; the endpoint just needs to exist and return 202).
+          - Keep changes to `useWaveEvents.ts` minimal — only the `agent_failed` listener.
+          - TypeScript strict mode is likely enabled — ensure `notes` is typed as `string | undefined`
+            (i.e. `notes?: string`), not `string | null`.
+          - Do not add a new `rerunScout` API function in api.ts in this wave — the
+            Re-Scout button's backend wiring is deferred.
+        files:
+          - "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/types.ts"
+          - "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/api.ts"
+          - "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/hooks/useWaveEvents.ts"
+          - "/Users/dayna.blackwell/code/scout-and-wave-web/web/src/components/WaveBoard.tsx"
+
+# Pre-Mortem
+pre_mortem:
+  overall_risk: "low"
+  rows:
+    - scenario: "engine.RunSingleWave does not support single-agent targeting — it runs all agents in the wave"
+      likelihood: "medium"
+      impact: "high"
+      mitigation: |
+        Check engine.RunSingleWave signature before assuming it takes an agent letter filter.
+        If it runs all agents in a wave, Agent A must either: (a) construct a synthetic
+        single-agent wave doc and pass it, or (b) use a lower-level engine call that runs
+        one agent. If neither exists, implement handleWaveAgentRerun as a thin stub that
+        returns 202 and publishes an agent_started event optimistically, deferring the
+        real re-spawn to a follow-up. Document in the completion report.
+    - scenario: "TypeScript strict null checks reject notes?: string in AgentStatus spread"
+      likelihood: "low"
+      impact: "low"
+      mitigation: |
+        Use `notes: data.notes ?? undefined` in the upsertAgent call to ensure the field
+        is omitted (not null) when not present. TypeScript optional fields accept undefined
+        but not null without explicit `| null`.
+    - scenario: "go.mod replace directive means protocol types change is not picked up by go build"
+      likelihood: "low"
+      impact: "medium"
+      mitigation: |
+        The replace directive `replace github.com/blackwell-systems/scout-and-wave-go => /Users/dayna.blackwell/code/scout-and-wave-go`
+        means local file changes are used directly — no version bump needed. Verify by
+        running `go build ./...` in the web repo after changing protocol/types.go.
+
+# Cascade Candidates (files that reference changed interfaces but are NOT in any agent's scope)
+# These will not break at compile time but may need review post-merge:
+# - web/src/components/AgentCard.tsx — renders agent.failure_type (line 151) but not agent.notes;
+#   it does not need to change but could optionally show notes in the failed state section.
+#   Post-merge: consider adding notes display here too in a follow-up.
+# - pkg/api/types.go (web repo) — AgentToolCallPayload and other SSE shapes are here;
+#   agent_failed payload shape is assembled in the engine, not in this file, so no cascade.
+
+# Completion Reports (empty at scout time)
+completion_reports: {}

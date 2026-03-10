@@ -116,6 +116,7 @@ export interface AgentFailedData {
   wave: number
   status: string
   failure_type: string
+  notes?: string
   message: string
 }
 
@@ -153,6 +154,7 @@ export interface AgentStatus {
   status: AgentStatusValue
   branch?: string
   failure_type?: string
+  notes?: string
   message?: string
   output?: string
   startedAt?: number  // ms timestamp when agent_started fired

@@ -149,12 +149,14 @@ export function useWaveEvents(slug: string): AppWaveState {
         wave: number
         status: string
         failure_type: string
+        notes?: string
         message: string
       }
       setState(prev =>
         upsertAgent(prev, data.agent, data.wave, {
           status: 'failed',
           failure_type: data.failure_type,
+          notes: data.notes,
           message: data.message,
         })
       )

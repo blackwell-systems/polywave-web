@@ -114,6 +114,47 @@ func (s *Server) handleScoutCancel(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// handleScoutRerun handles POST /api/scout/{slug}/rerun.
+// Re-runs the Scout agent for an existing slug, reusing the feature title from
+// the IMPL manifest (or falling back to the slug itself). Returns 202 with a
+// run_id that callers can use to subscribe via GET /api/scout/{runID}/events.
+func (s *Server) handleScoutRerun(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+
+	// Try to load feature title from manifest; fall back to slug.
+	feature := slug
+	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".yaml")
+	if data, err := os.ReadFile(implPath); err == nil {
+		// Quick extraction: look for "title:" line in YAML front matter.
+		for _, line := range strings.Split(string(data), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if strings.HasPrefix(trimmed, "title:") {
+				val := strings.TrimPrefix(trimmed, "title:")
+				val = strings.TrimSpace(val)
+				val = strings.Trim(val, `"'`)
+				if val != "" {
+					feature = val
+				}
+				break
+			}
+		}
+	}
+
+	runID := fmt.Sprintf("%d", time.Now().UnixNano())
+	ctx, cancel := context.WithCancel(context.Background())
+	s.scoutRuns.Store(runID, cancel)
+
+	go func() {
+		defer s.scoutRuns.Delete(runID)
+		defer cancel()
+		s.runScoutAgent(ctx, runID, feature, "")
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusAccepted)
+	json.NewEncoder(w).Encode(ScoutRunResponse{RunID: runID}) //nolint:errcheck
+}
+
 // runScoutAgent executes the Scout agent in a background goroutine.
 // Publishes scout_output, scout_complete, and scout_failed SSE events.
 func (s *Server) runScoutAgent(ctx context.Context, runID, feature, repoOverride string) {
