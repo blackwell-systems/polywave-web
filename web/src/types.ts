@@ -237,6 +237,21 @@ export interface QualityGate {
   description: string
 }
 
+// Post-merge checklist display
+export interface PostMergeChecklist {
+  groups: ChecklistGroup[]
+}
+
+export interface ChecklistGroup {
+  title: string
+  items: ChecklistItem[]
+}
+
+export interface ChecklistItem {
+  description: string
+  command?: string
+}
+
 // Scout context (v0.18.0-A)
 export interface ScoutContext {
   files: string[]
