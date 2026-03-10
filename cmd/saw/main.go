@@ -40,6 +40,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "merge-wave":
+		if err := runMergeWave(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "current-wave":
 		if err := runCurrentWave(os.Args[2:]); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -65,6 +70,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "render":
+		if err := runRender(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "--version", "-version":
 		fmt.Printf("saw %s\n", version)
 	case "--help", "-help", "help":
@@ -86,11 +96,13 @@ Commands:
   scout           Run a Scout agent to generate an IMPL doc for a feature
   scaffold        Run a Scaffold agent to set up worktrees from an IMPL doc
   merge           Merge agent worktrees for a completed wave
+  merge-wave      Check if a wave is ready to merge and output JSON status
   current-wave    Return the wave number of the first incomplete wave
   serve           Start a local HTTP server for reviewing IMPL docs
   validate        Validate a YAML IMPL manifest against protocol invariants
   extract-context Extract agent-specific context from an IMPL manifest as JSON
   set-completion  Register a completion report for an agent in a manifest
+  render          Render a YAML IMPL manifest as markdown
 
 Global flags:
   --version   Print version and exit
