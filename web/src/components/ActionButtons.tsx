@@ -2,28 +2,22 @@ interface ActionButtonsProps {
   onApprove: () => void
   onReject: () => void
   onRequestChanges: () => void
-  onAskClaude?: () => void
 }
 
-const btnBase = "flex items-center justify-center text-sm font-medium px-6 transition-colors border-r"
+const base = "flex items-center justify-center text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2"
 
-export default function ActionButtons({ onApprove, onReject, onRequestChanges, onAskClaude }: ActionButtonsProps): JSX.Element {
+export default function ActionButtons({ onApprove, onReject, onRequestChanges }: ActionButtonsProps): JSX.Element {
   return (
-    <div className="flex items-stretch h-14 border-l border-border">
-      <button onClick={onApprove} className={`${btnBase} bg-green-50/60 hover:bg-green-100/80 text-green-700 border-green-200 dark:bg-green-950/40 dark:hover:bg-green-900/60 dark:text-green-400 dark:border-green-800`}>
+    <div className="flex items-stretch">
+      <button onClick={onApprove} className={`${base} border-t-green-500 text-green-700 dark:text-green-400 hover:bg-green-500/10`}>
         Approve
       </button>
-      <button onClick={onRequestChanges} className={`${btnBase} bg-amber-50/60 hover:bg-amber-100/80 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:hover:bg-amber-900/60 dark:text-amber-400 dark:border-amber-800`}>
+      <button onClick={onRequestChanges} className={`${base} border-t-amber-500 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10`}>
         Request Changes
       </button>
-      <button onClick={onReject} className={`${btnBase} bg-red-50/60 hover:bg-red-100/80 text-red-700 border-red-200 dark:bg-red-950/40 dark:hover:bg-red-900/60 dark:text-red-400 dark:border-red-800`}>
+      <button onClick={onReject} className={`${base} border-t-red-500 text-red-700 dark:text-red-400 hover:bg-red-500/10`}>
         Reject
       </button>
-      {onAskClaude && (
-        <button onClick={onAskClaude} className={`${btnBase} bg-violet-50/60 hover:bg-violet-100/80 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:hover:bg-violet-900/60 dark:text-violet-400 dark:border-violet-800`}>
-          Ask Claude
-        </button>
-      )}
     </div>
   )
 }

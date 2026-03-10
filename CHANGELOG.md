@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.41.0] - 2026-03-10
+
+### Improved
+
+- **Footer button reorganization** (`ReviewScreen.tsx`, `ActionButtons.tsx`) — Moved operational actions (Validate, Worktrees, Ask Claude) from top nav bar to footer alongside review actions (Approve, Request Changes, Reject). All footer buttons now feature colored top-border accents with semantic color coding: green (Approve), amber (Request Changes), red (Reject), blue (Validate), slate (Worktrees), violet (Ask Claude). Single-row layout with uniform height, padding, and transition timing creates visual consistency.
+
+---
+
 ## [0.40.0] - 2026-03-10
 
 ### Added

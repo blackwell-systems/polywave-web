@@ -44,9 +44,6 @@ const panels: Array<{ key: PanelKey; label: string }> = [
   { key: 'known-issues', label: 'Known Issues' },
   { key: 'post-merge-checklist', label: 'Post-Merge' },
   { key: 'quality-gates', label: 'Quality Gates' },
-  { key: 'worktrees', label: 'Worktrees' },
-  { key: 'context-viewer', label: 'Project Memory' },
-  { key: 'validation', label: 'Validate' },
 ]
 
 export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
@@ -252,8 +249,38 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
       {/* Sticky footer — inside scroll container so it respects center column width */}
       {!isNotSuitable && (
-        <div className="sticky bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm flex justify-center">
-          <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} onAskClaude={() => setShowChat(v => !v)} />
+        <div className="sticky bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm flex items-stretch justify-center">
+          <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} />
+          <button
+            onClick={() => togglePanel('validation')}
+            className={`flex items-center justify-center text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
+              activePanels.includes('validation')
+                ? 'border-t-blue-500 text-blue-700 dark:text-blue-400 bg-blue-500/10'
+                : 'border-t-blue-500/40 text-muted-foreground hover:bg-blue-500/10 hover:text-foreground'
+            }`}
+          >
+            Validate
+          </button>
+          <button
+            onClick={() => togglePanel('worktrees')}
+            className={`flex items-center justify-center text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
+              activePanels.includes('worktrees')
+                ? 'border-t-slate-500 text-slate-700 dark:text-slate-400 bg-slate-500/10'
+                : 'border-t-slate-500/40 text-muted-foreground hover:bg-slate-500/10 hover:text-foreground'
+            }`}
+          >
+            Worktrees
+          </button>
+          <button
+            onClick={() => setShowChat(v => !v)}
+            className={`flex items-center justify-center text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
+              showChat
+                ? 'border-t-violet-500 text-violet-700 dark:text-violet-400 bg-violet-500/10'
+                : 'border-t-violet-500/40 text-muted-foreground hover:bg-violet-500/10 hover:text-foreground'
+            }`}
+          >
+            Ask Claude
+          </button>
         </div>
       )}
       </div>
