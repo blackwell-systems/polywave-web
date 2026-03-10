@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.44.0] - 2026-03-10
+
+### Context
+
+- **YAML structured sections migration Wave 2** — This repo participates in Wave 2 Agent J: updating API routes (`pkg/api/impl.go`, `pkg/api/types.go`) to serialize QualityGates, PostMergeChecklist, and KnownIssues as structured JSON instead of raw strings. Wave 1 (scout-and-wave + scout-and-wave-go repos) established typed YAML blocks and Go types; Wave 2 integrates them into the web API.
+
+---
+
 ## [0.43.0] - 2026-03-10
 
 ### Improved
