@@ -3,20 +3,25 @@ export interface IMPLManifest {
   title: string
   feature_slug: string
   verdict: string
+  test_command: string
+  lint_command: string
   file_ownership: FileOwnership[]
-  waves: Wave[]
   interface_contracts: InterfaceContract[]
-  quality_gates: QualityGates
-  scaffolds: ScaffoldFile[]
+  waves: Wave[]
+  quality_gates?: QualityGates
+  scaffolds?: ScaffoldFile[]
+  completion_reports?: Record<string, CompletionReport>
+  pre_mortem?: PreMortem
+  known_issues?: KnownIssue[]
 }
 
 export interface FileOwnership {
   file: string
   agent: string
   wave: number
-  action: string
-  repo?: string
+  action?: string
   depends_on?: string[]
+  repo?: string
 }
 
 export interface Wave {
@@ -26,60 +31,83 @@ export interface Wave {
 
 export interface Agent {
   id: string
-  description: string
   task: string
   files: string[]
-  dependencies: string[]
-  model: string
-  completion_report?: CompletionReport
+  dependencies?: string[]
+  model?: string
 }
 
 export interface CompletionReport {
   status: string
-  branch: string
-  commit: string
-  files_changed: string[]
-  files_created: string[]
-  test_results: string
-  interface_deviations: InterfaceDeviation[]
+  worktree?: string
+  branch?: string
+  commit?: string
+  files_changed?: string[]
+  files_created?: string[]
+  interface_deviations?: InterfaceDeviation[]
+  out_of_scope_deps?: string[]
+  tests_added?: string[]
+  verification?: string
+  failure_type?: string
+  repo?: string
 }
 
 export interface InterfaceDeviation {
-  contract: string
-  deviation: string
-  reason: string
+  description: string
   downstream_action_required: boolean
+  affects?: string[]
 }
 
 export interface InterfaceContract {
   name: string
-  language: string
-  code: string
-  agents: string[]
+  description?: string
+  definition: string
+  location: string
 }
 
 export interface QualityGates {
-  test_command: string
-  lint_command: string
+  level: string
   gates: QualityGate[]
 }
 
 export interface QualityGate {
-  name: string
+  type: string
   command: string
   required: boolean
+  description?: string
 }
 
 export interface ScaffoldFile {
-  file: string
+  file_path: string
+  contents?: string
+  import_path?: string
+  status?: string
+  commit?: string
+}
+
+export interface PreMortem {
+  overall_risk: string
+  rows: PreMortemRow[]
+}
+
+export interface PreMortemRow {
+  scenario: string
+  likelihood: string
+  impact: string
+  mitigation: string
+}
+
+export interface KnownIssue {
   description: string
-  status: string
+  status?: string
+  workaround?: string
 }
 
 export interface ValidationError {
   code: string
   message: string
-  field: string
+  field?: string
+  line?: number
 }
 
 // API functions
