@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.40.0] - 2026-03-10
+
+### Added
+
+- **Worktree Manager** (`WorktreePanel.tsx`, `worktree_handler.go`, `wave_runner.go`) — v0.17.0-D: GUI panel for managing SAW-created branches. Closes Phase 1 — no terminal needed.
+  - Table with checkbox selection, status badges (merged/unmerged/stale), unsaved-changes warning, last-commit age
+  - Batch delete with per-branch results; confirmation dialog for unmerged branches; force-delete option
+  - Stale detection: unmerged branches older than 24h flagged automatically
+  - `POST /api/impl/{slug}/worktrees/cleanup` batch-delete endpoint (409 on unmerged when `force=false`)
+  - `detectStaleBranches` helper + advisory `stale_branches_detected` SSE event before wave start
+  - Dismissible amber warning banner in WaveBoard when stale branches exist
+  - `useWorktrees` hook with auto-refresh after delete operations
+  - 8 backend tests (`worktree_handler_test.go`)
+
+### Fixed
+
+- **ReviewScreen test** — `getByText('Plan Review')` changed to regex matcher to handle text split across elements
+
+---
+
 ## [0.39.0] - 2026-03-10
 
 ### Improved
