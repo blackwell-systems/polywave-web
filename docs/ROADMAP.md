@@ -46,33 +46,13 @@ See CHANGELOG.md for full version history.
 
 ## Phase 1: Close the GUI Loop ✅ *COMPLETE (v0.40.0)*
 
-**Goal:** You should never need a terminal. Everything from feature description to merged, tested code happens in the SAW GUI.
-
-### Remaining gaps
-
-| Trigger | Current workaround | Fix |
-|---|---|---|
-| Want to see changes | Open IDE | File diff viewer *(roadmapped for Phase 2)* |
+Phase 1 shipped: Worktree manager, failure-type action buttons, project memory viewer. See CHANGELOG.md for details.
 
 ---
 
-### v0.17.0-D — Worktree Manager *(shipped v0.40.0)*
+## Phase 2: Deepen the Intelligence (v0.18.0+)
 
-**Shipped.** WorktreePanel renders as modal overlay (v0.42.0) with table view, checkbox selection, status badges (merged/unmerged/stale), batch delete with force-delete option, stale detection (24h unmerged), dismissible warning banner in WaveBoard. Backend: `GET /api/impl/{slug}/worktrees`, `POST /api/impl/{slug}/worktrees/cleanup` with per-branch results. No terminal needed for branch cleanup.
 
-**Success criteria met:**
-- ✅ No need to run `git branch -D` manually
-- ✅ Re-running a wave after failure works without "branch exists" errors
-
----
-
-## Phase 2: Deepen the Intelligence (v0.18.0)
-
-### v0.18.0-D — Failure Type Action Buttons *(shipped v0.35.0)*
-
-**Shipped.** WaveBoard renders per-failure-type action buttons (transient→Retry, fixable→Fix+Retry with notes callout, needs_replan→Re-Scout, escalate→badge with notes, timeout→Retry with scope-hint). Backend: `handleWaveAgentRerun` calls `engine.RunSingleAgent` for true single-agent reruns; `POST /api/scout/{slug}/rerun` endpoint added. Notes field added to `CompletionReport` (Go) and `AgentStatus`/`AgentFailedData` (TypeScript), threaded through SSE.
-
----
 
 ### v0.18.0-E — Stub Report Panel
 
@@ -121,12 +101,6 @@ See CHANGELOG.md for full version history.
 
 **Success criteria:**
 - Quality gate results visible in UI without reading IMPL doc raw markdown
-
----
-
-### v0.18.0-G — CONTEXT.md Viewer *(shipped v0.35.0)*
-
-**Shipped.** "Project Memory" panel in ReviewScreen reads/writes `docs/CONTEXT.md` via `GET|PUT /api/context`. View mode renders markdown content; edit mode provides inline textarea with atomic save. Handles missing file gracefully (empty state). Per-agent context viewer (`AgentContextToggle`) extracts agent prompts + interface contracts + file ownership from IMPL docs.
 
 ---
 
