@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.32.0] - 2026-03-10
+
+### Added
+
+- **Structured Scout output** (`pkg/api/scout.go`) — `UseStructuredOutput: true` on `RunScoutOpts`; Scout runs now go through `runScoutStructured` in the engine, returning schema-validated JSON parsed directly into `IMPLManifest`; output written as `.yaml` instead of `.md`
+- **YAML IMPL fallback** (`pkg/api/impl.go`) — `handleGetImpl`, `handleListImpls`, `handleDeleteImpl` now check `.yaml` extension first, fall back to `.md`; `handleListImpls` uses `protocol.Load()` for `.yaml` files to extract wave/agent counts
+
+### Fixed
+
+- **Test signature drift** (`pkg/api/wave_runner_test.go`, `pkg/api/server_test.go`) — updated test mocks to match current `runWaveLoop` / `runWaveLoopFunc` signature (added `onStage func(ExecutionStage, StageStatus, int, string)` parameter)
+- **Manifest validation test fixture** (`pkg/api/manifest_routes_test.go`) — added E16 required fields (`title`, `feature_slug`, `verdict: SUITABLE`) to `TestHandleValidateManifest` fixture; all tests now pass
+
 ## [0.31.0] - 2026-03-09
 
 ### Added
