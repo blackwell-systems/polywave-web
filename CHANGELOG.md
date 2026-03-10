@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.34.0] - 2026-03-10
+
+### Fixed
+
+- **YAML IMPL doc rendering** (`pkg/api/impl.go`) — `handleGetImpl` now branches on `.yaml` extension and loads via `protocol.Load()` instead of the markdown line-by-line parser. Adds `implDocResponseFromManifest` mapper covering file ownership, waves, scaffolds, pre-mortem, known issues, interface contracts (rendered as text), and agent prompts. Markdown path unchanged. YAML IMPL docs (Scout v0.6.0+) now render all ReviewScreen panels correctly.
+
+---
+
 ## [0.33.0] - 2026-03-10
 
 ### Added
