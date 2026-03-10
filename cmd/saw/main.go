@@ -75,6 +75,11 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
+	case "migrate":
+		if err := runMigrate(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
 	case "--version", "-version":
 		fmt.Printf("saw %s\n", version)
 	case "--help", "-help", "help":
@@ -103,6 +108,7 @@ Commands:
   extract-context Extract agent-specific context from an IMPL manifest as JSON
   set-completion  Register a completion report for an agent in a manifest
   render          Render a YAML IMPL manifest as markdown
+  migrate         Convert a markdown IMPL doc to YAML manifest format
 
 Global flags:
   --version   Print version and exit
