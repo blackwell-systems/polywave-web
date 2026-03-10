@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.38.0] - 2026-03-10
+
+### Added
+
+- **Scaffold node in dep graph** (`pkg/api/impl.go`, `DependencyGraphPanel.tsx`) — Dependency graph now shows a Wave 0 "Scaffold" node with dashed border. Wave 1 agents get implicit dependency edges from the scaffold node. Works for both YAML manifests (`implDocResponseFromManifest`) and markdown IMPL docs (`injectScaffoldWave` helper).
+- **Animated dep graph roadmap** (`docs/ROADMAP.md`) — Added v0.18.0-E2: live execution state on dep graph nodes (pending/running/complete/failed) driven by SSE events.
+
+---
+
 ## [0.37.0] - 2026-03-10
 
 ### Improved
