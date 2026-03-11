@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.50.0] - 2026-03-10
+
+### Added
+
+- **Scaffold dependency edges in dependency graph** — Dependency graph now shows implicit edges from Scaffold (Wave 0) to all Wave 1 agents. Makes protocol I2 (interface contracts precede parallel implementation) visible in the graph. Shows that Wave 1 agents depend on scaffold files for shared types/interfaces before they can start implementation.
+  - `DependencyGraphPanel.tsx`: Detects Scaffold node in Wave 0, automatically adds Scaffold to dependency set of all Wave 1 agents
+
+---
+
 ## [0.49.0] - 2026-03-10
 
 ### Fixed
