@@ -15,9 +15,12 @@ function guessLanguage(code: string): string | null {
   // Go: keywords, operators, patterns - check first 3 lines for better detection
   const first3 = code.split('\n').slice(0, 3).join('\n')
   if (
-    /^(type |func |package |import |var |const |defer |go |return |struct |interface \{)/.test(trimmed) ||
+    // Go keywords at line start (after optional comment)
+    /^(\/\/.*\n)?(type |func |package |import |var |const |defer |go |return |struct |interface \{)/.test(trimmed) ||
+    // Go patterns anywhere in first 3 lines
+    /(^|\n)(type |func |package |struct |interface \{)/.test(first3) ||
     /\s:=\s|func\s+\(.*\)\s+\w+|<-\s*chan|chan\s+/.test(first3) ||
-    /\berr\s+:=|if\s+err\s+!=\s+nil/.test(code)
+    /\berr\s+:=|if\s+err\s+!=\s+nil|`yaml:|`json:/.test(code)
   ) return 'go'
 
   // TypeScript/JavaScript: broader patterns including common constructs
