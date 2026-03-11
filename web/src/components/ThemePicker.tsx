@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
-import { Dices } from 'lucide-react'
+import { Dices, Star } from 'lucide-react'
 import { THEMES, ThemeDef, varToHsl } from '../lib/themes'
+import { getConfig, saveConfig } from '../api'
 
 const ALL_THEME_CLASSES = THEMES.map(t => `theme-${t.id}`)
 const STORAGE_KEY = 'saw-theme'
@@ -20,8 +21,8 @@ function themeMode(id: string): 'light' | 'dark' | 'default' {
   return THEMES.find(t => t.id === id)?.mode ?? 'dark'
 }
 
-function SwatchDot({ theme, active, onClick, onHover }: {
-  theme: ThemeDef; active: boolean; onClick: () => void; onHover: (label: string | null) => void
+function SwatchDot({ theme, active, onClick, onHover, isFavorite, onToggleFavorite }: {
+  theme: ThemeDef; active: boolean; onClick: () => void; onHover: (label: string | null) => void; isFavorite: boolean; onToggleFavorite: (e: React.MouseEvent) => void
 }) {
   const bg      = varToHsl(theme.vars['--background'] ?? '0 0% 20%')
   const accent  = varToHsl(theme.vars['--primary']    ?? '0 0% 60%')
@@ -55,6 +56,14 @@ function SwatchDot({ theme, active, onClick, onHover }: {
         opacity: 0.85,
         overflow: 'hidden',
       }} />
+      {/* star icon for favorites */}
+      <button
+        onClick={onToggleFavorite}
+        className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-background border border-border hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 z-10"
+        title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        <Star size={9} className={isFavorite ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'} />
+      </button>
       {/* floating label on hover */}
       <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-900 px-2 py-1 text-xs font-medium text-zinc-100 opacity-0 group-hover:opacity-100 z-50 shadow-lg">
         {theme.label}
@@ -69,8 +78,24 @@ export default function ThemePicker(): JSX.Element {
   const [open, setOpen]         = useState(false)
   const [search, setSearch]     = useState('')
   const [hoveredLabel, setHoveredLabel] = useState<string | null>(null)
+  const [savedMsg, setSavedMsg] = useState(false)
+  const [favoritesDark, setFavoritesDark] = useState<string[]>([])
+  const [favoritesLight, setFavoritesLight] = useState<string[]>([])
   const popoverRef          = useRef<HTMLDivElement>(null)
   const btnRef              = useRef<HTMLButtonElement>(null)
+
+  // Load theme and favorites from config on mount
+  useEffect(() => {
+    getConfig().then(config => {
+      const savedTheme = config.appearance?.color_theme
+      if (savedTheme) {
+        setTheme(savedTheme)
+        applyTheme(savedTheme)
+      }
+      setFavoritesDark(config.appearance?.favorite_themes_dark ?? [])
+      setFavoritesLight(config.appearance?.favorite_themes_light ?? [])
+    }).catch(() => {})
+  }, [])
 
   // Watch dark class changes
   useEffect(() => {
@@ -109,10 +134,14 @@ export default function ThemePicker(): JSX.Element {
   }, [open])
 
   const q = search.toLowerCase()
-  const visible = THEMES.filter(t =>
+  const currentFavorites = dark ? favoritesDark : favoritesLight
+  const allVisible = THEMES.filter(t =>
     t.mode === (dark ? 'dark' : 'light') &&
     (q === '' || t.label.toLowerCase().includes(q))
   )
+
+  const favoritesVisible = allVisible.filter(t => currentFavorites.includes(t.id))
+  const nonFavoritesVisible = allVisible.filter(t => !currentFavorites.includes(t.id))
 
   const currentTheme = THEMES.find(t => t.id === theme)
   const label = currentTheme?.label ?? 'Default'
@@ -125,6 +154,57 @@ export default function ThemePicker(): JSX.Element {
     const pool = THEMES.filter(t => t.mode === (dark ? 'dark' : 'light'))
     const next = pool[Math.floor(Math.random() * pool.length)]
     if (next) setTheme(next.id)
+  }
+
+  async function makeDefault() {
+    try {
+      const config = await getConfig()
+      const updated = {
+        ...config,
+        appearance: {
+          ...config.appearance,
+          color_theme: theme
+        }
+      }
+      await saveConfig(updated)
+      setSavedMsg(true)
+      setTimeout(() => setSavedMsg(false), 2000)
+    } catch {
+      // silent fail
+    }
+  }
+
+  async function toggleFavorite(themeId: string, mode: 'dark' | 'light') {
+    try {
+      const config = await getConfig()
+      const currentFavorites = mode === 'dark'
+        ? (config.appearance?.favorite_themes_dark ?? [])
+        : (config.appearance?.favorite_themes_light ?? [])
+
+      const newFavorites = currentFavorites.includes(themeId)
+        ? currentFavorites.filter(id => id !== themeId)
+        : [...currentFavorites, themeId]
+
+      const updated = {
+        ...config,
+        appearance: {
+          ...config.appearance,
+          ...(mode === 'dark'
+            ? { favorite_themes_dark: newFavorites }
+            : { favorite_themes_light: newFavorites }
+          )
+        }
+      }
+      await saveConfig(updated)
+
+      if (mode === 'dark') {
+        setFavoritesDark(newFavorites)
+      } else {
+        setFavoritesLight(newFavorites)
+      }
+    } catch {
+      // silent fail
+    }
   }
 
   return (
@@ -186,29 +266,80 @@ export default function ThemePicker(): JSX.Element {
 
           {/* Swatch grid */}
           <div className="overflow-y-auto px-3 pb-3">
-            {visible.length === 0 ? (
+            {allVisible.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">No themes match</p>
             ) : (
-              <div
-                className="grid gap-1.5"
-                style={{ gridTemplateColumns: 'repeat(auto-fill, 28px)' }}
-              >
-                {visible.map(t => (
-                  <SwatchDot
-                    key={t.id}
-                    theme={t}
-                    active={t.id === theme}
-                    onClick={() => pick(t.id)}
-                    onHover={setHoveredLabel}
-                  />
-                ))}
-              </div>
+              <>
+                {/* Favorites section */}
+                {favoritesVisible.length > 0 && (
+                  <>
+                    <p className="text-xs text-muted-foreground/70 mb-1.5 font-medium">Favorites</p>
+                    <div
+                      className="grid gap-1.5 mb-3"
+                      style={{ gridTemplateColumns: 'repeat(auto-fill, 28px)' }}
+                    >
+                      {favoritesVisible.map(t => (
+                        <SwatchDot
+                          key={t.id}
+                          theme={t}
+                          active={t.id === theme}
+                          onClick={() => pick(t.id)}
+                          onHover={setHoveredLabel}
+                          isFavorite={true}
+                          onToggleFavorite={(e) => {
+                            e.stopPropagation()
+                            toggleFavorite(t.id, dark ? 'dark' : 'light')
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* All themes section */}
+                {nonFavoritesVisible.length > 0 && (
+                  <>
+                    {favoritesVisible.length > 0 && (
+                      <p className="text-xs text-muted-foreground/70 mb-1.5 font-medium">All Themes</p>
+                    )}
+                    <div
+                      className="grid gap-1.5"
+                      style={{ gridTemplateColumns: 'repeat(auto-fill, 28px)' }}
+                    >
+                      {nonFavoritesVisible.map(t => (
+                        <SwatchDot
+                          key={t.id}
+                          theme={t}
+                          active={t.id === theme}
+                          onClick={() => pick(t.id)}
+                          onHover={setHoveredLabel}
+                          isFavorite={false}
+                          onToggleFavorite={(e) => {
+                            e.stopPropagation()
+                            toggleFavorite(t.id, dark ? 'dark' : 'light')
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
             )}
           </div>
 
           {/* Label footer — shows hovered theme name, falls back to active */}
           <div className="px-3 py-1.5 border-t border-border shrink-0 text-xs text-muted-foreground truncate">
             {hoveredLabel ?? currentTheme?.label ?? 'Default'}
+          </div>
+
+          {/* Make Default button */}
+          <div className="px-3 pb-2 shrink-0 border-t border-border">
+            <button
+              onClick={makeDefault}
+              className="w-full mt-2 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-colors"
+            >
+              {savedMsg ? '✓ Saved as Default' : 'Make Default'}
+            </button>
           </div>
         </div>
       )}

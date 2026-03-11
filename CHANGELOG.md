@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.48.0] - 2026-03-10
+
+### Added
+
+- **Theme persistence and favorites system** — Color themes and dark/light mode now persist across sessions via `saw.config.json`. Theme picker includes favorites system with separate lists for dark and light modes.
+  - `types.ts`: Added `color_theme`, `favorite_themes_dark`, `favorite_themes_light` to `SAWConfig.appearance`
+  - `useDarkMode.ts`: Loads theme from config on mount, saves toggle state to config file
+  - `ThemePicker.tsx`: "Make Default" button saves current theme to config, star icons toggle favorites, favorites section displays at top of theme grid
+  - Themes auto-load on session start from config file
+  - Separate favorites lists for dark and light modes
+
+---
+
 ## [0.47.0] - 2026-03-10
 
 ### Added
