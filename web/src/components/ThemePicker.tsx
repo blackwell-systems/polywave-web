@@ -21,8 +21,8 @@ function themeMode(id: string): 'light' | 'dark' | 'default' {
   return THEMES.find(t => t.id === id)?.mode ?? 'dark'
 }
 
-function SwatchDot({ theme, active, onClick, onHover, isFavorite, onToggleFavorite }: {
-  theme: ThemeDef; active: boolean; onClick: () => void; onHover: (label: string | null) => void; isFavorite: boolean; onToggleFavorite: (e: React.MouseEvent) => void
+function SwatchDot({ theme, active, onClick, onHover }: {
+  theme: ThemeDef; active: boolean; onClick: () => void; onHover: (theme: ThemeDef | null) => void
 }) {
   const bg      = varToHsl(theme.vars['--background'] ?? '0 0% 20%')
   const accent  = varToHsl(theme.vars['--primary']    ?? '0 0% 60%')
@@ -31,7 +31,7 @@ function SwatchDot({ theme, active, onClick, onHover, isFavorite, onToggleFavori
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => onHover(theme.label)}
+      onMouseEnter={() => onHover(theme)}
       onMouseLeave={() => onHover(null)}
       className="group relative"
       style={{
@@ -56,14 +56,6 @@ function SwatchDot({ theme, active, onClick, onHover, isFavorite, onToggleFavori
         opacity: 0.85,
         overflow: 'hidden',
       }} />
-      {/* star icon for favorites */}
-      <button
-        onClick={onToggleFavorite}
-        className="absolute -top-1 -right-1 w-4 h-4 flex items-center justify-center rounded-full bg-background border border-border hover:bg-muted transition-colors opacity-0 group-hover:opacity-100 z-10"
-        title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-      >
-        <Star size={9} className={isFavorite ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'} />
-      </button>
       {/* floating label on hover */}
       <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-zinc-900 px-2 py-1 text-xs font-medium text-zinc-100 opacity-0 group-hover:opacity-100 z-50 shadow-lg">
         {theme.label}
@@ -77,7 +69,7 @@ export default function ThemePicker(): JSX.Element {
   const [dark, setDark]         = useState<boolean>(isDarkMode)
   const [open, setOpen]         = useState(false)
   const [search, setSearch]     = useState('')
-  const [hoveredLabel, setHoveredLabel] = useState<string | null>(null)
+  const [hoveredTheme, setHoveredTheme] = useState<ThemeDef | null>(null)
   const [savedMsg, setSavedMsg] = useState(false)
   const [favoritesDark, setFavoritesDark] = useState<string[]>([])
   const [favoritesLight, setFavoritesLight] = useState<string[]>([])
@@ -284,12 +276,7 @@ export default function ThemePicker(): JSX.Element {
                           theme={t}
                           active={t.id === theme}
                           onClick={() => pick(t.id)}
-                          onHover={setHoveredLabel}
-                          isFavorite={true}
-                          onToggleFavorite={(e) => {
-                            e.stopPropagation()
-                            toggleFavorite(t.id, dark ? 'dark' : 'light')
-                          }}
+                          onHover={setHoveredTheme}
                         />
                       ))}
                     </div>
@@ -312,12 +299,7 @@ export default function ThemePicker(): JSX.Element {
                           theme={t}
                           active={t.id === theme}
                           onClick={() => pick(t.id)}
-                          onHover={setHoveredLabel}
-                          isFavorite={false}
-                          onToggleFavorite={(e) => {
-                            e.stopPropagation()
-                            toggleFavorite(t.id, dark ? 'dark' : 'light')
-                          }}
+                          onHover={setHoveredTheme}
                         />
                       ))}
                     </div>
@@ -329,16 +311,29 @@ export default function ThemePicker(): JSX.Element {
 
           {/* Label footer — shows hovered theme name, falls back to active */}
           <div className="px-3 py-1.5 border-t border-border shrink-0 text-xs text-muted-foreground truncate">
-            {hoveredLabel ?? currentTheme?.label ?? 'Default'}
+            {hoveredTheme?.label ?? currentTheme?.label ?? 'Default'}
           </div>
 
-          {/* Make Default button */}
-          <div className="px-3 pb-2 shrink-0 border-t border-border">
+          {/* Action buttons */}
+          <div className="px-3 pb-2 shrink-0 border-t border-border space-y-1.5">
             <button
               onClick={makeDefault}
               className="w-full mt-2 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 transition-colors"
             >
               {savedMsg ? '✓ Saved as Default' : 'Make Default'}
+            </button>
+            <button
+              onClick={() => {
+                const targetId = hoveredTheme?.id ?? theme
+                if (targetId !== 'default') {
+                  toggleFavorite(targetId, dark ? 'dark' : 'light')
+                }
+              }}
+              disabled={theme === 'default' && !hoveredTheme}
+              className="w-full px-3 py-1.5 text-xs font-medium rounded-md bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-700 dark:text-yellow-500 border border-yellow-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+            >
+              <Star size={11} className={currentFavorites.includes(hoveredTheme?.id ?? theme) ? 'fill-current' : ''} />
+              {currentFavorites.includes(hoveredTheme?.id ?? theme) ? 'Remove from Favorites' : 'Add to Favorites'}
             </button>
           </div>
         </div>
