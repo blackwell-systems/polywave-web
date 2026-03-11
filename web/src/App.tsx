@@ -346,7 +346,7 @@ export default function App() {
           )}
           {rejected && <p className="text-orange-600 text-sm p-4">Plan rejected.</p>}
           {!loading && impl !== null && selectedSlug !== null && (
-            <ReviewScreen slug={selectedSlug} impl={impl} onApprove={handleApprove} onReject={handleReject} onRefreshImpl={handleSelect} repos={repos} />
+            <ReviewScreen slug={selectedSlug} impl={impl} onApprove={handleApprove} onReject={handleReject} onRefreshImpl={handleSelect} repos={repos} chatModel={chatModel} />
           )}
           {!loading && impl === null && !error && (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">

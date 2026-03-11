@@ -28,6 +28,7 @@ interface ReviewScreenProps {
   onReject: () => void
   onRefreshImpl?: (slug: string) => Promise<void>
   repos?: import('../types').RepoEntry[]
+  chatModel?: string
 }
 
 type PanelKey = 'pre-mortem' | 'stub-report' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist' | 'quality-gates' | 'worktrees' | 'context-viewer' | 'validation'
@@ -47,8 +48,18 @@ const panels: Array<{ key: PanelKey; label: string }> = [
 ]
 
 export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
-  const { slug, impl, onApprove, onReject, onRefreshImpl, repos } = props
+  const { slug, impl, onApprove, onReject, onRefreshImpl, repos, chatModel = 'claude-sonnet-4-6' } = props
   const isNotSuitable = impl.suitability.verdict === 'NOT SUITABLE'
+
+  // Format chat button label based on model
+  const getChatButtonLabel = () => {
+    const model = chatModel.toLowerCase()
+    if (model.includes('claude')) return 'Ask Claude'
+    if (model.includes('gpt') || model.includes('openai')) return 'Ask GPT'
+    if (model.includes('gemini')) return 'Ask Gemini'
+    if (model.includes('llama')) return 'Ask Llama'
+    return `Ask ${chatModel.split('-')[0]}`
+  }
 
   const [showRevise, setShowRevise] = useState(false)
   const [showChat, setShowChat] = useState(false)
@@ -284,7 +295,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 : 'border-t-violet-500/40 text-violet-600 dark:text-violet-400 bg-violet-500/5 hover:bg-violet-500/10 hover:text-violet-700 dark:hover:text-violet-300'
             }`}
           >
-            Ask Claude
+            {getChatButtonLabel()}
           </button>
         </div>
       )}
