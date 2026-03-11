@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.49.0] - 2026-03-10
+
+### Fixed
+
+- **ChatPanel background consistency** — ChatPanel now uses `bg-muted` background matching the left IMPL list sidebar. Creates consistent visual hierarchy: center content (`bg-background`) vs sidebars (`bg-muted`).
+- **Theme picker UX improvements** — Moved favorite toggle from tiny star icons on 28px swatches to "Add to Favorites" button in footer (below "Make Default" button). Prevents accidental clicks, acts on hovered theme or current selection.
+
+---
+
 ## [0.48.0] - 2026-03-10
 
 ### Added
@@ -9,7 +18,7 @@ All notable changes to this project will be documented in this file.
 - **Theme persistence and favorites system** — Color themes and dark/light mode now persist across sessions via `saw.config.json`. Theme picker includes favorites system with separate lists for dark and light modes.
   - `types.ts`: Added `color_theme`, `favorite_themes_dark`, `favorite_themes_light` to `SAWConfig.appearance`
   - `useDarkMode.ts`: Loads theme from config on mount, saves toggle state to config file
-  - `ThemePicker.tsx`: "Make Default" button saves current theme to config, star icons toggle favorites, favorites section displays at top of theme grid
+  - `ThemePicker.tsx`: "Make Default" button saves current theme to config, favorites section displays at top of theme grid
   - Themes auto-load on session start from config file
   - Separate favorites lists for dark and light modes
 
