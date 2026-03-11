@@ -313,7 +313,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
             style={{ width: '4px', flexShrink: 0, alignSelf: 'stretch' }}
             className="cursor-col-resize select-none bg-border hover:bg-primary/30 transition-colors"
           />
-          <div className="flex-shrink-0 border-l border-gray-200 dark:border-gray-700 flex flex-col" style={{ width: chatWidthPx }}>
+          <div className="flex-shrink-0 border-l border-border bg-muted flex flex-col" style={{ width: chatWidthPx }}>
             <ChatPanel slug={slug} onClose={() => setShowChat(false)} />
           </div>
         </>
