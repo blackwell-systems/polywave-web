@@ -25,7 +25,7 @@ export default function InterfaceContractsPanel({ contractsText }: InterfaceCont
         <CardTitle>Interface Contracts</CardTitle>
       </CardHeader>
       <CardContent>
-        <MarkdownContent>{contractsText}</MarkdownContent>
+        <MarkdownContent compact={false}>{contractsText}</MarkdownContent>
       </CardContent>
     </Card>
   )
