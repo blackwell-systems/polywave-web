@@ -30,15 +30,15 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ---
 
-## Current Status (v0.42.0+)
+## Current Status (v0.53.0+)
 
-**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E23 execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`scout-and-wave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop — 7 tools, backend adapters, middleware support).
+**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E23 execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`scout-and-wave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop — 7 tools, backend adapters, middleware support), markdown system fully removed (YAML-only manifests), base commit tracking for post-merge verification, duplicate completion report detection.
 
 **Web UI** — 3-column layout, Scout launcher, ReviewScreen (15+ panels), WaveBoard (failure-type action buttons, notes callout, scope-hint reruns), RevisePanel, GitActivity, CommandPalette, Settings, ThemePicker, SVG dep graph, wave gate, cancellation, desktop notifications, ManifestValidation panel, WorktreePanel (modal overlay with batch delete).
 
 **Streaming** — PTY + `--output-format stream-json` pipeline, JSON fragment reassembly, SSE broker (2048-channel).
 
-**API** — 30+ routes covering scout (+ rerun), wave, single-agent rerun, merge, test, diff, worktree (+ cleanup), chat, config, context, scaffold rerun, manifest validate/load/wave/completion.
+**API** — 30+ routes covering scout (+ rerun), wave, single-agent rerun, merge, test, diff, worktree (+ cleanup), chat, config, context, scaffold rerun, manifest validate/load/wave/completion. All endpoints YAML-only (markdown format removed v0.53.0).
 
 See CHANGELOG.md for full version history.
 
@@ -119,9 +119,11 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-E — Stub Report Panel
+### ✅ SHIPPED — v0.18.0-E — Stub Report Panel (COMPLETED)
 
-**Why:** Protocol E20 (v0.12.0) defines `## Stub Report — Wave {N}` sections written to the IMPL doc after each wave. Currently these appear as raw markdown in the review screen. Surfacing them prominently before the approve buttons gives reviewers a clear signal before they approve.
+**Status:** ✅ Shipped in earlier release - stub reports now surface in review screen.
+
+**Original Why:** Protocol E20 (v0.12.0) defines `## Stub Report — Wave {N}` sections written to the IMPL doc after each wave. Currently these appear as raw markdown in the review screen. Surfacing them prominently before the approve buttons gives reviewers a clear signal before they approve.
 
 **Scope:**
 - ReviewScreen: parse `## Stub Report — Wave {N}` sections from IMPL doc (prose, not a typed block)
@@ -169,9 +171,11 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-H — NOT SUITABLE Full Research View
+### ✅ SHIPPED — v0.18.0-H — NOT SUITABLE Full Research View (UI COMPLETED)
 
-**Why:** When Scout returns NOT SUITABLE, ReviewScreen shows a dead end — a verdict and a short rationale. Protocol roadmap item "Full Research Output on NOT SUITABLE Verdicts" will make Scouts write complete research regardless of verdict (dep graph, file survey, risk assessment, "what would make it suitable"). The UI needs to render this when it arrives rather than treating NOT SUITABLE as an empty state.
+**Status:** ✅ UI shipped v0.17.0 (NotSuitableResearchPanel). Protocol changes to scout.md pending.
+
+**Original Why:** When Scout returns NOT SUITABLE, ReviewScreen shows a dead end — a verdict and a short rationale. Protocol roadmap item "Full Research Output on NOT SUITABLE Verdicts" will make Scouts write complete research regardless of verdict (dep graph, file survey, risk assessment, "what would make it suitable"). The UI needs to render this when it arrives rather than treating NOT SUITABLE as an empty state.
 
 **Scope:**
 - ReviewScreen: detect NOT SUITABLE verdict from `## Suitability Assessment` section
@@ -189,9 +193,11 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-I — Scaffold Build Failure Detail *(API done v0.33.0; UI pending)*
+### ✅ SHIPPED — v0.18.0-I — Scaffold Build Failure Detail (API COMPLETED)
 
-**Why:** Protocol E22 (v0.13.0) requires the Scaffold Agent to run `go build ./...` (or equivalent) and report `status: FAILED` with build error output if it fails. Currently this surfaces as a generic BLOCKED state with no detail.
+**Status:** ✅ API shipped v0.33.0. UI implementation deferred (low priority - scaffold failures are rare).
+
+**Original Why:** Protocol E22 (v0.13.0) requires the Scaffold Agent to run `go build ./...` (or equivalent) and report `status: FAILED` with build error output if it fails. Currently this surfaces as a generic BLOCKED state with no detail.
 
 **Scope (remaining — UI only):**
 - ReviewScreen/WaveBoard: detect SCAFFOLD_PENDING → BLOCKED transition from scaffold status field in IMPL doc Scaffolds section
@@ -314,12 +320,9 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 
 ## Current Focus
 
-**Now:** Phase 2 intelligence features
-- v0.18.0-E — Stub Report Panel (surface TODO/FIXME before approval)
+**Now:** Phase 2 intelligence features (remaining items)
 - v0.18.0-E2 — Animated dep graph during execution (pulsing nodes, live status)
 - v0.18.0-F — Quality Gates Panel (test results inline)
-- v0.18.0-H — NOT SUITABLE full research view (show why + what would fix it)
-- v0.18.0-I — Scaffold build failure detail (UI only — API shipped v0.33.0)
 - v0.18.0-J — Pre-wave quality gates preview (edit gates before approval)
 - v0.18.0-K — Large IMPL doc scalability (per-agent context trimming)
 
