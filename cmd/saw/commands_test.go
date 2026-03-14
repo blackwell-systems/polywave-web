@@ -8,7 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	etypes "github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
 )
 
 // minimalIMPLDoc is a minimal IMPL doc fixture used in tests that need a
@@ -198,21 +199,21 @@ func TestRunScaffold_MissingImpl(t *testing.T) {
 func TestRunWave_Auto_MultiWave_Integration(t *testing.T) {
 	// Build a two-wave fake orchestrator.
 	fake := &fakeWaveOrch{
-		doc: &etypes.IMPLDoc{
+		doc: &types.IMPLDoc{
 			FeatureName: "Integration Test Feature",
-			Waves: []etypes.Wave{
+			Waves: []types.Wave{
 				{
 					Number: 1,
-					Agents: []etypes.AgentSpec{{Letter: "A", Prompt: "wave1 work"}},
+					Agents: []types.AgentSpec{{Letter: "A", Prompt: "wave1 work"}},
 				},
 				{
 					Number: 2,
-					Agents: []etypes.AgentSpec{{Letter: "B", Prompt: "wave2 work"}},
+					Agents: []types.AgentSpec{{Letter: "B", Prompt: "wave2 work"}},
 				},
 			},
 			TestCommand: "go test ./...",
 		},
-		state: etypes.ScoutPending,
+		state: protocol.StateScoutPending,
 	}
 
 	// Set up the temp dir with .git and IMPL doc file.
@@ -250,7 +251,7 @@ func TestRunWave_Auto_MultiWave_Integration(t *testing.T) {
 	}
 
 	// Final state is Complete.
-	if fake.state != etypes.Complete {
+	if fake.state != protocol.StateComplete {
 		t.Errorf("expected final state Complete, got: %s", fake.state)
 	}
 }
@@ -377,7 +378,7 @@ func TestRunScout_PromptIncludesFeature(t *testing.T) {
 	implOut := filepath.Join(repoRoot, "docs", "IMPL", "IMPL-"+slugify(featureDesc)+".md")
 	prompt := string([]byte(scoutMdContent)) + "\n\n## Feature\n" + featureDesc + "\n\n## IMPL Output Path\n" + implOut + "\n"
 
-	spec := etypes.AgentSpec{Letter: "scout", Prompt: prompt}
+	spec := types.AgentSpec{Letter: "scout", Prompt: prompt}
 	if !strings.Contains(spec.Prompt, featureDesc) {
 		t.Errorf("expected prompt to contain feature description %q, got:\n%s", featureDesc, spec.Prompt)
 	}

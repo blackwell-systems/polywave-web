@@ -6,15 +6,16 @@ import (
 	"path/filepath"
 	"testing"
 
-	etypes "github.com/blackwell-systems/scout-and-wave-go/pkg/types"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/types"
 )
 
 // fakeWaveOrch is a test double for waveOrchestrator.
 // It tracks RunWave/MergeWave/RunVerification calls and drives a minimal
 // state machine so TransitionTo behaves correctly.
 type fakeWaveOrch struct {
-	doc            *etypes.IMPLDoc
-	state          etypes.State
+	doc            *types.IMPLDoc
+	state          protocol.ProtocolState
 	runWaveCalls   []int
 	mergeWaveCalls []int
 	runVerifCalls  []string
@@ -23,15 +24,15 @@ type fakeWaveOrch struct {
 }
 
 // validTransitions mirrors the SAW state machine for the states runWave uses.
-var fakeValidTransitions = map[etypes.State][]etypes.State{
-	etypes.ScoutPending:  {etypes.Reviewed, etypes.NotSuitable},
-	etypes.Reviewed:      {etypes.WavePending},
-	etypes.WavePending:   {etypes.WaveExecuting},
-	etypes.WaveExecuting: {etypes.WaveVerified},
-	etypes.WaveVerified:  {etypes.Complete, etypes.WavePending},
+var fakeValidTransitions = map[protocol.ProtocolState][]protocol.ProtocolState{
+	protocol.StateScoutPending:  {protocol.StateReviewed, protocol.StateNotSuitable},
+	protocol.StateReviewed:      {protocol.StateWavePending},
+	protocol.StateWavePending:   {protocol.StateWaveExecuting},
+	protocol.StateWaveExecuting: {protocol.StateWaveVerified},
+	protocol.StateWaveVerified:  {protocol.StateComplete, protocol.StateWavePending},
 }
 
-func (f *fakeWaveOrch) TransitionTo(newState etypes.State) error {
+func (f *fakeWaveOrch) TransitionTo(newState protocol.ProtocolState) error {
 	if f.transitionErr != nil {
 		err := f.transitionErr
 		f.transitionErr = nil
@@ -39,7 +40,7 @@ func (f *fakeWaveOrch) TransitionTo(newState etypes.State) error {
 	}
 	allowed, ok := fakeValidTransitions[f.state]
 	if !ok {
-		return errors.New("fakeWaveOrch: no transitions from " + f.state.String())
+		return errors.New("fakeWaveOrch: no transitions from " + string(f.state))
 	}
 	for _, s := range allowed {
 		if s == newState {
@@ -47,7 +48,7 @@ func (f *fakeWaveOrch) TransitionTo(newState etypes.State) error {
 			return nil
 		}
 	}
-	return errors.New("fakeWaveOrch: invalid transition " + f.state.String() + " -> " + newState.String())
+	return errors.New("fakeWaveOrch: invalid transition " + string(f.state) + " -> " + string(newState))
 }
 
 func (f *fakeWaveOrch) RunWave(waveNum int) error {
@@ -69,20 +70,20 @@ func (f *fakeWaveOrch) UpdateIMPLStatus(waveNum int) error {
 	return nil
 }
 
-func (f *fakeWaveOrch) IMPLDoc() *etypes.IMPLDoc {
+func (f *fakeWaveOrch) IMPLDoc() *types.IMPLDoc {
 	return f.doc
 }
 
 // makeIMPLWithWaves builds a minimal IMPLDoc with the given wave numbers.
-func makeIMPLWithWaves(waveNums ...int) *etypes.IMPLDoc {
-	waves := make([]etypes.Wave, len(waveNums))
+func makeIMPLWithWaves(waveNums ...int) *types.IMPLDoc {
+	waves := make([]types.Wave, len(waveNums))
 	for i, n := range waveNums {
-		waves[i] = etypes.Wave{
+		waves[i] = types.Wave{
 			Number: n,
-			Agents: []etypes.AgentSpec{{Letter: "A", Prompt: "do work"}},
+			Agents: []types.AgentSpec{{Letter: "A", Prompt: "do work"}},
 		}
 	}
-	return &etypes.IMPLDoc{
+	return &types.IMPLDoc{
 		FeatureName: "Test Feature",
 		Waves:       waves,
 		TestCommand: "go test ./...",
@@ -124,7 +125,7 @@ func setupRunWaveTest(t *testing.T, fake *fakeWaveOrch) (implPath string, cleanu
 func TestRunWave_SingleWave_Completes(t *testing.T) {
 	fake := &fakeWaveOrch{
 		doc:   makeIMPLWithWaves(1),
-		state: etypes.ScoutPending,
+		state: protocol.StateScoutPending,
 	}
 	implPath, cleanup := setupRunWaveTest(t, fake)
 	defer cleanup()
@@ -150,7 +151,7 @@ func TestRunWave_SingleWave_Completes(t *testing.T) {
 	}
 
 	// Final state must be Complete.
-	if fake.state != etypes.Complete {
+	if fake.state != protocol.StateComplete {
 		t.Errorf("expected final state Complete, got: %s", fake.state)
 	}
 }
@@ -160,7 +161,7 @@ func TestRunWave_SingleWave_Completes(t *testing.T) {
 func TestRunWave_MultiWave_LoopsAll(t *testing.T) {
 	fake := &fakeWaveOrch{
 		doc:   makeIMPLWithWaves(1, 2),
-		state: etypes.ScoutPending,
+		state: protocol.StateScoutPending,
 	}
 	implPath, cleanup := setupRunWaveTest(t, fake)
 	defer cleanup()
@@ -192,7 +193,7 @@ func TestRunWave_MultiWave_LoopsAll(t *testing.T) {
 	}
 
 	// Final state must be Complete.
-	if fake.state != etypes.Complete {
+	if fake.state != protocol.StateComplete {
 		t.Errorf("expected final state Complete, got: %s", fake.state)
 	}
 }
@@ -202,7 +203,7 @@ func TestRunWave_MultiWave_LoopsAll(t *testing.T) {
 func TestRunWave_StartFromWave2(t *testing.T) {
 	fake := &fakeWaveOrch{
 		doc:   makeIMPLWithWaves(1, 2),
-		state: etypes.ScoutPending,
+		state: protocol.StateScoutPending,
 	}
 	implPath, cleanup := setupRunWaveTest(t, fake)
 	defer cleanup()
@@ -226,7 +227,7 @@ func TestRunWave_StartFromWave2(t *testing.T) {
 	}
 
 	// Final state must be Complete.
-	if fake.state != etypes.Complete {
+	if fake.state != protocol.StateComplete {
 		t.Errorf("expected final state Complete, got: %s", fake.state)
 	}
 }
