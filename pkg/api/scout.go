@@ -225,6 +225,36 @@ func (s *Server) runScoutAgent(ctx context.Context, runID, feature, repoOverride
 		return
 	}
 
+	// Finalize IMPL doc (M4: populate verification gates)
+	publish("scout_finalize", map[string]string{
+		"run_id": runID,
+		"status": "running",
+	})
+
+	finalizeResult, finalizeErr := engine.FinalizeIMPLEngine(ctx, implOut, repoRoot)
+	if finalizeErr != nil {
+		publish("scout_failed", map[string]string{
+			"run_id": runID,
+			"error":  "finalize-impl failed: " + finalizeErr.Error(),
+		})
+		return
+	}
+
+	// Finalize warnings are non-fatal - IMPL doc still usable
+	if !finalizeResult.Success {
+		publish("scout_finalize", map[string]string{
+			"run_id":  runID,
+			"status":  "warning",
+			"message": "Verification gates not fully populated (H2 data unavailable or validation issues)",
+		})
+	} else {
+		publish("scout_finalize", map[string]string{
+			"run_id":        runID,
+			"status":        "complete",
+			"agents_updated": fmt.Sprintf("%d", finalizeResult.GatePopulation.AgentsUpdated),
+		})
+	}
+
 	publish("scout_complete", map[string]string{
 		"run_id":    runID,
 		"slug":      slug,
