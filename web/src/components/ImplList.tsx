@@ -11,6 +11,7 @@ interface ImplListProps {
   onDelete: (slug: string) => void
   loading: boolean
   repos?: RepoEntry[]
+  onManageRepos?: () => void
 }
 
 interface DeleteModalProps {
@@ -148,7 +149,7 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
             <span className="text-[9px] px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-mono shrink-0">multirepo</span>
           )}
         </div>
-        {e.involved_repos && e.involved_repos.length > 0 && (
+        {e.is_multi_repo && e.involved_repos && e.involved_repos.length > 0 && (
           <div className="flex items-center gap-2 pl-3 font-sans not-italic" style={{ textDecoration: 'none' }}>
             <span className="text-[10px] text-muted-foreground/70">
               {e.involved_repos.join(', ')}
@@ -175,18 +176,30 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
 }
 
 export default function ImplList(props: ImplListProps): JSX.Element {
-  const { entries, selectedSlug, onSelect, onDelete, loading, repos } = props
+  const { entries, selectedSlug, onSelect, onDelete, loading, repos, onManageRepos } = props
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
-  const [selectedRepo, setSelectedRepo] = useState<string>('')
+  const [collapsedRepos, setCollapsedRepos] = useState<Set<string>>(new Set())
   const [showCompleted, setShowCompleted] = useState(false)
 
-  // Filter entries by selected repo (empty string = all repos)
-  const filteredEntries = selectedRepo === ''
-    ? entries
-    : entries.filter((e) => e.repo === selectedRepo)
+  // Group entries by repo
+  const entriesByRepo = entries.reduce((acc, entry) => {
+    const repo = entry.repo || 'default'
+    if (!acc[repo]) acc[repo] = []
+    acc[repo].push(entry)
+    return acc
+  }, {} as Record<string, IMPLListEntry[]>)
 
-  const activeEntries = filteredEntries.filter((e) => e.doc_status !== 'complete')
-  const completedEntries = filteredEntries.filter((e) => e.doc_status === 'complete')
+  const toggleRepo = (repoName: string) => {
+    setCollapsedRepos(prev => {
+      const next = new Set(prev)
+      if (next.has(repoName)) {
+        next.delete(repoName)
+      } else {
+        next.add(repoName)
+      }
+      return next
+    })
+  }
 
   return (
     <>
@@ -198,25 +211,98 @@ export default function ImplList(props: ImplListProps): JSX.Element {
         />
       )}
       <div className="flex flex-col gap-1 p-2">
-        {repos && repos.length >= 2 && (
-          <>
-            <select
-              value={selectedRepo}
-              onChange={(e) => setSelectedRepo(e.target.value)}
-              className="w-full text-xs px-2 py-1 mb-2 rounded border border-border bg-background text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="">All repos</option>
-              {repos.map((r, i) => <option key={i} value={r.name}>{r.name || r.path}</option>)}
-            </select>
-          </>
-        )}
         {entries.length === 0 ? (
           <p className="text-muted-foreground text-xs px-2">
             No IMPL docs found. Run <code className="bg-muted px-1 rounded">saw scout</code> first.
           </p>
-        ) : (
+        ) : repos && repos.length >= 2 ? (
+          // Multi-repo: group by repo with collapsible sections
           <>
-            {activeEntries.map((e) => (
+            {repos.map((repo) => {
+              const repoName = repo.name || repo.path
+              const repoEntries = entriesByRepo[repoName] || []
+              const activeEntries = repoEntries.filter((e) => e.doc_status !== 'complete')
+              const completedEntries = repoEntries.filter((e) => e.doc_status === 'complete')
+              const isCollapsed = collapsedRepos.has(repoName)
+
+              return (
+                <div key={repoName} className="mb-3">
+                  <button
+                    onClick={() => toggleRepo(repoName)}
+                    className="w-full flex items-center justify-between text-xs font-medium text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
+                  >
+                    <span>{repoName}</span>
+                    <span className="text-[10px]">{isCollapsed ? '▶' : '▼'}</span>
+                  </button>
+                  {!isCollapsed && (
+                    <>
+                      {activeEntries.map((e) => (
+                        <EntryRow
+                          key={e.slug}
+                          e={e}
+                          selectedSlug={selectedSlug}
+                          loading={loading}
+                          onSelect={onSelect}
+                          onRequestDelete={setPendingDelete}
+                        />
+                      ))}
+                      {completedEntries.length > 0 && (
+                        <>
+                          <div className="h-px bg-border my-2 ml-2" />
+                          <button
+                            onClick={() => setShowCompleted(!showCompleted)}
+                            className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
+                          >
+                            <span>Completed ({completedEntries.length})</span>
+                            <span className="text-[10px]">{showCompleted ? '▼' : '▶'}</span>
+                          </button>
+                          {showCompleted && completedEntries.map((e) => (
+                            <EntryRow
+                              key={e.slug}
+                              e={e}
+                              selectedSlug={selectedSlug}
+                              loading={loading}
+                              onSelect={onSelect}
+                              onRequestDelete={setPendingDelete}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )
+            })}
+            {onManageRepos && (
+              <button
+                onClick={onManageRepos}
+                className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline px-2 mt-2"
+                title="Manage repositories"
+              >
+                + manage repos
+              </button>
+            )}
+          </>
+        ) : (
+          // Single repo: show IMPLs directly with repo header
+          <>
+            {repos && repos.length === 1 && (
+              <div className="px-2 py-1.5 mb-2 border-b border-border flex items-center justify-between">
+                <span className="text-xs font-medium text-muted-foreground">
+                  {repos[0].name || repos[0].path}
+                </span>
+                {onManageRepos && (
+                  <button
+                    onClick={onManageRepos}
+                    className="text-[10px] text-muted-foreground hover:text-foreground transition-colors underline"
+                    title="Manage repositories"
+                  >
+                    add repo
+                  </button>
+                )}
+              </div>
+            )}
+            {Object.values(entriesByRepo).flat().filter((e) => e.doc_status !== 'complete').map((e) => (
               <EntryRow
                 key={e.slug}
                 e={e}
@@ -226,17 +312,17 @@ export default function ImplList(props: ImplListProps): JSX.Element {
                 onRequestDelete={setPendingDelete}
               />
             ))}
-            {completedEntries.length > 0 && (
+            {Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').length > 0 && (
               <>
                 <div className="h-px bg-border my-2" />
                 <button
                   onClick={() => setShowCompleted(!showCompleted)}
                   className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
                 >
-                  <span>Completed ({completedEntries.length})</span>
+                  <span>Completed ({Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').length})</span>
                   <span className="text-[10px]">{showCompleted ? '▼' : '▶'}</span>
                 </button>
-                {showCompleted && completedEntries.map((e) => (
+                {showCompleted && Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').map((e) => (
                   <EntryRow
                     key={e.slug}
                     e={e}

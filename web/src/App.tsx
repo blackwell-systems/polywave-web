@@ -323,6 +323,7 @@ export default function App() {
                   onDelete={handleDelete}
                   loading={loading}
                   repos={repos}
+                  onManageRepos={() => setShowSettings(true)}
                 />
               </div>
               <button

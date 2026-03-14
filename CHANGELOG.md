@@ -2,7 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.55.0] | 2026-03-14 | UI improvements — Fixed stale IMPL list, added collapsible repo sections, improved repo context visibility |
 | [0.54.0] | 2026-03-14 | Scout automation integration — 5 automation command wrappers added to web CLI (analyze-deps, analyze-suitability, detect-cascades, detect-scaffolds, extract-commands) |
+
+---
+
+## [0.55.0] - 2026-03-14
+
+### Fixed
+
+- **Filesystem watcher now detects archival/deletion** — Added `fsnotify.Remove` event handling to `startIMPLWatcher()` so the UI automatically refreshes when IMPL files are archived (moved to `docs/IMPL/complete/`) or deleted. Previously only CREATE and RENAME events triggered updates.
+- **IMPL status determined by directory location** — Changed `handleListImpls()` to use directory path (`docs/IMPL/complete/`) as source of truth for completion status instead of the `State` field in the manifest. Fixes issue where archived IMPLs still showed as active if their internal state wasn't updated.
+- **Config API returns server startup repo** — Fixed `handleGetConfig()` to populate `repos` array with server startup `--repo` flag when `saw.config.json` doesn't exist or has empty `repos` field. Ensures frontend always knows which repository it's viewing.
+
+### Changed
+
+- **Collapsible repo sections replace dropdown filter** — Multi-repo sidebar now shows collapsible sections for each repository instead of a dropdown filter. Provides better spatial overview of IMPL distribution across repos.
+- **Inline repo management link** — Single-repo sidebar now shows "add repo" link next to repo name header, surfacing multi-repo capability without hiding it in settings drawer. Link opens settings drawer directly to Repositories section.
+
+### Implementation
+
+- **Files modified**: `pkg/api/global_events.go`, `pkg/api/impl.go`, `pkg/api/config_handler.go`, `web/src/components/ImplList.tsx`, `web/src/App.tsx`
 
 ---
 

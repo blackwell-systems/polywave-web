@@ -34,9 +34,13 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			// Return default config
+			// Return default config with server startup repo
+			repoName := filepath.Base(s.cfg.RepoPath)
+			defaultCfg := SAWConfig{
+				Repos: []RepoEntry{{Name: repoName, Path: s.cfg.RepoPath}},
+			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(SAWConfig{}) //nolint:errcheck
+			json.NewEncoder(w).Encode(defaultCfg) //nolint:errcheck
 			return
 		}
 		http.Error(w, "failed to read config", http.StatusInternalServerError)
@@ -49,9 +53,15 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Backward-compat: if no repos registry, migrate legacy repo.path
-	if len(cfg.Repos) == 0 && cfg.Repo.Path != "" {
-		cfg.Repos = []RepoEntry{{Name: "repo", Path: cfg.Repo.Path}}
+	// Backward-compat: if no repos registry, use legacy repo.path or server startup repo
+	if len(cfg.Repos) == 0 {
+		if cfg.Repo.Path != "" {
+			cfg.Repos = []RepoEntry{{Name: "repo", Path: cfg.Repo.Path}}
+		} else {
+			// Use server startup repo as fallback
+			repoName := filepath.Base(s.cfg.RepoPath)
+			cfg.Repos = []RepoEntry{{Name: repoName, Path: s.cfg.RepoPath}}
+		}
 	}
 	cfg.Repo = RepoConfig{} // clear legacy field from response
 

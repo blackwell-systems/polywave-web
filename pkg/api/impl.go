@@ -66,7 +66,11 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 			name := e.Name()
 			if strings.HasPrefix(name, "IMPL-") && strings.HasSuffix(name, ".yaml") {
 				slug := strings.TrimSuffix(strings.TrimPrefix(name, "IMPL-"), ".yaml")
+				// Status is determined by directory location (source of truth after archival)
 				status := "active"
+				if strings.HasSuffix(implDir, "complete") {
+					status = "complete"
+				}
 				var waveCount, agentCount int
 				var isMultiRepo bool
 
@@ -76,9 +80,6 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 					for _, w := range m.Waves {
 						waveCount++
 						agentCount += len(w.Agents)
-					}
-					if m.State == protocol.StateComplete {
-						status = "complete"
 					}
 					repoSet := make(map[string]struct{})
 					for _, fo := range m.FileOwnership {

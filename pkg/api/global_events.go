@@ -120,8 +120,8 @@ func (s *Server) startIMPLWatcher(implDir string) {
 				if !ok {
 					return
 				}
-				// Only care about creates and renames (new file written).
-				if event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) {
+				// Watch for creates, renames, and removes (archival/deletion).
+				if event.Has(fsnotify.Create) || event.Has(fsnotify.Rename) || event.Has(fsnotify.Remove) {
 					s.globalBroker.broadcast("impl_list_updated")
 				}
 			case _, ok := <-watcher.Errors:
