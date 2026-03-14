@@ -14,15 +14,20 @@ import (
 
 // minimalIMPLDoc is a minimal IMPL doc fixture used in tests that need a
 // parseable file. It includes a feature name, one wave, and two agents.
-const minimalIMPLDoc = `# IMPL: Test Feature
-
-## Wave 1
-
-### Agent A: First agent
-Implements pkg/a/a.go.
-
-### Agent B: Second agent
-Implements pkg/b/b.go.
+const minimalIMPLDoc = `title: Test Feature
+feature_slug: test-feature
+verdict: SUITABLE
+waves:
+    - number: 1
+      agents:
+          - id: A
+            task: First agent - Implements pkg/a/a.go
+            files:
+                - pkg/a/a.go
+          - id: B
+            task: Second agent - Implements pkg/b/b.go
+            files:
+                - pkg/b/b.go
 `
 
 // TestRunWave_MissingImpl verifies that runWave returns an error when --impl
@@ -413,26 +418,26 @@ func captureRunStatus(t *testing.T, args []string) (string, error) {
 
 // minimalIMPLDocWithReport is an IMPL doc that includes a completion report
 // for Agent A with status "complete".
-const minimalIMPLDocWithReport = `# IMPL: JSON Test Feature
-
-## Wave 1
-
-### Agent A: First agent
-Implements pkg/a/a.go.
-
-### Agent B: Second agent
-Implements pkg/b/b.go.
-
-## Completion Reports
-
-### Agent A - Completion Report
-
-` + "```yaml" + `
-status: complete
-worktree: /tmp/worktree-a
-branch: saw/wave1-agent-a
-commit: abc1234
-` + "```" + `
+const minimalIMPLDocWithReport = `title: JSON Test Feature
+feature_slug: json-test-feature
+verdict: SUITABLE
+waves:
+    - number: 1
+      agents:
+          - id: A
+            task: First agent - Implements pkg/a/a.go
+            files:
+                - pkg/a/a.go
+          - id: B
+            task: Second agent - Implements pkg/b/b.go
+            files:
+                - pkg/b/b.go
+completion_reports:
+    A:
+        status: complete
+        worktree: /tmp/worktree-a
+        branch: saw/wave1-agent-a
+        commit: abc1234
 `
 
 // TestRunStatus_JSONOutput calls runStatus with --json and verifies valid JSON output.

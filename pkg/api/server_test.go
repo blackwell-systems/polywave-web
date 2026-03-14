@@ -312,32 +312,32 @@ func makeTestServer(t *testing.T) (*Server, string) {
 	return s, dir
 }
 
-// writeIMPLDoc writes a minimal valid IMPL markdown file to dir/IMPL-{slug}.md.
+// writeIMPLDoc writes a minimal valid IMPL YAML file to dir/docs/IMPL/IMPL-{slug}.yaml.
 func writeIMPLDoc(t *testing.T, dir, slug, content string) string {
 	t.Helper()
-	path := filepath.Join(dir, "IMPL-"+slug+".md")
+	implDir := filepath.Join(dir, "docs", "IMPL")
+	if err := os.MkdirAll(implDir, 0755); err != nil {
+		t.Fatalf("writeIMPLDoc: failed to create IMPL dir: %v", err)
+	}
+	path := filepath.Join(implDir, "IMPL-"+slug+".yaml")
 	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
 		t.Fatalf("writeIMPLDoc: %v", err)
 	}
 	return path
 }
 
-const minimalIMPL = `# IMPL: test-feature
-
-**Test Command:** go test ./...
-**Lint Command:** go vet ./...
-
-## Wave 1
-
-### Agent A: Do the thing
-
-Implement it.
-
-### File Ownership
-
-| File | Agent | Wave | Depends On |
-|------|-------|------|------------|
-| pkg/foo/bar.go | A | 1 | — |
+const minimalIMPL = `title: test-feature
+feature_slug: test-feature
+verdict: SUITABLE
+test_command: go test ./...
+lint_command: go vet ./...
+waves:
+    - number: 1
+      agents:
+          - id: A
+            task: Do the thing - Implement it
+            files:
+                - pkg/foo/bar.go
 `
 
 // ---------------------------------------------------------------------------
@@ -383,11 +383,11 @@ func TestHandleListImpls_DocStatusLowercase(t *testing.T) {
 	t.Error("active-feature not found in list response")
 }
 
-// TestHandleListImpls_DocStatusComplete verifies that an IMPL doc with the
-// SAW:COMPLETE tag returns doc_status "complete" (lowercase), not "COMPLETE".
+// TestHandleListImpls_DocStatusComplete verifies that an IMPL doc with
+// state: COMPLETE returns doc_status "complete" (lowercase).
 func TestHandleListImpls_DocStatusComplete(t *testing.T) {
 	s, dir := makeTestServer(t)
-	completeIMPL := minimalIMPL + "\n<!-- SAW:COMPLETE 2024-01-15 -->\n"
+	completeIMPL := minimalIMPL + "state: COMPLETE\n"
 	writeIMPLDoc(t, dir, "done-feature", completeIMPL)
 
 	req := httptest.NewRequest(http.MethodGet, "/api/impl", nil)
@@ -418,31 +418,29 @@ func TestHandleListImpls_DocStatusComplete(t *testing.T) {
 // handleGetImpl pre_mortem and doc_status tests
 // ---------------------------------------------------------------------------
 
-const implWithPreMortem = `# IMPL: premortem-feature
-
-**Test Command:** go test ./...
-**Lint Command:** go vet ./...
-
-## Pre-Mortem
-
-**Overall risk:** medium
-
-| Scenario | Likelihood | Impact | Mitigation |
-|----------|-----------|--------|------------|
-| DB schema mismatch | high | high | Run migration tests |
-| Agent timeout | low | medium | Add deadline context |
-
-## Wave 1
-
-### Agent A: Do the thing
-
-Implement it.
-
-### File Ownership
-
-| File | Agent | Wave | Depends On |
-|------|-------|------|------------|
-| pkg/foo/bar.go | A | 1 | — |
+const implWithPreMortem = `title: premortem-feature
+feature_slug: premortem-feature
+verdict: SUITABLE
+test_command: go test ./...
+lint_command: go vet ./...
+pre_mortem:
+    overall_risk: medium
+    risks:
+        - scenario: DB schema mismatch
+          likelihood: high
+          impact: high
+          mitigation: Run migration tests
+        - scenario: Agent timeout
+          likelihood: low
+          impact: medium
+          mitigation: Add deadline context
+waves:
+    - number: 1
+      agents:
+          - id: A
+            task: Do the thing - Implement it
+            files:
+                - pkg/foo/bar.go
 `
 
 // TestHandleGetImpl_PreMortem verifies that when a ## Pre-Mortem section exists

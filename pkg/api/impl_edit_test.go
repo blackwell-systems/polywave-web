@@ -14,8 +14,17 @@ import (
 func TestHandleGetImplRaw_Found(t *testing.T) {
 	s, dir := makeTestServer(t)
 	const slug = "test-feature"
-	const content = "# IMPL: test-feature\n\nSome content here.\n"
-	writeIMPLDoc(t, dir, slug, content)
+	const content = "title: test-feature\nfeature_slug: test-feature\nverdict: SUITABLE\n"
+
+	// Write directly to docs/IMPL (not using writeIMPLDoc since we want specific content)
+	implDir := filepath.Join(dir, "docs", "IMPL")
+	if err := os.MkdirAll(implDir, 0755); err != nil {
+		t.Fatalf("failed to create IMPL dir: %v", err)
+	}
+	path := filepath.Join(implDir, "IMPL-"+slug+".yaml")
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("failed to write IMPL doc: %v", err)
+	}
 
 	req := httptest.NewRequest(http.MethodGet, "/api/impl/"+slug+"/raw", nil)
 	req.SetPathValue("slug", slug)

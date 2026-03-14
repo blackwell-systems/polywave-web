@@ -189,20 +189,17 @@ func TestHandleWaveTest_Returns202(t *testing.T) {
 func TestHandleWaveTest_PublishesTestFailed_WhenNoTestCommand(t *testing.T) {
 	s, dir := makeTestServer(t)
 
-	// Write a minimal IMPL doc that has no Test Command field.
-	noTestCommandIMPL := `# IMPL: no-test-feature
-
-## Wave 1
-
-### Agent A: Do the thing
-
-Implement it.
-
-### File Ownership
-
-| File | Agent | Wave | Depends On |
-|------|-------|------|------------|
-| pkg/foo/bar.go | A | 1 | — |
+	// Write a minimal IMPL doc that has no test_command field.
+	noTestCommandIMPL := `title: no-test-feature
+feature_slug: no-test-feature
+verdict: SUITABLE
+waves:
+    - number: 1
+      agents:
+          - id: A
+            task: Do the thing - Implement it
+            files:
+                - pkg/foo/bar.go
 `
 	writeIMPLDoc(t, dir, "no-test-feature", noTestCommandIMPL)
 
