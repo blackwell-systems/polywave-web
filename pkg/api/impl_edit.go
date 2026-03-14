@@ -14,20 +14,43 @@ import (
 )
 
 // handleGetImplRaw serves GET /api/impl/{slug}/raw
-// Returns the raw IMPL doc markdown as text/plain.
+// Returns the raw IMPL doc (YAML or markdown) as text/plain.
 func (s *Server) handleGetImplRaw(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	if slug == "" {
 		http.Error(w, "missing slug", http.StatusBadRequest)
 		return
 	}
-	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".md")
+
+	// Search for IMPL doc in standard locations (same as handleGetImpl)
+	searchDirs := []string{
+		filepath.Join(s.cfg.RepoPath, "docs", "IMPL"),
+		filepath.Join(s.cfg.RepoPath, "docs", "IMPL", "complete"),
+	}
+
+	var implPath string
+	var found bool
+	for _, dir := range searchDirs {
+		for _, ext := range []string{".yaml", ".md"} {
+			candidate := filepath.Join(dir, "IMPL-"+slug+ext)
+			if _, err := os.Stat(candidate); err == nil {
+				implPath = candidate
+				found = true
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		http.Error(w, "IMPL doc not found", http.StatusNotFound)
+		return
+	}
+
 	data, err := os.ReadFile(implPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			http.Error(w, "IMPL doc not found", http.StatusNotFound)
-			return
-		}
 		http.Error(w, "failed to read IMPL doc", http.StatusInternalServerError)
 		return
 	}
@@ -57,9 +80,15 @@ func (s *Server) handlePutImplRaw(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "empty body", http.StatusBadRequest)
 		return
 	}
+	// Ensure IMPL directory exists
+	if err := os.MkdirAll(s.cfg.IMPLDir, 0755); err != nil {
+		http.Error(w, "failed to create IMPL directory", http.StatusInternalServerError)
+		return
+	}
+
 	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".md")
 	// Atomic write via temp file + rename
-	tmpFile, err := os.CreateTemp(filepath.Dir(implPath), "impl-edit-*.md.tmp")
+	tmpFile, err := os.CreateTemp(s.cfg.IMPLDir, "impl-edit-*.md.tmp")
 	if err != nil {
 		http.Error(w, "failed to create temp file", http.StatusInternalServerError)
 		return

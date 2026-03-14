@@ -304,9 +304,10 @@ func TestMakePublisher_PublishesToBroker(t *testing.T) {
 func makeTestServer(t *testing.T) (*Server, string) {
 	t.Helper()
 	dir := t.TempDir()
+	implDir := filepath.Join(dir, "docs", "IMPL")
 	s := New(Config{
 		Addr:     "localhost:0",
-		IMPLDir:  dir,
+		IMPLDir:  implDir,
 		RepoPath: dir,
 	})
 	return s, dir
@@ -425,7 +426,7 @@ test_command: go test ./...
 lint_command: go vet ./...
 pre_mortem:
     overall_risk: medium
-    risks:
+    rows:
         - scenario: DB schema mismatch
           likelihood: high
           impact: high
@@ -517,8 +518,8 @@ func TestHandleGetImpl_DocStatus(t *testing.T) {
 		t.Errorf("expected doc_status %q for active doc, got %q", "active", resp.DocStatus)
 	}
 
-	// Complete doc (has SAW:COMPLETE tag so DocStatus == "COMPLETE" after parsing).
-	completeIMPL := minimalIMPL + "\n<!-- SAW:COMPLETE 2024-01-15 -->\n"
+	// Complete doc (has state: COMPLETE so DocStatus == "COMPLETE" after parsing).
+	completeIMPL := minimalIMPL + "state: COMPLETE\n"
 	writeIMPLDoc(t, dir, "complete-slug", completeIMPL)
 	req2 := httptest.NewRequest(http.MethodGet, "/api/impl/complete-slug", nil)
 	req2.SetPathValue("slug", "complete-slug")
