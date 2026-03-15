@@ -14,9 +14,9 @@ import (
 type FileNode struct {
 	Name      string     `json:"name"`
 	Path      string     `json:"path"`
-	IsDir     bool       `json:"is_dir"`
+	IsDir     bool       `json:"isDir"`
 	Children  []FileNode `json:"children,omitempty"`
-	GitStatus *string    `json:"git_status,omitempty"`
+	GitStatus *string    `json:"gitStatus,omitempty"`
 }
 
 // FileTreeResponse is the JSON body for GET /api/files/tree.
@@ -55,6 +55,8 @@ var skipDirs = map[string]bool{
 	"build":        true,
 	"target":       true,
 	".next":        true,
+	".claude":      true,
+	".claire":      true,
 }
 
 // languageMap maps file extensions to language identifiers for syntax highlighting.

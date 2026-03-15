@@ -2,9 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.57.0] | 2026-03-14 | File browser fixes — JSON field name mismatch (tree not rendering), full-height viewer, .claire worktree handling, skip .claude/.claire in tree |
 | [0.56.0] | 2026-03-14 | File browser (waves 1-2) — 4 backend API endpoints + 7 frontend components for in-app codebase exploration with syntax highlighting |
 | [0.55.0] | 2026-03-14 | UI improvements — Fixed stale IMPL list, added collapsible repo sections, improved repo context visibility |
 | [0.54.0] | 2026-03-14 | Scout automation integration — 5 automation command wrappers added to web CLI (analyze-deps, analyze-suitability, detect-cascades, detect-scaffolds, extract-commands) |
+
+---
+
+## [0.57.0] - 2026-03-14
+
+### Fixed
+
+- **File tree not rendering** — `FileNode` Go struct used `json:"is_dir"` and `json:"git_status"` (snake_case) but TypeScript expected `isDir` and `gitStatus` (camelCase). Every node's `isDir` was `undefined`, so the tree never expanded. Changed JSON tags to match frontend types.
+- **File viewer not filling modal height** — CodeMirror had hardcoded `height="600px"`. Changed to `height="100%"` with flex layout propagation so the editor fills the full right panel.
+
+### Changed
+
+- **Skip `.claude` and `.claire` in file tree** — Added both directories to `skipDirs` so the file browser doesn't traverse worktree directories (which can be very large).
 
 ---
 

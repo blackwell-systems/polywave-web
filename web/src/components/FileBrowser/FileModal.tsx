@@ -337,7 +337,7 @@ export default function FileModal({ repo, initialFile, onClose }: FileModalProps
             data-testid="file-modal-viewer-panel"
           >
             {/* Content area */}
-            <div className="flex-1 overflow-auto p-3">
+            <div className="flex-1 flex flex-col min-h-0 p-3">
               {selectedPath ? (
                 showDiff ? (
                   <DiffViewer

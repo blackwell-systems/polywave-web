@@ -55,13 +55,14 @@ export default function FileViewer({ content, language, path, loading = false }:
   }
 
   return (
-    <div className="flex flex-col gap-1" data-testid="file-viewer">
-      <p className="text-xs text-muted-foreground font-mono px-1 truncate" data-testid="file-viewer-path">
+    <div className="flex flex-col gap-1 h-full" data-testid="file-viewer">
+      <p className="text-xs text-muted-foreground font-mono px-1 truncate shrink-0" data-testid="file-viewer-path">
         {path}
       </p>
       <CodeMirror
         value={content}
-        height="600px"
+        height="100%"
+        className="flex-1 min-h-0"
         extensions={extensions}
         theme={dark ? 'dark' : 'light'}
         readOnly={true}
