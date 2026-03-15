@@ -1,6 +1,7 @@
 // LiveRail — right-rail live execution panel
 // Stub created by Scaffold Agent. Full implementation by Wave 1 Agent D.
 
+import { useEffect } from 'react'
 import { useGitActivity } from '../hooks/useGitActivity'
 import ScoutLauncher from './ScoutLauncher'
 import WaveBoard from './WaveBoard'
@@ -23,6 +24,17 @@ export interface LiveRailProps {
 
 export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady, onClose, repos, activeRepo }: LiveRailProps): JSX.Element {
   const gitSnapshot = useGitActivity(liveView === 'wave' && slug ? slug : '')
+
+  // Escape key handler to close the rail
+  useEffect(() => {
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape' && liveView !== null) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [liveView, onClose])
 
   return (
     <div className="h-full flex flex-col bg-background">

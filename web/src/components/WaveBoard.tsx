@@ -243,8 +243,19 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
           </div>
         )}
 
-        {/* Run failed banner */}
-        {state.runFailed && (
+        {/* Run failed — prominent display when no waves rendered */}
+        {state.runFailed && state.waves.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center mb-4">
+              <span className="text-red-600 dark:text-red-400 text-xl font-bold">!</span>
+            </div>
+            <h2 className="text-base font-semibold text-red-800 dark:text-red-300 mb-2">Wave Execution Failed</h2>
+            <p className="text-sm text-red-700 dark:text-red-400 max-w-md break-words">{state.runFailed}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">Press Escape to close this panel</p>
+          </div>
+        )}
+        {/* Run failed banner — inline when waves are also showing */}
+        {state.runFailed && state.waves.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-800 text-sm dark:bg-red-950 dark:border-red-800 dark:text-red-400">
             <span className="font-medium">Wave failed:</span> {state.runFailed}
           </div>
@@ -265,6 +276,20 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                 {state.scaffoldStatus === 'complete' ? 'Complete' : 'Running'}
               </span>
             </div>
+          </div>
+        )}
+
+        {/* Empty state — no waves loaded yet */}
+        {state.waves.length === 0 && state.scaffoldStatus === 'idle' && !state.runFailed && (
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
+            <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
+              {state.connected ? 'Waiting for wave execution to start...' : 'Connecting to wave execution stream...'}
+            </p>
+            {state.staleBranches && (
+              <p className="text-amber-600 dark:text-amber-400 text-xs">
+                Clean up stale branches from previous runs to proceed
+              </p>
+            )}
           </div>
         )}
 
@@ -424,12 +449,6 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
           )
         })}
 
-        {/* Empty state */}
-        {state.waves.length === 0 && state.scaffoldStatus === 'idle' && (
-          <div className="text-center text-gray-400 dark:text-gray-500 text-sm py-12">
-            Waiting for wave to start...
-          </div>
-        )}
       </div>
     </div>
   )

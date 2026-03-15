@@ -131,17 +131,26 @@ export default function App() {
     setError(null)
     try {
       await approveImpl(selectedSlug!)
+      // Open the wave panel BEFORE starting execution so the SSE EventSource
+      // is connected and ready to receive events. Without this, the goroutine
+      // can publish all events before the client connects, causing a blank screen.
+      setLiveView('wave')
+      // Small delay to let React render the LiveRail and open the EventSource
+      await new Promise(resolve => setTimeout(resolve, 300))
       try {
         await startWave(selectedSlug!)
       } catch (startErr) {
-        // Swallow 409 (already running) and other start errors — still transition to wave screen
         const msg = startErr instanceof Error ? startErr.message : String(startErr)
-        if (!msg.includes('409')) {
-          console.warn('startWave error (non-fatal):', msg)
+        if (msg.includes('409')) {
+          // Already running — stay on wave view, that's fine
+        } else {
+          // Wave failed to start — close the rail and show the error inline
+          setLiveView(null)
+          setError(`Wave failed to start: ${msg}`)
         }
       }
-      setLiveView('wave')
     } catch (err) {
+      setLiveView(null)
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)

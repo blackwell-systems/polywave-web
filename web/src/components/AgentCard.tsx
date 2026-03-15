@@ -73,7 +73,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
 
   return (
     <div
-      className="flex flex-col min-w-[240px] max-w-sm overflow-hidden transition-all duration-200"
+      className="flex flex-col min-w-[320px] max-w-lg overflow-hidden transition-all duration-200"
       style={{
         borderRadius: '12px',
         border: '3px solid',
@@ -134,9 +134,9 @@ export default function AgentCard({ agent }: AgentCardProps) {
       {showToolFeed && <ToolFeed calls={agent.toolCalls!} />}
 
       {/* Files and errors */}
-      {(agent.files.length > 0 || agent.status === 'failed') && (
+      {((agent.files?.length ?? 0) > 0 || agent.status === 'failed') && (
         <div className="p-3 pt-0">
-          {agent.files.length > 0 && (
+          {(agent.files?.length ?? 0) > 0 && (
             <ul className="space-y-0.5 mb-2">
               {agent.files.map(f => (
                 <li key={f} className="font-mono text-xs text-white/60 truncate" title={f}>

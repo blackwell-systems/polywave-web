@@ -34,7 +34,16 @@ func (s *Server) handleWaveStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	implPath := s.cfg.IMPLDir + "/IMPL-" + slug + ".yaml"
+	// Resolve the IMPL doc path and repository from saw.config.json.
+	// This ensures we use the correct repository where the IMPL doc lives,
+	// not the global default repository.
+	implPath, repoPath, err := s.resolveIMPLPath(slug)
+	if err != nil {
+		s.activeRuns.Delete(slug)
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
 	publish := s.makePublisher(slug)
 
 	// Clear previous stage state so the timeline starts fresh for this run.
@@ -43,7 +52,7 @@ func (s *Server) handleWaveStart(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		defer s.activeRuns.Delete(slug)
-		runWaveLoopFunc(implPath, slug, s.cfg.RepoPath, publish, onStage)
+		runWaveLoopFunc(implPath, slug, repoPath, publish, onStage)
 		// Notify all sidebar clients that doc status may have changed
 		// (e.g. COMPLETE marker written, waves finished).
 		s.globalBroker.broadcast("impl_list_updated")
@@ -279,11 +288,16 @@ func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".yaml")
+	// Resolve the IMPL doc path and repository (same as handleWaveStart)
+	implPath, repoPath, err := s.resolveIMPLPath(slug)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
 
 	// Read wave model from saw.config.json if present.
 	waveModel := ""
-	if cfgData, err := os.ReadFile(filepath.Join(s.cfg.RepoPath, "saw.config.json")); err == nil {
+	if cfgData, err := os.ReadFile(filepath.Join(repoPath, "saw.config.json")); err == nil {
 		var sawCfg SAWConfig
 		if json.Unmarshal(cfgData, &sawCfg) == nil {
 			waveModel = sawCfg.Agent.WaveModel
@@ -292,7 +306,7 @@ func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request) {
 
 	opts := engine.RunWaveOpts{
 		IMPLPath:  implPath,
-		RepoPath:  s.cfg.RepoPath,
+		RepoPath:  repoPath,
 		Slug:      slug,
 		WaveModel: waveModel,
 	}
@@ -314,6 +328,48 @@ func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	fmt.Fprintf(w, `{"status":"accepted","slug":%q,"agent":%q,"wave":%d}`, slug, letter, body.Wave)
+}
+
+// resolveIMPLPath searches all configured repositories for the IMPL doc with the given slug.
+// Returns (implPath, repoPath, nil) on success, or ("", "", error) if not found.
+// This mirrors the logic in handleGetImpl and handleListImpls to support multi-repository workflows.
+func (s *Server) resolveIMPLPath(slug string) (string, string, error) {
+	// Read saw.config.json to get the list of repos
+	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
+	configData, err := os.ReadFile(configPath)
+
+	var repos []RepoEntry
+	if err == nil {
+		var cfg SAWConfig
+		if json.Unmarshal(configData, &cfg) == nil && len(cfg.Repos) > 0 {
+			repos = cfg.Repos
+		}
+	}
+
+	// Fallback: if no config or no repos, use the startup IMPLDir
+	if len(repos) == 0 {
+		repos = []RepoEntry{{
+			Name: filepath.Base(s.cfg.RepoPath),
+			Path: s.cfg.RepoPath,
+		}}
+	}
+
+	// Search all repos for the IMPL doc (both active and complete directories)
+	for _, repo := range repos {
+		implDirs := []string{
+			filepath.Join(repo.Path, "docs", "IMPL"),
+			filepath.Join(repo.Path, "docs", "IMPL", "complete"),
+		}
+
+		for _, implDir := range implDirs {
+			yamlPath := filepath.Join(implDir, "IMPL-"+slug+".yaml")
+			if _, err := os.Stat(yamlPath); err == nil {
+				return yamlPath, repo.Path, nil
+			}
+		}
+	}
+
+	return "", "", fmt.Errorf("IMPL doc not found for slug: %s", slug)
 }
 
 // makePublisher creates a function that maps orchestrator events to SSE events.

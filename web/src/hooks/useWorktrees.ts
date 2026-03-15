@@ -28,16 +28,30 @@ export function useWorktrees(slug: string) {
 
   const deleteBranches = useCallback(
     async (branches: string[], force: boolean) => {
-      await batchDeleteWorktrees(slug, { branches, force })
-      refresh()
+      try {
+        await batchDeleteWorktrees(slug, { branches, force })
+        setError(null)
+        refresh()
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        setError(`Failed to delete branches: ${message}`)
+        throw err // Re-throw so component knows it failed
+      }
     },
     [slug, refresh],
   )
 
   const deleteSingle = useCallback(
     async (branch: string) => {
-      await deleteWorktree(slug, branch)
-      refresh()
+      try {
+        await deleteWorktree(slug, branch)
+        setError(null)
+        refresh()
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err)
+        setError(`Failed to delete ${branch}: ${message}`)
+        throw err // Re-throw so component knows it failed
+      }
     },
     [slug, refresh],
   )

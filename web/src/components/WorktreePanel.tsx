@@ -74,8 +74,9 @@ export default function WorktreePanel({ slug, onClose }: { slug: string; onClose
       await deleteBranches(branches, force)
       setSelected(new Set())
       setConfirmUnmerged(false)
-    } catch {
-      // error is surfaced via the hook
+    } catch (err) {
+      // Error is displayed via the hook's error state
+      console.error('Delete failed:', err)
     } finally {
       setDeleting(false)
     }
@@ -90,8 +91,9 @@ export default function WorktreePanel({ slug, onClose }: { slug: string; onClose
         next.delete(branch)
         return next
       })
-    } catch {
-      // error is surfaced via the hook
+    } catch (err) {
+      // Error is displayed via the hook's error state
+      console.error('Delete failed:', err)
     } finally {
       setDeleting(false)
     }

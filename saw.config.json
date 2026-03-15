@@ -1,7 +1,11 @@
 {
   "repos": [
     {
-      "name": "repo",
+      "name": "scout-and-wave-web",
+      "path": "/Users/dayna.blackwell/code/scout-and-wave-web"
+    },
+    {
+      "name": "scout-and-wave-go",
       "path": "/Users/dayna.blackwell/code/scout-and-wave-go"
     }
   ],
@@ -10,7 +14,7 @@
   },
   "agent": {
     "scout_model": "claude-opus-4-6",
-    "wave_model": "claude-haiku-4-5-20251001",
+    "wave_model": "bedrock:claude-sonnet-4-6",
     "chat_model": "bedrock:claude-haiku-4-5"
   },
   "quality": {
@@ -19,6 +23,6 @@
     "block_on_failure": false
   },
   "appearance": {
-    "theme": "light"
+    "theme": "dark"
   }
 }

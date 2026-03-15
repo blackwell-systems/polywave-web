@@ -12,16 +12,25 @@ import (
 	"time"
 )
 
-// waveAgentBranchRe matches SAW-managed branches like "wave1-agent-a".
-var waveAgentBranchRe = regexp.MustCompile(`^wave\d+-agent-[a-z]+$`)
+// waveAgentBranchRe matches SAW-managed branches like "wave1-agent-A" or "wave1-agent-A2".
+var waveAgentBranchRe = regexp.MustCompile(`^wave\d+-agent-[A-Z]\d*$`)
 
 // handleListWorktrees serves GET /api/impl/{slug}/worktrees.
 // Parses `git worktree list --porcelain` output, filters to SAW-managed
 // branches, checks merged status, and returns WorktreeListResponse JSON.
 func (s *Server) handleListWorktrees(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+
+	// Resolve the repository path from the IMPL doc location
+	_, repoPath, err := s.resolveIMPLPath(slug)
+	if err != nil {
+		http.Error(w, "IMPL doc not found", http.StatusNotFound)
+		return
+	}
+
 	// Run git worktree list --porcelain
 	cmd := exec.Command("git", "worktree", "list", "--porcelain")
-	cmd.Dir = s.cfg.RepoPath
+	cmd.Dir = repoPath
 	out, err := cmd.Output()
 	if err != nil {
 		http.Error(w, "failed to list worktrees", http.StatusInternalServerError)
@@ -29,7 +38,7 @@ func (s *Server) handleListWorktrees(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the set of branches merged into main
-	mergedBranches := getMergedBranches(s.cfg.RepoPath)
+	mergedBranches := getMergedBranches(repoPath)
 
 	// Parse porcelain output into worktree entries
 	worktrees := parseWorktreePorcelain(out, mergedBranches)
@@ -46,16 +55,24 @@ func (s *Server) handleListWorktrees(w http.ResponseWriter, r *http.Request) {
 // Removes the git worktree and deletes the branch. Returns 409 if the branch
 // is unmerged and the "force" query param is not set.
 func (s *Server) handleDeleteWorktree(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
 	branch := r.PathValue("branch")
 	if branch == "" {
 		http.Error(w, "missing branch", http.StatusBadRequest)
 		return
 	}
 
+	// Resolve the repository path from the IMPL doc location
+	_, repoPath, err := s.resolveIMPLPath(slug)
+	if err != nil {
+		http.Error(w, "IMPL doc not found", http.StatusNotFound)
+		return
+	}
+
 	force := r.URL.Query().Get("force") == "true"
 
 	// Check if branch is merged before potentially removing
-	mergedBranches := getMergedBranches(s.cfg.RepoPath)
+	mergedBranches := getMergedBranches(repoPath)
 	isMerged := mergedBranches[branch]
 
 	if !isMerged && !force {
@@ -69,21 +86,21 @@ func (s *Server) handleDeleteWorktree(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find the worktree path for this branch
-	worktreePath := findWorktreePath(s.cfg.RepoPath, branch)
+	worktreePath := findWorktreePath(repoPath, branch)
 	if worktreePath != "" {
 		// Remove the worktree
 		rmCmd := exec.Command("git", "worktree", "remove", "--force", worktreePath)
-		rmCmd.Dir = s.cfg.RepoPath
+		rmCmd.Dir = repoPath
 		rmCmd.Run() //nolint:errcheck — best effort; branch delete follows
 	}
 
 	// Delete the branch
 	delCmd := exec.Command("git", "branch", "-d", branch)
-	delCmd.Dir = s.cfg.RepoPath
+	delCmd.Dir = repoPath
 	if err := delCmd.Run(); err != nil {
 		// Try force-delete if soft delete fails (e.g. worktree already removed)
 		forceDelCmd := exec.Command("git", "branch", "-D", branch)
-		forceDelCmd.Dir = s.cfg.RepoPath
+		forceDelCmd.Dir = repoPath
 		if err2 := forceDelCmd.Run(); err2 != nil {
 			http.Error(w, "failed to delete branch", http.StatusInternalServerError)
 			return
@@ -98,6 +115,8 @@ func (s *Server) handleDeleteWorktree(w http.ResponseWriter, r *http.Request) {
 // When force=false and any branch is unmerged, returns 409 with the list.
 // When force=true (or all are merged), deletes each worktree+branch.
 func (s *Server) handleBatchDeleteWorktrees(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+
 	var req WorktreeBatchDeleteRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
@@ -109,7 +128,14 @@ func (s *Server) handleBatchDeleteWorktrees(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	mergedBranches := getMergedBranches(s.cfg.RepoPath)
+	// Resolve the repository path from the IMPL doc location
+	_, repoPath, err := s.resolveIMPLPath(slug)
+	if err != nil {
+		http.Error(w, "IMPL doc not found", http.StatusNotFound)
+		return
+	}
+
+	mergedBranches := getMergedBranches(repoPath)
 
 	// When force=false, check for unmerged branches first
 	if !req.Force {
@@ -139,20 +165,20 @@ func (s *Server) handleBatchDeleteWorktrees(w http.ResponseWriter, r *http.Reque
 		result := WorktreeBatchDeleteResult{Branch: branch}
 
 		// Find and remove worktree
-		worktreePath := findWorktreePath(s.cfg.RepoPath, branch)
+		worktreePath := findWorktreePath(repoPath, branch)
 		if worktreePath != "" {
 			rmCmd := exec.Command("git", "worktree", "remove", "--force", worktreePath)
-			rmCmd.Dir = s.cfg.RepoPath
+			rmCmd.Dir = repoPath
 			rmCmd.Run() //nolint:errcheck — best effort
 		}
 
 		// Delete the branch
 		delCmd := exec.Command("git", "branch", "-d", branch)
-		delCmd.Dir = s.cfg.RepoPath
+		delCmd.Dir = repoPath
 		if err := delCmd.Run(); err != nil {
 			// Try force-delete
 			forceDelCmd := exec.Command("git", "branch", "-D", branch)
-			forceDelCmd.Dir = s.cfg.RepoPath
+			forceDelCmd.Dir = repoPath
 			if err2 := forceDelCmd.Run(); err2 != nil {
 				result.Deleted = false
 				result.Error = "failed to delete branch"

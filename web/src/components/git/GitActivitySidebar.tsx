@@ -22,11 +22,12 @@ function mainCommitPositions(commits: GitCommit[], totalWidth: number): number[]
 }
 
 export default function GitActivitySidebar({ snapshot }: GitActivitySidebarProps): JSX.Element {
-  if (!snapshot || snapshot.branches.length === 0) {
+  if (!snapshot || !snapshot.branches || snapshot.branches.length === 0) {
     return <div className="text-sm text-gray-400 dark:text-gray-500 p-4">No git activity yet.</div>
   }
 
-  const { branches, main_commits } = snapshot
+  const branches = snapshot.branches ?? []
+  const main_commits = snapshot.main_commits ?? []
   const totalHeight = (branches.length + 1) * ROW_HEIGHT
   const mainPositions = mainCommitPositions(main_commits, VIEWBOX_WIDTH)
 
