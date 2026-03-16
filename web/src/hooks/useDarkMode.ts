@@ -68,6 +68,17 @@ export function useDarkMode(): [boolean, () => void] {
     } else {
       setIsDark(nextTheme === 'dark')
     }
+
+    // Save to config
+    const { saveConfig } = await import('../api')
+    const updated = {
+      ...config,
+      appearance: {
+        ...config.appearance,
+        theme: nextTheme
+      }
+    }
+    await saveConfig(updated).catch(() => {})
   }
 
   return [isDark, toggle]
