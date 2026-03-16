@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { IMPLDocResponse } from '../types'
+import { listWorktrees, batchDeleteWorktrees } from '../api'
 import ActionButtons from './ActionButtons'
 import RevisePanel from './RevisePanel'
 import OverviewPanel from './review/OverviewPanel'
@@ -126,6 +127,49 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
       es.close()
     }
   }, [slug, onRefreshImpl])
+
+  // Worktree presence detection
+  const [worktreeCount, setWorktreeCount] = useState(0)
+  const [worktreeWarning, setWorktreeWarning] = useState(false)
+  const [cleaningWorktrees, setCleaningWorktrees] = useState(false)
+
+  const refreshWorktreeCount = useCallback(() => {
+    listWorktrees(slug)
+      .then(res => setWorktreeCount(res.worktrees?.length ?? 0))
+      .catch(() => setWorktreeCount(0))
+  }, [slug])
+
+  useEffect(() => {
+    refreshWorktreeCount()
+  }, [refreshWorktreeCount])
+
+  function handleApproveClick() {
+    if (worktreeCount > 0) {
+      setWorktreeWarning(true)
+    } else {
+      onApprove()
+    }
+  }
+
+  async function handleCleanAndApprove() {
+    setCleaningWorktrees(true)
+    try {
+      const res = await listWorktrees(slug)
+      const branches = res.worktrees.map(w => w.branch)
+      if (branches.length > 0) {
+        await batchDeleteWorktrees(slug, { branches, force: true })
+      }
+      setWorktreeCount(0)
+      setWorktreeWarning(false)
+      onApprove()
+    } catch {
+      // If cleanup fails, still let them proceed
+      setWorktreeWarning(false)
+      onApprove()
+    } finally {
+      setCleaningWorktrees(false)
+    }
+  }
 
   const togglePanel = (key: PanelKey) => {
     setActivePanels(prev =>
@@ -279,7 +323,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
       {/* Sticky footer — inside scroll container so it respects center column width */}
       {!isNotSuitable && (
         <div className="sticky bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur-sm flex items-stretch justify-center">
-          <ActionButtons onApprove={onApprove} onReject={onReject} onRequestChanges={() => setShowRevise(true)} />
+          <ActionButtons onApprove={handleApproveClick} onReject={onReject} onRequestChanges={() => setShowRevise(true)} />
           <button
             onClick={() => togglePanel('validation')}
             className={`flex items-center justify-center text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
@@ -291,14 +335,23 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
             Validate
           </button>
           <button
-            onClick={() => togglePanel('worktrees')}
-            className={`flex items-center justify-center text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
-              activePanels.includes('worktrees')
-                ? 'border-t-slate-500 text-slate-700 dark:text-slate-400 bg-slate-500/10'
-                : 'border-t-slate-500/40 text-muted-foreground hover:bg-slate-500/10 hover:text-foreground'
+            onClick={() => { togglePanel('worktrees'); refreshWorktreeCount() }}
+            className={`flex items-center justify-center gap-2 text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
+              worktreeCount > 0
+                ? activePanels.includes('worktrees')
+                  ? 'border-t-red-500 text-red-700 dark:text-red-400 bg-red-500/10'
+                  : 'border-t-red-500 text-red-600 dark:text-red-400 hover:bg-red-500/10'
+                : activePanels.includes('worktrees')
+                  ? 'border-t-slate-500 text-slate-700 dark:text-slate-400 bg-slate-500/10'
+                  : 'border-t-slate-500/40 text-muted-foreground hover:bg-slate-500/10 hover:text-foreground'
             }`}
           >
             Worktrees
+            {worktreeCount > 0 && (
+              <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">
+                {worktreeCount}
+              </span>
+            )}
           </button>
           <button
             onClick={() => setShowChat(v => !v)}
@@ -326,6 +379,47 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
             <ChatPanel slug={slug} onClose={() => setShowChat(false)} />
           </div>
         </>
+      )}
+
+      {/* Worktree warning dialog */}
+      {worktreeWarning && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-popover border border-border rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-red-100 dark:bg-red-950">
+                <span className="text-red-600 dark:text-red-400 text-lg">⚠</span>
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Stale Worktrees Detected</h3>
+                <p className="text-sm text-muted-foreground">{worktreeCount} worktree{worktreeCount !== 1 ? 's' : ''} from a previous run</p>
+              </div>
+            </div>
+            <p className="text-sm text-muted-foreground mb-5">
+              Existing worktrees will conflict with new wave execution. Clean them up before proceeding, or cancel to inspect them first.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setWorktreeWarning(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setWorktreeWarning(false); togglePanel('worktrees') }}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
+              >
+                Inspect
+              </button>
+              <button
+                onClick={handleCleanAndApprove}
+                disabled={cleaningWorktrees}
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {cleaningWorktrees ? 'Cleaning...' : 'Clean & Approve'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Worktrees — modal overlay at very top */}
