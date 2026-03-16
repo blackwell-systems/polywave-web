@@ -23,7 +23,7 @@ function statusBadge(status: 'merged' | 'unmerged' | 'stale') {
   }
 }
 
-export default function WorktreePanel({ slug, onClose }: { slug: string; onClose?: () => void }) {
+export default function WorktreePanel({ slug, onClose, onWorktreeDeleted }: { slug: string; onClose?: () => void; onWorktreeDeleted?: () => void }) {
   const { worktrees, loading, error, refresh, deleteBranches, deleteSingle } =
     useWorktrees(slug)
 
@@ -74,6 +74,7 @@ export default function WorktreePanel({ slug, onClose }: { slug: string; onClose
       await deleteBranches(branches, force)
       setSelected(new Set())
       setConfirmUnmerged(false)
+      onWorktreeDeleted?.()
     } catch (err) {
       // Error is displayed via the hook's error state
       console.error('Delete failed:', err)
@@ -91,6 +92,7 @@ export default function WorktreePanel({ slug, onClose }: { slug: string; onClose
         next.delete(branch)
         return next
       })
+      onWorktreeDeleted?.()
     } catch (err) {
       // Error is displayed via the hook's error state
       console.error('Delete failed:', err)

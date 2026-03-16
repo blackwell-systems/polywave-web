@@ -429,7 +429,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
       {activePanels.includes('worktrees') && (
         <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
           <div className="w-full max-w-6xl mt-8">
-            <WorktreePanel slug={slug} onClose={() => togglePanel('worktrees')} />
+            <WorktreePanel slug={slug} onClose={() => togglePanel('worktrees')} onWorktreeDeleted={refreshWorktreeCount} />
           </div>
         </div>
       )}
