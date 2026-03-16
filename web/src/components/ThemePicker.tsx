@@ -101,14 +101,10 @@ export default function ThemePicker(): JSX.Element {
     if ((mode === 'light' && dark) || (mode === 'dark' && !dark)) setTheme('default')
   }, [dark])
 
-  // Apply + persist
+  // Apply theme
   useEffect(() => {
     applyTheme(theme)
-    localStorage.setItem(STORAGE_KEY, theme)
   }, [theme])
-
-  // Apply on mount
-  useEffect(() => { applyTheme(localStorage.getItem(STORAGE_KEY) ?? 'default') }, [])
 
   // Close popover on outside click
   useEffect(() => {
