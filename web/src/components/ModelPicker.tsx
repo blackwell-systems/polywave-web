@@ -71,8 +71,11 @@ function DropdownItem({ selected, onClick, children }: {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className={`flex items-center gap-2 w-full text-left text-sm px-3 py-1.5 hover:bg-muted transition-colors ${selected ? 'bg-muted/60 font-medium' : ''}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick()
+      }}
+      className={`flex items-center gap-2 w-full text-left text-sm px-3 py-1.5 hover:bg-muted/80 hover:text-foreground transition-colors ${selected ? 'bg-muted/60 font-medium' : ''}`}
     >
       <span className="w-4 shrink-0">{selected && <Check size={14} className="text-primary" />}</span>
       {children}
