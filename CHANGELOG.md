@@ -2,12 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.60.0] | 2026-03-15 | Fix popover/card/destructive Tailwind color tokens, archive cobra-migration IMPL |
 | [0.59.0] | 2026-03-15 | Scaffold streaming output, unified model dropdowns, scaffold model picker in top bar |
 | [0.58.0] | 2026-03-15 | Provider-aware backend routing for scaffold/scout agents, scaffold_model config support |
 | [0.57.0] | 2026-03-14 | File browser fixes — JSON field name mismatch (tree not rendering), full-height viewer, .claire worktree handling, skip .claude/.claire in tree |
 | [0.56.0] | 2026-03-14 | File browser (waves 1-2) — 4 backend API endpoints + 7 frontend components for in-app codebase exploration with syntax highlighting |
 | [0.55.0] | 2026-03-14 | UI improvements — Fixed stale IMPL list, added collapsible repo sections, improved repo context visibility |
 | [0.54.0] | 2026-03-14 | Scout automation integration — 5 automation command wrappers added to web CLI (analyze-deps, analyze-suitability, detect-cascades, detect-scaffolds, extract-commands) |
+
+---
+
+## [0.60.0] - 2026-03-15
+
+### Fixed
+
+- **Dropdown transparency (root cause)** — `bg-popover`, `bg-card`, and `bg-destructive` were not defined in `tailwind.config.js`, so Tailwind generated no CSS for them. Added `popover`, `card`, and `destructive` color token mappings. This is the actual fix for the transparent dropdowns — the v0.59.0 fix removed `backdrop-blur` but the underlying missing token was the real issue.
+
+### Changed
+
+- **cobra-migration archived** — Marked IMPL doc complete and moved to `docs/IMPL/complete/`.
 
 ---
 
