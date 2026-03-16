@@ -16,7 +16,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
   const [config, setConfig] = useState<SAWConfig>({
     repos: [],
     repo: { path: '' },
-    agent: { scout_model: 'claude-sonnet-4-6', wave_model: 'claude-sonnet-4-6', chat_model: 'claude-sonnet-4-6' },
+    agent: { scout_model: 'claude-sonnet-4-6', wave_model: 'claude-sonnet-4-6', integration_model: 'claude-sonnet-4-6', chat_model: 'claude-sonnet-4-6' },
     quality: { require_tests: false, require_lint: false, block_on_failure: false },
     appearance: { theme: 'system' },
   })
@@ -182,6 +182,12 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
           label="Wave model"
           value={config.agent.wave_model}
           onChange={v => setConfig(c => ({ ...c, agent: { ...c.agent, wave_model: v } }))}
+        />
+        <ModelPicker
+          id="settings-integration-model"
+          label="Integration model"
+          value={config.agent.integration_model ?? ''}
+          onChange={v => setConfig(c => ({ ...c, agent: { ...c.agent, integration_model: v } }))}
         />
         <ModelPicker
           id="settings-chat-model"

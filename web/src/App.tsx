@@ -31,9 +31,10 @@ export default function App() {
   const [scoutModel, setScoutModel] = useState<string>('claude-sonnet-4-6')
   const [scaffoldModel, setScaffoldModel] = useState<string>('claude-sonnet-4-6')
   const [waveModel, setWaveModel] = useState<string>('claude-sonnet-4-6')
+  const [integrationModel, setIntegrationModel] = useState<string>('claude-sonnet-4-6')
   const [chatModel, setChatModel] = useState<string>('claude-sonnet-4-6')
 
-  const [pickerOpen, setPickerOpen] = useState<'scout' | 'scaffold' | 'wave' | 'chat' | 'all' | null>(null)
+  const [pickerOpen, setPickerOpen] = useState<'scout' | 'scaffold' | 'wave' | 'integration' | 'chat' | 'all' | null>(null)
 
   const [sseConnected, setSseConnected] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
@@ -87,6 +88,7 @@ export default function App() {
       setScoutModel(config.agent?.scout_model || 'claude-sonnet-4-6')
       setScaffoldModel(config.agent?.scaffold_model || 'claude-sonnet-4-6')
       setWaveModel(config.agent?.wave_model || 'claude-sonnet-4-6')
+      setIntegrationModel(config.agent?.integration_model || 'claude-sonnet-4-6')
       setChatModel(config.agent?.chat_model || 'claude-sonnet-4-6')
     }).catch(() => {})
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
@@ -187,7 +189,7 @@ export default function App() {
     }
   }
 
-  async function saveModel(field: 'scout' | 'scaffold' | 'wave' | 'chat' | 'all', value: string) {
+  async function saveModel(field: 'scout' | 'scaffold' | 'wave' | 'integration' | 'chat' | 'all', value: string) {
     try {
       const cfg = await getConfig()
       const updated = {
@@ -197,16 +199,18 @@ export default function App() {
           ...(field === 'scout' && { scout_model: value }),
           ...(field === 'scaffold' && { scaffold_model: value }),
           ...(field === 'wave' && { wave_model: value }),
+          ...(field === 'integration' && { integration_model: value }),
           ...(field === 'chat' && { chat_model: value }),
-          ...(field === 'all' && { scout_model: value, scaffold_model: value, wave_model: value, chat_model: value }),
+          ...(field === 'all' && { scout_model: value, scaffold_model: value, wave_model: value, integration_model: value, chat_model: value }),
         }
       }
       await saveConfig(updated)
       if (field === 'scout') setScoutModel(value)
       if (field === 'scaffold') setScaffoldModel(value)
       if (field === 'wave') setWaveModel(value)
+      if (field === 'integration') setIntegrationModel(value)
       if (field === 'chat') setChatModel(value)
-      if (field === 'all') { setScoutModel(value); setScaffoldModel(value); setWaveModel(value); setChatModel(value) }
+      if (field === 'all') { setScoutModel(value); setScaffoldModel(value); setWaveModel(value); setIntegrationModel(value); setChatModel(value) }
     } catch { /* ignore */ }
   }
 
@@ -263,8 +267,8 @@ export default function App() {
           </button>
         </div>
         <div className="flex items-stretch">
-          {(['scout', 'scaffold', 'wave', 'chat'] as const).map(field => {
-            const model = field === 'scout' ? scoutModel : field === 'scaffold' ? scaffoldModel : field === 'wave' ? waveModel : chatModel
+          {(['scout', 'scaffold', 'wave', 'integration', 'chat'] as const).map(field => {
+            const model = field === 'scout' ? scoutModel : field === 'scaffold' ? scaffoldModel : field === 'wave' ? waveModel : field === 'integration' ? integrationModel : chatModel
             const label = field.charAt(0).toUpperCase() + field.slice(1)
             return (
               <div key={field} className="relative flex items-stretch border-r border-border">
@@ -422,6 +426,7 @@ export default function App() {
               setScoutModel(config.agent?.scout_model ?? '')
               setScaffoldModel(config.agent?.scaffold_model ?? '')
               setWaveModel(config.agent?.wave_model ?? '')
+              setIntegrationModel(config.agent?.integration_model ?? '')
               setChatModel(config.agent?.chat_model ?? '')
             }).catch(() => {})
           }}
