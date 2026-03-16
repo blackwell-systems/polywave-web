@@ -65,7 +65,7 @@ function SwatchDot({ theme, active, onClick, onHover }: {
 }
 
 export default function ThemePicker(): JSX.Element {
-  const [theme, setTheme]       = useState<string>(() => localStorage.getItem(STORAGE_KEY) ?? 'default')
+  const [theme, setTheme]       = useState<string>('default')
   const [dark, setDark]         = useState<boolean>(isDarkMode)
   const [open, setOpen]         = useState(false)
   const [search, setSearch]     = useState('')
@@ -79,11 +79,9 @@ export default function ThemePicker(): JSX.Element {
   // Load theme and favorites from config on mount
   useEffect(() => {
     getConfig().then(config => {
-      const savedTheme = config.appearance?.color_theme
-      if (savedTheme) {
-        setTheme(savedTheme)
-        applyTheme(savedTheme)
-      }
+      const savedTheme = config.appearance?.color_theme ?? 'default'
+      setTheme(savedTheme)
+      applyTheme(savedTheme)
       setFavoritesDark(config.appearance?.favorite_themes_dark ?? [])
       setFavoritesLight(config.appearance?.favorite_themes_light ?? [])
     }).catch(() => {})
