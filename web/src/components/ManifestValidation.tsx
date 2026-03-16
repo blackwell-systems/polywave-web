@@ -5,9 +5,10 @@ import { validateManifest, ValidationError } from '../lib/manifest'
 
 interface ManifestValidationProps {
   slug: string
+  onClose?: () => void
 }
 
-export default function ManifestValidation({ slug }: ManifestValidationProps): JSX.Element {
+export default function ManifestValidation({ slug, onClose }: ManifestValidationProps): JSX.Element {
   const [validating, setValidating] = useState(false)
   const [result, setResult] = useState<{ valid: boolean; errors: ValidationError[] } | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,19 +34,20 @@ export default function ManifestValidation({ slug }: ManifestValidationProps): J
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Manifest Validation</CardTitle>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Button
-            onClick={handleValidate}
-            disabled={validating}
-            variant="default"
-          >
-            {validating ? 'Validating...' : 'Validate Manifest'}
-          </Button>
-        </div>
 
         {error && (
           <div className="p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg">
