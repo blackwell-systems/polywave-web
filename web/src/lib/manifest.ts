@@ -118,7 +118,7 @@ export async function loadManifest(slug: string): Promise<IMPLManifest> {
 }
 
 export async function validateManifest(slug: string): Promise<{ valid: boolean; errors: ValidationError[] }> {
-  const res = await fetch(`/api/impl/${slug}/validate`, { method: 'POST' })
+  const res = await fetch(`/api/manifest/${slug}/validate`, { method: 'POST' })
   if (!res.ok) throw new Error(`Failed to validate manifest: ${res.statusText}`)
   return res.json()
 }
