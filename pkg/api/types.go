@@ -224,7 +224,12 @@ type QualityConfig struct {
 }
 
 type AppearConfig struct {
-	Theme string `json:"theme"` // "system", "light", "dark"
+	Theme               string   `json:"theme"`                         // "system", "light", "dark"
+	ColorTheme          string   `json:"color_theme,omitempty"`         // legacy single default
+	ColorThemeDark      string   `json:"color_theme_dark,omitempty"`    // dark mode default
+	ColorThemeLight     string   `json:"color_theme_light,omitempty"`   // light mode default
+	FavoriteThemesDark  []string `json:"favorite_themes_dark,omitempty"`
+	FavoriteThemesLight []string `json:"favorite_themes_light,omitempty"`
 }
 
 // ChatRequest is the JSON body for POST /api/impl/{slug}/chat.

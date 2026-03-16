@@ -78,7 +78,10 @@ export default function ThemePicker(): JSX.Element {
   // Load theme and favorites from config on mount
   useEffect(() => {
     getConfig().then(config => {
-      const savedTheme = config.appearance?.color_theme ?? 'default'
+      const isDarkNow = isDarkMode()
+      const savedTheme = isDarkNow
+        ? (config.appearance?.color_theme_dark ?? 'default')
+        : (config.appearance?.color_theme_light ?? 'default')
       setTheme(savedTheme)
       applyTheme(savedTheme)
       setFavoritesDark(config.appearance?.favorite_themes_dark ?? [])
@@ -96,13 +99,11 @@ export default function ThemePicker(): JSX.Element {
   // Reload theme from config on mode flip
   useEffect(() => {
     getConfig().then(config => {
-      const savedTheme = config.appearance?.color_theme ?? 'default'
-      const mode = themeMode(savedTheme)
-      if (mode === 'default') return
-      if ((mode === 'light' && dark) || (mode === 'dark' && !dark)) {
-        setTheme(savedTheme)
-        applyTheme(savedTheme)
-      }
+      const savedTheme = dark
+        ? (config.appearance?.color_theme_dark ?? 'default')
+        : (config.appearance?.color_theme_light ?? 'default')
+      setTheme(savedTheme)
+      applyTheme(savedTheme)
     }).catch(() => {})
   }, [dark])
 
@@ -150,11 +151,12 @@ export default function ThemePicker(): JSX.Element {
   async function makeDefault() {
     try {
       const config = await getConfig()
+      const field = dark ? 'color_theme_dark' : 'color_theme_light'
       const updated = {
         ...config,
         appearance: {
           ...config.appearance,
-          color_theme: theme
+          [field]: theme
         }
       }
       await saveConfig(updated)
