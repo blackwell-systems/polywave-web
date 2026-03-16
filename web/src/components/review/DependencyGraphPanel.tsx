@@ -2,9 +2,11 @@ import { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { getAgentColor, resetThemeCache } from '../../lib/agentColors'
+import { ExecutionSyncState, AgentExecStatus } from '../../hooks/useExecutionSync'
 
 interface DependencyGraphPanelProps {
   dependencyGraphText?: string
+  executionState?: ExecutionSyncState
 }
 
 interface ParsedAgent {
@@ -141,7 +143,7 @@ function layoutNodes(waves: ParsedWave[]): { nodes: NodePos[]; width: number; he
   return { nodes, width, height }
 }
 
-export default function DependencyGraphPanel({ dependencyGraphText }: DependencyGraphPanelProps): JSX.Element {
+export default function DependencyGraphPanel({ dependencyGraphText, executionState }: DependencyGraphPanelProps): JSX.Element {
   const svgRef = useRef<SVGSVGElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [tooltip, setTooltip] = useState<{ x: number; y: number; agent: ParsedAgent } | null>(null)
@@ -165,6 +167,12 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
     window.addEventListener('scroll', handler, true)
     return () => window.removeEventListener('scroll', handler, true)
   }, [])
+
+  // Helper to look up agent execution status
+  function getExecStatus(letter: string, wave: number): AgentExecStatus | undefined {
+    if (!executionState?.isLive) return undefined
+    return executionState.agents.get(`${wave}:${letter}`)
+  }
 
   if (!dependencyGraphText || dependencyGraphText.trim() === '') {
     return (
@@ -260,6 +268,8 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
     }
   }
 
+  const isLive = !!(executionState?.isLive)
+
   return (
     <Card>
       <CardHeader>
@@ -316,6 +326,21 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
               const x2 = edge.to.x
               const y2 = edge.to.y + NODE_H / 2
 
+              // Determine edge class based on source node exec status
+              const sourceExec = getExecStatus(edge.from.agent.letter, edge.from.agent.wave)
+              let edgeClassName: string | undefined
+              let edgeOpacity: number | undefined
+
+              if (isLive) {
+                if (sourceExec?.status === 'complete') {
+                  edgeClassName = 'exec-edge-active'
+                } else {
+                  edgeClassName = 'exec-edge-inactive'
+                }
+              } else {
+                edgeOpacity = 0.6
+              }
+
               return (
                 <line
                   key={i}
@@ -325,7 +350,8 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
                   y2={y2}
                   stroke={edge.color}
                   strokeWidth={2}
-                  opacity={0.6}
+                  opacity={edgeOpacity}
+                  className={edgeClassName}
                 />
               )
             })}
@@ -334,12 +360,29 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
             {edges.map((edge, i) => {
               const x2 = edge.to.x
               const y2 = edge.to.y + NODE_H / 2
+
+              // Mirror edge class onto arrow tip
+              const sourceExec = getExecStatus(edge.from.agent.letter, edge.from.agent.wave)
+              let arrowClassName: string | undefined
+              let arrowOpacity: number | undefined
+
+              if (isLive) {
+                if (sourceExec?.status === 'complete') {
+                  arrowClassName = 'exec-edge-active'
+                } else {
+                  arrowClassName = 'exec-edge-inactive'
+                }
+              } else {
+                arrowOpacity = 0.6
+              }
+
               return (
                 <polygon
                   key={`arrow-${i}`}
                   points={`${x2},${y2} ${x2 - 6},${y2 - 3} ${x2 - 6},${y2 + 3}`}
                   fill={edge.color}
-                  opacity={0.6}
+                  opacity={arrowOpacity}
+                  className={arrowClassName}
                 />
               )
             })}
@@ -348,10 +391,38 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
             {nodes.map(node => {
               const fill = getAgentFill(node.agent.letter)
               const label = getNodeLabel(node.agent.letter)
+              const exec = getExecStatus(node.agent.letter, node.agent.wave)
+
+              // Build node CSS class and style based on exec status
+              let nodeClassName = 'cursor-pointer'
+              let nodeStyle: React.CSSProperties | undefined
+              let nodeFill = fill.bg
+              let nodeStroke = fill.border
+
+              if (exec) {
+                if (exec.status === 'running') {
+                  const color = getAgentColor(node.agent.letter)
+                  nodeClassName += ' exec-node-running'
+                  nodeStyle = { '--exec-pulse-color': color } as React.CSSProperties
+                  nodeFill = `${color}40`
+                } else if (exec.status === 'failed') {
+                  nodeClassName += ' exec-node-failed'
+                  nodeStroke = '#f85149'
+                } else if (exec.status === 'complete') {
+                  const color = getAgentColor(node.agent.letter)
+                  nodeClassName += ' exec-node-complete'
+                  nodeFill = `${color}60`
+                }
+              }
+
+              const cx = node.x + NODE_W / 2
+              const cy = node.y + NODE_H / 2
+
               return (
                 <g
                   key={node.agent.letter}
-                  className="cursor-pointer"
+                  className={nodeClassName}
+                  style={nodeStyle}
                   onMouseEnter={(e) => {
                     const rect = (e.currentTarget as SVGGElement).getBoundingClientRect()
                     setTooltip({
@@ -367,14 +438,14 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
                     width={NODE_W}
                     height={NODE_H}
                     rx={8}
-                    fill={fill.bg}
-                    stroke={fill.border}
+                    fill={nodeFill}
+                    stroke={nodeStroke}
                     strokeWidth={2}
                     strokeDasharray={fill.dashed ? '4 3' : undefined}
                   />
                   <text
-                    x={node.x + NODE_W / 2}
-                    y={node.y + NODE_H / 2 + 1}
+                    x={cx}
+                    y={cy + 1}
                     textAnchor="middle"
                     dominantBaseline="central"
                     fill={fill.text}
@@ -384,6 +455,17 @@ export default function DependencyGraphPanel({ dependencyGraphText }: Dependency
                   >
                     {label}
                   </text>
+                  {exec?.status === 'complete' && (
+                    <g className="exec-check-overlay">
+                      <path
+                        d="M-4,0 L-1,3 L4,-3"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        fill="none"
+                        transform={`translate(${cx}, ${cy})`}
+                      />
+                    </g>
+                  )}
                 </g>
               )
             })}
