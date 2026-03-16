@@ -97,7 +97,6 @@ export default function ModelPicker({ value, onChange, label, id }: ModelPickerP
   }
 
   function handleProviderSelect(p: string) {
-    setProviderOpen(false)
     emitChange(p, selectedModel)
   }
 
