@@ -15,11 +15,6 @@ function applyTheme(id: string) {
   if (id !== 'default') html.classList.add(`theme-${id}`)
 }
 
-function themeMode(id: string): 'light' | 'dark' | 'default' {
-  if (id === 'default') return 'default'
-  return THEMES.find(t => t.id === id)?.mode ?? 'dark'
-}
-
 function SwatchDot({ theme, active, onClick, onHover }: {
   theme: ThemeDef; active: boolean; onClick: () => void; onHover: (theme: ThemeDef | null) => void
 }) {
