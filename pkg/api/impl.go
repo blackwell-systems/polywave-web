@@ -82,10 +82,18 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 						agentCount += len(w.Agents)
 					}
 					repoSet := make(map[string]struct{})
+					hasEmptyRepo := false
 					for _, fo := range m.FileOwnership {
 						if fo.Repo != "" && fo.Repo != "system" {
 							repoSet[fo.Repo] = struct{}{}
+						} else if fo.Repo == "" {
+							hasEmptyRepo = true
 						}
+					}
+					// If some entries have repo: and some don't, the empty ones
+					// are implicitly the host repo — that's a second distinct repo.
+					if hasEmptyRepo && len(repoSet) > 0 {
+						repoSet[repo.Name] = struct{}{}
 					}
 					isMultiRepo = len(repoSet) >= 2
 					if isMultiRepo {
