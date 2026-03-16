@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -129,9 +130,42 @@ func (s *Server) HandleSetManifestCompletion(w http.ResponseWriter, r *http.Requ
 }
 
 // resolveManifestPath converts a slug to an absolute YAML manifest path.
-// Follows the same convention as IMPL docs: {IMPLDir}/IMPL-{slug}.yaml
+// Scans all configured repos like handleListImpls does.
 func (s *Server) resolveManifestPath(slug string) string {
-	return filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".yaml")
+	filename := "IMPL-" + slug + ".yaml"
+
+	// Read saw.config.json to get repos
+	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
+	configData, _ := os.ReadFile(configPath)
+
+	var repos []RepoEntry
+	if configData != nil {
+		var cfg SAWConfig
+		if json.Unmarshal(configData, &cfg) == nil && len(cfg.Repos) > 0 {
+			repos = cfg.Repos
+		}
+	}
+
+	// Fallback to startup repo
+	if len(repos) == 0 {
+		repos = []RepoEntry{{Path: s.cfg.RepoPath}}
+	}
+
+	// Scan each repo's IMPL directories
+	for _, repo := range repos {
+		paths := []string{
+			filepath.Join(repo.Path, "docs", "IMPL", filename),
+			filepath.Join(repo.Path, "docs", "IMPL", "complete", filename),
+		}
+		for _, p := range paths {
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
+		}
+	}
+
+	// Not found in any repo, return default
+	return filepath.Join(s.cfg.IMPLDir, filename)
 }
 
 // RegisterManifestRoutes registers all manifest-related HTTP routes.
