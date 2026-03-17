@@ -11,3 +11,5 @@
   - IMPL doc: docs/IMPL/IMPL-usereducer-wave-events.yaml
 - **live-file-activity**: completed 2026-03-17, 1 waves, 2 agents
   - IMPL doc: docs/IMPL/IMPL-live-file-activity.yaml
+- **autonomy-web-ui**: completed 2026-03-17, 2 waves, 6 agents
+  - IMPL doc: docs/IMPL/IMPL-autonomy-web-ui.yaml

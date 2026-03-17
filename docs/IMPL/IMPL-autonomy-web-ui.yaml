@@ -366,6 +366,7 @@ waves:
             - pkg/api/autonomy_handler_test.go
             - pkg/api/daemon_handler.go
             - pkg/api/daemon_handler_test.go
+      base_commit: 6e95f15261a62b43d06766d9ba8f9a98acd66711
     - number: 2
       agents:
         - id: D
@@ -704,22 +705,59 @@ scaffolds:
 completion_reports:
     A:
         status: complete
-        worktree: /Users/dayna.blackwell/code/scout-and-wave-web/.claude/worktrees/wave1-agent-A
         branch: wave1-agent-A
-        commit: 861bc26c379371c340db689c4ab868a1d7d3d31f
-        notes: no changes produced (API agent)
+        commit: b792c1e
+        files_changed:
+            - pkg/api/pipeline_handler.go
+            - pkg/api/pipeline_handler_test.go
+            - pkg/api/autonomy_handlers_stub.go
+        files_created:
+            - pkg/api/pipeline_handler.go
+            - pkg/api/pipeline_handler_test.go
+        tests_added:
+            - TestHandleGetPipeline_Empty
+            - TestHandleGetPipeline_WithQueue
+            - TestHandleGetPipeline_MixedStatus
+        verification: PASS
     B:
         status: complete
-        worktree: /Users/dayna.blackwell/code/scout-and-wave-web/.claude/worktrees/wave1-agent-B
         branch: wave1-agent-B
-        commit: 25cd91bea0a213b0b94e34f4cd9b99019b71c127
-        notes: no changes produced (API agent)
+        commit: 52332d3
+        files_changed:
+            - pkg/api/queue_handler.go
+            - pkg/api/queue_handler_test.go
+            - pkg/api/autonomy_handlers_stub.go
+        files_created:
+            - pkg/api/queue_handler.go
+            - pkg/api/queue_handler_test.go
+        tests_added:
+            - TestHandleListQueue_Empty
+            - TestHandleAddQueue
+            - TestHandleDeleteQueue
+            - TestHandleAddQueue_InvalidBody
+        verification: PASS
     C:
         status: complete
-        worktree: /Users/dayna.blackwell/code/scout-and-wave-web/.claude/worktrees/wave1-agent-C
         branch: wave1-agent-C
-        commit: d0ec89969f5482ad2b58f51e4c24d66968b28cdf
-        notes: no changes produced (API agent)
+        commit: 58bfcad
+        files_changed:
+            - pkg/api/autonomy_handler.go
+            - pkg/api/autonomy_handler_test.go
+            - pkg/api/daemon_handler.go
+            - pkg/api/daemon_handler_test.go
+            - pkg/api/autonomy_handlers_stub.go
+        files_created:
+            - pkg/api/autonomy_handler.go
+            - pkg/api/autonomy_handler_test.go
+            - pkg/api/daemon_handler.go
+            - pkg/api/daemon_handler_test.go
+        tests_added:
+            - TestHandleGetAutonomy_Default
+            - TestHandleSaveAutonomy
+            - TestHandleSaveAutonomy_InvalidLevel
+            - TestHandleDaemonStatus_NotRunning
+            - TestHandleDaemonStart_AlreadyRunning
+        verification: PASS
 pre_mortem:
     overall_risk: medium
     rows:
@@ -744,4 +782,5 @@ known_issues:
       description: PipelineView component is created but not wired into App.tsx navigation. This requires modifying App.tsx which is complex and risky to assign to an agent.
       status: Intentional — manual integration step post-merge
       workaround: After merge, manually add pipeline view toggle button to App.tsx header and conditional render in the center column.
-state: SCOUT_PENDING
+state: COMPLETE
+completion_date: "2026-03-17"
