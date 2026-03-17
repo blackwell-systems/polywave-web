@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.68.0] | 2026-03-16 | File browser repo fix + sidebar polish — IMPL detail API populates repo/repo_path, per-repo completed section toggle, subtle bg tint on completed sections |
 | [0.67.0] | 2026-03-16 | Conflict resolution streaming + worktree cleanup fix — live model output in ConflictResolutionPanel, post-resolve cleanup wired, multi-repo IMPL path resolution |
 | [0.66.0] | 2026-03-16 | WaveBoard state persistence — disk-seeded agents/waves/merge state, inline worktree cleanup, waves_merged detection after branch cleanup |
 | [0.65.0] | 2026-03-16 | Merge lifecycle fixes — mark-complete on all-waves-done, resolve-conflicts route wired, WaveBoard toggle, stub report pipeline, merge abort/retry UI |
@@ -16,6 +17,19 @@ All notable changes to this project will be documented in this file.
 | [0.56.0] | 2026-03-14 | File browser (waves 1-2) — 4 backend API endpoints + 7 frontend components for in-app codebase exploration with syntax highlighting |
 | [0.55.0] | 2026-03-14 | UI improvements — Fixed stale IMPL list, added collapsible repo sections, improved repo context visibility |
 | [0.54.0] | 2026-03-14 | Scout automation integration — 5 automation command wrappers added to web CLI (analyze-deps, analyze-suitability, detect-cascades, detect-scaffolds, extract-commands) |
+
+---
+
+## [0.68.0] - 2026-03-16
+
+### Fixed
+
+- **File browser opens wrong repo** — `IMPLDocResponse` never populated `repo` or `repo_path` fields, so the file browser eyeball always fell back to the first config repo. Backend now tracks which repo matched during IMPL discovery and sets both fields. Frontend uses `impl.repo` as primary fallback in `handleViewFile`.
+- **Completed sections toggle globally** — Single `showCompleted` boolean toggled all repos at once. Changed to `Set<string>` keyed by repo name so each repo's completed section opens independently.
+
+### Changed
+
+- **Completed section visual hierarchy** — Wrapped completed IMPL entries in a `bg-background/80` rounded container to visually distinguish them from active IMPLs in the sidebar.
 
 ---
 
