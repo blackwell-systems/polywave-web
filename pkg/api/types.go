@@ -17,6 +17,8 @@ type PreMortemEntry struct {
 // IMPLDocResponse is the JSON body for GET /api/impl/{slug}.
 type IMPLDocResponse struct {
 	Slug                   string               `json:"slug"`
+	Repo                   string               `json:"repo"`                   // repo name this IMPL belongs to
+	RepoPath               string               `json:"repo_path"`              // absolute path to the repo
 	DocStatus              string               `json:"doc_status"`             // "active" or "complete"
 	CompletedAt            string               `json:"completed_at,omitempty"` // ISO date, present only when COMPLETE
 	Suitability            SuitabilityInfo      `json:"suitability"`

@@ -159,6 +159,7 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 
 	// Search all repos for the IMPL doc (both active and complete directories)
 	var implPath string
+	var matchedRepo RepoEntry
 	for _, repo := range repos {
 		implDirs := []string{
 			filepath.Join(repo.Path, "docs", "IMPL"),
@@ -170,6 +171,7 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 
 			if _, err := os.Stat(yamlPath); err == nil {
 				implPath = yamlPath
+				matchedRepo = repo
 				break
 			}
 		}
@@ -194,6 +196,8 @@ func (s *Server) handleGetImpl(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resp := implDocResponseFromManifest(slug, manifest)
+	resp.Repo = matchedRepo.Name
+	resp.RepoPath = matchedRepo.Path
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
