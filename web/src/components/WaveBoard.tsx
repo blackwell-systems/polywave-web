@@ -178,13 +178,17 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
     }
   }
 
-  async function handleFixBuild(): Promise<void> {
-    const maxWave = Math.max(...state.waves.map(w => w.wave), 1)
-    // Extract gate type from error message (e.g. 'required gate "typecheck" failed')
-    const gateMatch = state.runFailed?.match(/gate "(\w+)"/)
-    const gateType = gateMatch ? gateMatch[1] : 'build'
+  async function handleFixBuild(waveNum?: number, errorLog?: string, gateType?: string): Promise<void> {
+    const wave = waveNum ?? Math.max(...state.waves.map(w => w.wave), 1)
+    const log = errorLog ?? state.runFailed ?? ''
+    // Extract gate type from error message if not provided (e.g. 'required gate "typecheck" failed')
+    let gate = gateType
+    if (!gate) {
+      const gateMatch = log.match(/gate "(\w+)"/)
+      gate = gateMatch ? gateMatch[1] : 'build'
+    }
     try {
-      await fixBuild(slug, maxWave, state.runFailed || '', gateType)
+      await fixBuild(slug, wave, log, gate)
     } catch (err) {
       console.error('fixBuild request failed:', err)
     }
@@ -540,7 +544,24 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
                         {testStatus === 'fail' && (
                           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-2 dark:bg-red-950 dark:border-red-800">
-                            <p className="text-red-800 text-sm font-medium dark:text-red-400">Tests failed</p>
+                            <div className="flex items-center justify-between">
+                              <p className="text-red-800 text-sm font-medium dark:text-red-400">Tests failed</p>
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => void handleRunTests(wave.wave)}
+                                  className="text-xs font-medium px-2 py-1 rounded bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+                                >
+                                  &#x21BA; Retry
+                                </button>
+                                <button
+                                  onClick={() => void handleFixBuild(wave.wave, testState?.output || 'Tests failed', 'test')}
+                                  disabled={state.fixBuildStatus === 'running'}
+                                  className="text-xs font-medium px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                                >
+                                  {state.fixBuildStatus === 'running' ? 'Fixing…' : '✦ Fix with AI'}
+                                </button>
+                              </div>
+                            </div>
                             {testState?.output && (
                               <pre className="text-xs font-mono text-red-700 bg-red-100 dark:bg-red-900 dark:text-red-300 rounded p-2 overflow-y-auto max-h-48 whitespace-pre-wrap break-all">
                                 {testState.output}
