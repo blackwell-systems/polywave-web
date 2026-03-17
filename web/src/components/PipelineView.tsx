@@ -73,8 +73,11 @@ export default function PipelineView({ onSelectImpl, onClose }: PipelineViewProp
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 overflow-y-auto">
             {entries.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                No IMPLs in pipeline
+              <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground">
+                <p>No active IMPLs in pipeline</p>
+                {metrics.completed_count > 0 && (
+                  <p className="text-xs">{metrics.completed_count} completed IMPL{metrics.completed_count !== 1 ? 's' : ''} archived</p>
+                )}
               </div>
             ) : (
               entries.map((entry) => (

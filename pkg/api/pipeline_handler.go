@@ -50,13 +50,19 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 
 	var entries []PipelineEntry
 
-	// 1. Load completed IMPLs from docs/IMPL/complete/
+	// 1. Count completed IMPLs from docs/IMPL/complete/ (not included in
+	//    entries by default — use ?include_completed=true to include them).
 	completedCount := 0
+	includeCompleted := r.URL.Query().Get("include_completed") == "true"
 	completeDir := filepath.Join(repoPath, "docs", "IMPL", "complete")
 	if dirEntries, err := os.ReadDir(completeDir); err == nil {
 		for _, e := range dirEntries {
 			name := e.Name()
 			if !strings.HasPrefix(name, "IMPL-") || !strings.HasSuffix(name, ".yaml") {
+				continue
+			}
+			completedCount++
+			if !includeCompleted {
 				continue
 			}
 			slug := strings.TrimSuffix(strings.TrimPrefix(name, "IMPL-"), ".yaml")
@@ -70,7 +76,6 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 				Title:  title,
 				Status: "complete",
 			})
-			completedCount++
 		}
 	}
 
