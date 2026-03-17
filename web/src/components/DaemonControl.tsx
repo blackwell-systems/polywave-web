@@ -1,6 +1,6 @@
 import { Play, Square, Loader2 } from 'lucide-react'
 import { Button } from './ui/button'
-import { useDaemon, DaemonEvent } from '../hooks/useDaemon'
+import { useDaemon } from '../hooks/useDaemon'
 
 export default function DaemonControl(): JSX.Element {
   const { state, events, start, stop, loading, error } = useDaemon()

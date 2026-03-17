@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { QueueItem, AddQueueItemRequest } from '../types/autonomy'
 import { fetchQueue, addQueueItem, deleteQueueItem } from '../autonomyApi'
-import { Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Button } from './ui/button'
 
 interface QueuePanelProps {
