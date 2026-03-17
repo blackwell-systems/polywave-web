@@ -2,10 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { AgentOutputData, AgentStatus, AgentToolCallData, ToolCallEntry, WaveState } from '../types'
 
 export interface WaveMergeState {
-  status: 'idle' | 'merging' | 'success' | 'failed'
+  status: 'idle' | 'merging' | 'success' | 'failed' | 'resolving'
   output: string
   conflictingFiles: string[]
   error?: string
+  resolvingFile?: string      // NEW: currently resolving file
+  resolvedFiles: string[]     // NEW: files resolved so far
+  failedFile?: string         // NEW: file that failed resolution
+  resolutionError?: string    // NEW: error from failed resolution
 }
 
 export interface WaveTestState {
@@ -255,7 +259,7 @@ export function useWaveEvents(slug: string): AppWaveState {
       const data = JSON.parse(event.data) as { slug: string; wave: number }
       setState(prev => {
         const next = new Map(prev.wavesMergeState)
-        next.set(data.wave, { status: 'merging', output: '', conflictingFiles: [] })
+        next.set(data.wave, { status: 'merging', output: '', conflictingFiles: [], resolvedFiles: [] })
         return { ...prev, wavesMergeState: next }
       })
     })
@@ -264,7 +268,7 @@ export function useWaveEvents(slug: string): AppWaveState {
       const data = JSON.parse(event.data) as { slug: string; wave: number; chunk: string }
       setState(prev => {
         const next = new Map(prev.wavesMergeState)
-        const cur = next.get(data.wave) ?? { status: 'merging' as const, output: '', conflictingFiles: [] }
+        const cur = next.get(data.wave) ?? { status: 'merging' as const, output: '', conflictingFiles: [], resolvedFiles: [] }
         next.set(data.wave, { ...cur, output: cur.output + data.chunk })
         return { ...prev, wavesMergeState: next }
       })
@@ -274,7 +278,7 @@ export function useWaveEvents(slug: string): AppWaveState {
       const data = JSON.parse(event.data) as { slug: string; wave: number; status: string }
       setState(prev => {
         const next = new Map(prev.wavesMergeState)
-        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [] }
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [], resolvedFiles: [] }
         next.set(data.wave, { ...cur, status: 'success' })
         return { ...prev, wavesMergeState: next }
       })
@@ -284,8 +288,38 @@ export function useWaveEvents(slug: string): AppWaveState {
       const data = JSON.parse(event.data) as { slug: string; wave: number; error: string; conflicting_files: string[] }
       setState(prev => {
         const next = new Map(prev.wavesMergeState)
-        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [] }
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [], resolvedFiles: [] }
         next.set(data.wave, { ...cur, status: 'failed', error: data.error, conflictingFiles: data.conflicting_files ?? [] })
+        return { ...prev, wavesMergeState: next }
+      })
+    })
+
+    es.addEventListener('conflict_resolving', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; file: string }
+      setState(prev => {
+        const next = new Map(prev.wavesMergeState)
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [], resolvedFiles: [] }
+        next.set(data.wave, { ...cur, status: 'resolving', resolvingFile: data.file })
+        return { ...prev, wavesMergeState: next }
+      })
+    })
+
+    es.addEventListener('conflict_resolved', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; file: string }
+      setState(prev => {
+        const next = new Map(prev.wavesMergeState)
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [], resolvedFiles: [] }
+        next.set(data.wave, { ...cur, resolvedFiles: [...cur.resolvedFiles, data.file] })
+        return { ...prev, wavesMergeState: next }
+      })
+    })
+
+    es.addEventListener('conflict_resolution_failed', (event: MessageEvent) => {
+      const data = JSON.parse(event.data) as { slug: string; wave: number; file: string; error: string }
+      setState(prev => {
+        const next = new Map(prev.wavesMergeState)
+        const cur = next.get(data.wave) ?? { status: 'idle' as const, output: '', conflictingFiles: [], resolvedFiles: [] }
+        next.set(data.wave, { ...cur, status: 'failed', resolutionError: data.error, failedFile: data.file })
         return { ...prev, wavesMergeState: next }
       })
     })

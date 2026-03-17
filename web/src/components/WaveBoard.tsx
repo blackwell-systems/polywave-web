@@ -6,8 +6,9 @@ import AgentCard from './AgentCard'
 import ProgressBar from './ProgressBar'
 import ImplEditor from './ImplEditor'
 import StageTimeline from './StageTimeline'
+import ConflictResolutionPanel from './ConflictResolutionPanel'
 import { AgentStatus, RepoEntry } from '../types'
-import { mergeWave, runWaveTests, rerunAgent } from '../api'
+import { mergeWave, runWaveTests, rerunAgent, resolveConflicts } from '../api'
 
 interface WaveBoardProps {
   slug: string
@@ -446,18 +447,71 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
                     {/* Merge failed */}
                     {mergeStatus === 'failed' && (
-                      <div className="mt-3 bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-1 dark:bg-red-950 dark:border-red-800">
-                        <p className="text-red-800 text-sm font-medium dark:text-red-400">
-                          Merge failed: {mergeState?.error}
-                        </p>
-                        {(mergeState?.conflictingFiles?.length ?? 0) > 0 && (
-                          <ul className="mt-1 space-y-0.5">
-                            {mergeState!.conflictingFiles.map(f => (
-                              <li key={f} className="font-mono text-xs text-red-700 dark:text-red-300">{f}</li>
-                            ))}
-                          </ul>
+                      <div className="mt-3 space-y-2">
+                        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-2 dark:bg-red-950 dark:border-red-800">
+                          <p className="text-red-800 text-sm font-medium dark:text-red-400">
+                            Merge failed: {mergeState?.error}
+                          </p>
+                          {(mergeState?.conflictingFiles?.length ?? 0) > 0 && (
+                            <ul className="mt-1 space-y-0.5">
+                              {mergeState!.conflictingFiles.map(f => (
+                                <li key={f} className="font-mono text-xs text-red-700 dark:text-red-300">{f}</li>
+                              ))}
+                            </ul>
+                          )}
+                          <div className="flex items-center gap-2 mt-3">
+                            <button
+                              onClick={() => void handleMergeWave(wave.wave)}
+                              className="text-xs font-medium px-3 py-1.5 rounded-md bg-gray-600 text-white hover:bg-gray-700 transition-colors"
+                            >
+                              Abort Merge
+                            </button>
+                            {(mergeState?.conflictingFiles?.length ?? 0) > 0 && (
+                              <button
+                                onClick={() => void resolveConflicts(slug, wave.wave)}
+                                className="text-xs font-medium px-3 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                              >
+                                Resolve with AI
+                              </button>
+                            )}
+                            <button
+                              onClick={() => void handleMergeWave(wave.wave)}
+                              className="text-xs font-medium px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+                            >
+                              Retry Merge
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {mergeState?.resolutionError && (
+                          <ConflictResolutionPanel
+                            slug={slug}
+                            wave={wave.wave}
+                            conflictingFiles={mergeState?.conflictingFiles ?? []}
+                            onResolveStart={() => void resolveConflicts(slug, wave.wave)}
+                            resolvingFile={mergeState?.resolvingFile}
+                            resolvedFiles={mergeState?.resolvedFiles ?? []}
+                            resolutionError={mergeState?.resolutionError}
+                            failedFile={mergeState?.failedFile}
+                            isResolving={false}
+                          />
                         )}
                       </div>
+                    )}
+
+                    {/* AI Resolving conflicts */}
+                    {mergeStatus === 'resolving' && (
+                      <ConflictResolutionPanel
+                        slug={slug}
+                        wave={wave.wave}
+                        conflictingFiles={mergeState?.conflictingFiles ?? []}
+                        onResolveStart={() => void resolveConflicts(slug, wave.wave)}
+                        resolvingFile={mergeState?.resolvingFile}
+                        resolvedFiles={mergeState?.resolvedFiles ?? []}
+                        resolutionError={mergeState?.resolutionError}
+                        failedFile={mergeState?.failedFile}
+                        isResolving={true}
+                      />
                     )}
                   </>
                 )
