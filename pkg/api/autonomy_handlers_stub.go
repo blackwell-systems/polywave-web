@@ -3,24 +3,7 @@ package api
 import "net/http"
 
 // Stub handlers for autonomy layer routes.
-// These will be implemented by agents A, B, C in Wave 2.
-// Agent F only wires the routes; these stubs allow compilation.
-
-func (s *Server) handleListQueue(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
-}
-
-func (s *Server) handleAddQueue(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
-}
-
-func (s *Server) handleDeleteQueue(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
-}
-
-func (s *Server) handleReorderQueue(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "Not implemented", http.StatusNotImplemented)
-}
+// These will be replaced when Agent C merges.
 
 func (s *Server) handleGetAutonomy(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "Not implemented", http.StatusNotImplemented)
