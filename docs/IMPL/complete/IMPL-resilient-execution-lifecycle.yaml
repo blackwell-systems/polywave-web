@@ -1,0 +1,988 @@
+completion_date: "2026-03-17"
+title: Resilient GUI execution lifecycle with step-level state tracking and manual recovery controls
+feature_slug: resilient-execution-lifecycle
+verdict: SUITABLE
+suitability_assessment: |
+    SUITABLE. The feature decomposes cleanly into backend pipeline restructuring,
+    new API endpoints, frontend recovery UI, and startup recovery. All engine
+    functions already exist as independent callables in scout-and-wave-go; this
+    work exposes them individually through the web API and adds step-level state
+    persistence. Two partial implementations exist (handleWaveFinalize, ResumeBanner)
+    that agents will extend rather than rewrite. ResumeBanner is unaffected and
+    complementary -- it navigates to interrupted IMPLs, while RecoveryControlsPanel
+    provides step-level recovery within a failed run.
+test_command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./pkg/api/... && cd web && npx tsc --noEmit
+lint_command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go vet ./pkg/api/...
+file_ownership:
+    - file: pkg/api/pipeline_state.go
+      agent: A
+      wave: 1
+      action: new
+    - file: pkg/api/pipeline_state_test.go
+      agent: A
+      wave: 1
+      action: new
+    - file: pkg/api/recovery_handlers.go
+      agent: B
+      wave: 1
+      action: new
+    - file: pkg/api/recovery_handlers_test.go
+      agent: B
+      wave: 1
+      action: new
+    - file: web/src/components/RecoveryControlsPanel.tsx
+      agent: C
+      wave: 1
+      action: new
+    - file: web/src/components/__tests__/RecoveryControlsPanel.test.tsx
+      agent: C
+      wave: 1
+      action: new
+    - file: pkg/api/wave_runner.go
+      agent: D
+      wave: 2
+      action: modify
+    - file: pkg/api/server.go
+      agent: D
+      wave: 2
+      action: modify
+    - file: pkg/api/wave_runner_test.go
+      agent: D
+      wave: 2
+      action: modify
+    - file: web/src/components/WaveBoard.tsx
+      agent: E
+      wave: 2
+      action: modify
+    - file: web/src/api.ts
+      agent: E
+      wave: 2
+      action: modify
+    - file: web/src/hooks/waveEventsReducer.ts
+      agent: E
+      wave: 2
+      action: modify
+    - file: web/src/hooks/useWaveEvents.ts
+      agent: E
+      wave: 2
+      action: modify
+interface_contracts:
+    - name: PipelineStep
+      description: |
+        Enum type representing each discrete step in the post-agent finalization
+        pipeline. Must match the exact step order from engine/finalize.go FinalizeWave.
+        Note: mark_complete is NOT a FinalizeWave step -- it runs separately after
+        all waves complete via engine.MarkIMPLComplete. It is excluded from this enum.
+      definition: |
+        type PipelineStep string
+        const (
+          StepVerifyCommits       PipelineStep = "verify_commits"
+          StepScanStubs           PipelineStep = "scan_stubs"
+          StepRunGates            PipelineStep = "run_gates"
+          StepValidateIntegration PipelineStep = "validate_integration"
+          StepMergeAgents         PipelineStep = "merge_agents"
+          StepFixGoMod            PipelineStep = "fix_go_mod"
+          StepVerifyBuild         PipelineStep = "verify_build"
+          StepCleanup             PipelineStep = "cleanup"
+        )
+
+        var PipelineStepOrder = []PipelineStep{
+          StepVerifyCommits, StepScanStubs, StepRunGates,
+          StepValidateIntegration, StepMergeAgents, StepFixGoMod,
+          StepVerifyBuild, StepCleanup,
+        }
+      location: pkg/api/pipeline_state.go
+    - name: PipelineState
+      description: |
+        Persisted state for a wave's finalization pipeline. Tracks which steps
+        completed, which failed, and enables resume from the last successful step.
+      definition: |
+        type PipelineState struct {
+          Slug      string                    `json:"slug"`
+          Wave      int                       `json:"wave"`
+          Steps     map[PipelineStep]StepState `json:"steps"`
+          UpdatedAt time.Time                 `json:"updated_at"`
+        }
+        type StepState struct {
+          Status    StepStatus `json:"status"`
+          Error     string     `json:"error,omitempty"`
+          Timestamp time.Time  `json:"timestamp"`
+        }
+        type StepStatus string
+        const (
+          StepPending  StepStatus = "pending"
+          StepRunning  StepStatus = "running"
+          StepComplete StepStatus = "complete"
+          StepFailed   StepStatus = "failed"
+          StepSkipped  StepStatus = "skipped"
+        )
+      location: pkg/api/pipeline_state.go
+    - name: handleStepRetry
+      description: |
+        API endpoint POST /api/wave/{slug}/step/{step}/retry that retries a
+        specific finalization step independently. Calls the corresponding
+        engine/protocol function directly. Must check BOTH s.activeRuns and
+        s.mergingRuns before proceeding.
+      definition: |
+        func (s *Server) handleStepRetry(w http.ResponseWriter, r *http.Request)
+        // Request body: {"wave": int}
+        // step path param: one of PipelineStep values
+        // Returns 202 Accepted, streams progress via SSE
+        // Returns 409 if activeRuns or mergingRuns guard is held
+      location: pkg/api/recovery_handlers.go
+    - name: handleStepSkip
+      description: |
+        API endpoint POST /api/wave/{slug}/step/{step}/skip that marks a
+        finalization step as skipped and advances the pipeline. Only allowed
+        for non-required steps (scan_stubs, validate_integration, run_gates
+        when block_on_failure=false, cleanup, fix_go_mod).
+      definition: |
+        func (s *Server) handleStepSkip(w http.ResponseWriter, r *http.Request)
+        // Request body: {"wave": int, "reason": string}
+        // Returns 200 OK or 400 if step is not skippable
+      location: pkg/api/recovery_handlers.go
+    - name: handleForceMarkComplete
+      description: |
+        API endpoint POST /api/wave/{slug}/mark-complete that forces the IMPL
+        to be marked complete regardless of pipeline state. Calls
+        engine.MarkIMPLComplete directly, then clears pipeline state.
+        Safety valve for when the pipeline is stuck but work is actually done.
+      definition: |
+        func (s *Server) handleForceMarkComplete(w http.ResponseWriter, r *http.Request)
+        // No request body needed
+        // Returns 200 OK with {"status":"complete"}
+        // Calls pipelineTracker.Clear(slug) after marking complete
+      location: pkg/api/recovery_handlers.go
+    - name: handlePipelineState
+      description: |
+        API endpoint GET /api/wave/{slug}/pipeline that returns the current
+        pipeline state for the latest wave, including step-level status.
+        Returns 503 when defaultPipelineTracker is nil (not yet initialized).
+      definition: |
+        func (s *Server) handlePipelineState(w http.ResponseWriter, r *http.Request)
+        // Returns PipelineState as JSON
+        // Returns 503 if defaultPipelineTracker is nil
+        // Returns 404 if no pipeline state exists for slug
+      location: pkg/api/recovery_handlers.go
+    - name: RecoveryControlsPanel
+      description: |
+        React component that renders manual recovery buttons (retry step, skip
+        step, force complete) based on pipeline state derived from the reducer's
+        pipelineSteps (live SSE data). Shown when a run has failed.
+        Does NOT fetch pipeline state from the API separately -- uses
+        state.pipelineSteps from the reducer as the single source of truth.
+      definition: |
+        interface RecoveryControlsPanelProps {
+          slug: string
+          wave: number
+          pipelineSteps: Record<string, { status: string; error?: string }>
+          onRetryStep: (step: string, wave: number) => Promise<void>
+          onSkipStep: (step: string, wave: number, reason: string) => Promise<void>
+          onForceComplete: () => Promise<void>
+          onRetryFinalize: () => Promise<void>
+        }
+        export default function RecoveryControlsPanel(props: RecoveryControlsPanelProps): JSX.Element
+      location: web/src/components/RecoveryControlsPanel.tsx
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |
+            ## What to Implement
+
+            Create `pkg/api/pipeline_state.go` with the PipelineStep enum, StepState,
+            StepStatus, and PipelineState types. Implement a `pipelineTracker` that
+            persists step-level state to `.saw-state/<slug>-pipeline.json`.
+
+            The tracker must support:
+            - `Start(slug, wave, step)` - marks step as running
+            - `Complete(slug, wave, step)` - marks step as complete
+            - `Fail(slug, wave, step, err)` - marks step as failed with error
+            - `Skip(slug, wave, step)` - marks step as skipped
+            - `Read(slug)` - returns current PipelineState (nil if none)
+            - `Clear(slug)` - removes persisted state (called at run start)
+            - `LastSuccessfulStep(slug)` - returns the last completed step for resume.
+              IMPORTANT: skipped steps count as "passed" for resume purposes. When
+              determining the last successful step, treat both StepComplete and
+              StepSkipped as successful. This ensures that if scan_stubs is skipped
+              and then merge_agents fails, resume skips both verify_commits (complete),
+              scan_stubs (skipped), and run_gates (complete) correctly.
+
+            Use the same pattern as the existing `stageManager` in `stage_state.go`:
+            sync.Mutex for thread safety, JSON file persistence, load/save helpers.
+
+            For atomic writes, use the temp-file + rename pattern: write to a temp file
+            in the same directory, then os.Rename to the final path. This prevents
+            partial writes if the process crashes mid-write. Note: the existing
+            stageManager uses plain os.WriteFile -- this is a deliberate improvement.
+            Pattern:
+            ```go
+            tmpPath := path + ".tmp"
+            if err := os.WriteFile(tmpPath, data, 0o644); err != nil { return err }
+            return os.Rename(tmpPath, path)
+            ```
+
+            The PipelineStep constants must match the FinalizeWave pipeline order
+            from engine/finalize.go. Note: mark_complete is NOT a FinalizeWave step --
+            it is called separately after all waves complete. Do NOT include it here.
+
+            The correct step order (matching engine/finalize.go exactly):
+            verify_commits -> scan_stubs -> run_gates -> validate_integration ->
+            merge_agents -> fix_go_mod -> verify_build -> cleanup
+
+            Also export a `PipelineStepOrder` slice that defines the canonical step ordering:
+            ```go
+            var PipelineStepOrder = []PipelineStep{
+              StepVerifyCommits, StepScanStubs, StepRunGates,
+              StepValidateIntegration, StepMergeAgents, StepFixGoMod,
+              StepVerifyBuild, StepCleanup,
+            }
+            ```
+
+            ## Interfaces to Implement
+
+            PipelineStep type (string enum with 8 values), StepState struct, StepStatus type,
+            PipelineState struct, pipelineTracker struct with methods listed above.
+
+            ## Tests to Write
+
+            1. TestPipelineTracker_StartComplete - start+complete a step, read back
+            2. TestPipelineTracker_FailAndRead - fail a step, verify error persisted
+            3. TestPipelineTracker_Skip - skip a step, verify status
+            4. TestPipelineTracker_LastSuccessfulStep - verify correct step returned after partial completion
+            5. TestPipelineTracker_LastSuccessfulStep_SkippedSteps - verify skipped steps count as passed for resume
+            6. TestPipelineTracker_Clear - verify state is removed
+            7. TestPipelineTracker_ConcurrentAccess - goroutine safety
+            8. TestPipelineStepOrder - verify PipelineStepOrder has exactly 8 entries matching the enum
+
+            ## Verification Gate
+            ```bash
+            cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./pkg/api/... && go test ./pkg/api/... -run TestPipelineTracker
+            ```
+
+            ## Constraints
+            - Follow the same file persistence pattern as stageManager in stage_state.go but use temp+rename for atomic writes
+            - State file goes in .saw-state/ directory (same as stage state)
+            - Use slug-based filenames to avoid cross-IMPL collision
+            - PipelineState.Steps must be a map, not a slice, for O(1) step lookup
+            - Constructor: `func newPipelineTracker(implDir string) *pipelineTracker`
+            - PipelineStepOrder must have exactly 8 entries (no mark_complete)
+          files:
+            - pkg/api/pipeline_state.go
+            - pkg/api/pipeline_state_test.go
+        - id: B
+          task: |
+            ## What to Implement
+
+            Create `pkg/api/recovery_handlers.go` with four HTTP handlers for manual
+            recovery control:
+
+            1. `handleStepRetry` - POST /api/wave/{slug}/step/{step}/retry
+               Body: {"wave": int}
+               Concurrency guard: must check BOTH `s.activeRuns` (to ensure the main
+               runWaveLoop isn't running) AND `s.mergingRuns` (to prevent concurrent
+               retries). If either guard is held, return 409 Conflict with a message
+               indicating what's in progress.
+
+               Calls the corresponding engine/protocol function for the given step.
+               IMPORTANT: Some steps require non-trivial setup before calling the
+               protocol function. Here are the exact call patterns for each step:
+
+               - "verify_commits":
+                 ```go
+                 result, err := protocol.VerifyCommits(implPath, wave, repoPath)
+                 ```
+
+               - "scan_stubs":
+                 Must assemble changedFiles from the manifest's completion reports first:
+                 ```go
+                 manifest, err := protocol.Load(implPath)
+                 // then collect changed files:
+                 var changedFiles []string
+                 if wave > 0 && wave <= len(manifest.Waves) {
+                   for _, agent := range manifest.Waves[wave-1].Agents {
+                     if report, ok := manifest.CompletionReports[agent.ID]; ok {
+                       changedFiles = append(changedFiles, report.FilesChanged...)
+                       changedFiles = append(changedFiles, report.FilesCreated...)
+                     }
+                   }
+                 }
+                 result, err := protocol.ScanStubs(changedFiles)
+                 ```
+
+               - "run_gates":
+                 Must load the manifest and create a gate cache before calling:
+                 ```go
+                 manifest, err := protocol.Load(implPath)
+                 stateDir := filepath.Join(repoPath, ".saw-state")
+                 cache := gatecache.New(stateDir, 5*time.Minute)
+                 results, err := protocol.RunGatesWithCache(manifest, wave, repoPath, cache)
+                 ```
+                 Imports needed: gatecache "github.com/blackwell-systems/scout-and-wave-go/pkg/gatecache"
+
+               - "validate_integration":
+                 ```go
+                 manifest, err := protocol.Load(implPath)
+                 report, err := protocol.ValidateIntegration(manifest, wave, repoPath)
+                 ```
+                 Non-fatal: log errors but treat as success.
+
+               - "merge_agents":
+                 ```go
+                 result, err := protocol.MergeAgents(implPath, wave, repoPath)
+                 ```
+
+               - "fix_go_mod":
+                 ```go
+                 fixed, err := protocol.FixGoModReplacePaths(repoPath)
+                 ```
+                 Non-fatal: log errors but treat as success.
+
+               - "verify_build":
+                 ```go
+                 result, err := protocol.VerifyBuild(implPath, repoPath)
+                 ```
+
+               - "cleanup":
+                 ```go
+                 result, err := protocol.Cleanup(implPath, wave, repoPath)
+                 ```
+
+               Returns 202, runs in background goroutine, publishes SSE events.
+
+            2. `handleStepSkip` - POST /api/wave/{slug}/step/{step}/skip
+               Body: {"wave": int, "reason": string}
+               Skippable steps: scan_stubs, validate_integration, cleanup, fix_go_mod,
+               run_gates (only when saw.config.json quality.block_on_failure is false).
+               Non-skippable: verify_commits, merge_agents, verify_build.
+               Returns 200 on success, 400 if step is not skippable.
+
+            3. `handleForceMarkComplete` - POST /api/wave/{slug}/mark-complete
+               No body. Calls engine.MarkIMPLComplete with full signature:
+               ```go
+               err := engine.MarkIMPLComplete(r.Context(), engine.MarkIMPLCompleteOpts{
+                 IMPLPath: implPath,
+                 RepoPath: repoPath,
+                 Date:     time.Now().Format("2006-01-02"),
+               })
+               ```
+               After success, also call `defaultPipelineTracker.Clear(slug)` to clean
+               up stale pipeline state.
+               Returns 200 with {"status":"complete"}.
+
+            4. `handlePipelineState` - GET /api/wave/{slug}/pipeline
+               Returns the pipeline state JSON. Uses defaultPipelineTracker.Read(slug).
+               Returns 503 Service Unavailable if defaultPipelineTracker is nil
+               (tracker not yet initialized -- e.g., during startup race).
+               Returns 404 if no pipeline state exists.
+
+            Each handler follows existing patterns: resolveIMPLPath for path resolution,
+            makePublisher for SSE. Step path parameter values are safe for URL paths
+            as-is (underscores are valid URL path characters, no encoding needed).
+
+            ## Interfaces to Implement
+
+            handleStepRetry, handleStepSkip, handleForceMarkComplete, handlePipelineState.
+
+            ## Interfaces to Call
+
+            - s.resolveIMPLPath(slug) - returns (implPath string, repoPath string, error)
+            - s.makePublisher(slug) from wave_runner.go
+            - engine.MarkIMPLComplete(ctx context.Context, opts engine.MarkIMPLCompleteOpts) error
+              where MarkIMPLCompleteOpts has fields: IMPLPath string, RepoPath string, Date string
+            - protocol.VerifyCommits(manifestPath string, waveNum int, repoDir string)
+            - protocol.ScanStubs(files []string) - requires assembling files from manifest first
+            - protocol.RunGatesWithCache(manifest *protocol.IMPLManifest, waveNumber int, repoDir string, cache *gatecache.Cache)
+              - requires protocol.Load(implPath) to get *IMPLManifest
+              - requires gatecache.New(stateDir, 5*time.Minute) to get *gatecache.Cache
+            - protocol.ValidateIntegration(manifest *protocol.IMPLManifest, waveNum int, repoPath string)
+            - protocol.MergeAgents(manifestPath string, waveNum int, repoDir string)
+            - protocol.VerifyBuild(manifestPath string, repoDir string)
+            - protocol.Cleanup(manifestPath string, waveNum int, repoDir string)
+            - protocol.FixGoModReplacePaths(repoDir string) (bool, error)
+            - defaultPipelineTracker.Read/Start/Complete/Fail/Skip/Clear (from Agent A)
+
+            Note: At Wave 1 build time, pipelineTracker won't be wired yet. The handlers
+            access it via the package-level `defaultPipelineTracker` variable. All handlers
+            that touch the tracker must nil-check first:
+            - handlePipelineState returns 503 when nil
+            - handleStepRetry/handleStepSkip update tracker if non-nil, skip tracking if nil
+            - handleForceMarkComplete calls Clear only if non-nil
+
+            ## Tests to Write
+
+            1. TestHandleStepRetry_InvalidStep - returns 400 for unknown step
+            2. TestHandleStepRetry_MissingWave - returns 400 for wave < 1
+            3. TestHandleStepSkip_NonSkippable - returns 400 for verify_commits
+            4. TestHandleStepSkip_Skippable - returns 200 for scan_stubs
+            5. TestHandleStepSkip_ValidateIntegration - returns 200 (new skippable step)
+            6. TestHandleForceMarkComplete_Success - returns 200
+            7. TestHandlePipelineState_NotFound - returns 404 when no state
+            8. TestHandlePipelineState_TrackerNil - returns 503 when defaultPipelineTracker is nil
+
+            ## Verification Gate
+            ```bash
+            cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./pkg/api/... && go test ./pkg/api/... -run TestHandle
+            ```
+
+            ## Constraints
+            - Follow the exact handler pattern from merge_test_handlers.go (same structure)
+            - handleStepRetry must check BOTH s.activeRuns and s.mergingRuns before proceeding
+            - handleStepRetry must validate {step} path param against known PipelineStep values
+            - Do NOT modify server.go or wave_runner.go - route registration happens in Wave 2
+            - For the pipelineTracker dependency: define a package-level variable
+              `var defaultPipelineTracker *pipelineTracker` that will be set during
+              server init in Wave 2. All handlers nil-check before use.
+            - handlePipelineState returns 503 when defaultPipelineTracker is nil
+            - Import gatecache for run_gates retry: "github.com/blackwell-systems/scout-and-wave-go/pkg/gatecache"
+          files:
+            - pkg/api/recovery_handlers.go
+            - pkg/api/recovery_handlers_test.go
+        - id: C
+          task: |
+            ## What to Implement
+
+            Create `web/src/components/RecoveryControlsPanel.tsx` - a React component
+            that displays manual recovery controls when a pipeline step has failed.
+
+            The panel shows:
+            1. A list of pipeline steps with their status (pending/running/complete/failed/skipped)
+            2. For failed steps: "Retry" button and (if skippable) "Skip" button
+            3. A "Force Mark Complete" button at the bottom (styled as dangerous/destructive)
+            4. A "Retry Full Finalization" button that calls the existing retryFinalize
+
+            Props interface (uses pipelineSteps from the reducer, NOT a separate API fetch):
+            ```typescript
+            interface RecoveryControlsPanelProps {
+              slug: string
+              wave: number
+              pipelineSteps: Record<string, { status: string; error?: string }>
+              onRetryStep: (step: string, wave: number) => Promise<void>
+              onSkipStep: (step: string, wave: number, reason: string) => Promise<void>
+              onForceComplete: () => Promise<void>
+              onRetryFinalize: () => Promise<void>
+            }
+            ```
+
+            Note: the `pipelineSteps` prop is the live SSE-driven data from the
+            waveEventsReducer, NOT a separately-fetched API response. This is the
+            single source of truth for pipeline state in the UI.
+
+            Step display order (matches engine/finalize.go exactly, no mark_complete):
+            verify_commits, scan_stubs, run_gates, validate_integration,
+            merge_agents, fix_go_mod, verify_build, cleanup.
+
+            Skippable steps (show Skip button): scan_stubs, validate_integration,
+            run_gates, cleanup, fix_go_mod.
+            Non-skippable (no Skip button): verify_commits, merge_agents, verify_build.
+
+            409 handling: When onRetryStep or onSkipStep returns a 409 error (detected
+            by checking the error message or a status code), display an inline
+            "Already in progress" message for that step instead of a generic error.
+            This handles the multi-tab scenario where another tab already triggered
+            a retry.
+
+            Use the same Tailwind styling patterns as ConflictResolutionPanel.tsx and
+            WaveBoard.tsx. Status indicators: green check for complete, red X for failed,
+            blue pulse for running, gray dash for pending, yellow skip icon for skipped.
+
+            ## Interfaces to Call
+
+            Props are callbacks - the parent (WaveBoard) will wire them to API calls.
+            This component is purely presentational + callback-driven.
+
+            ## Tests to Write
+
+            1. RecoveryControlsPanel renders step list - verify all 8 steps shown in correct order
+            2. RecoveryControlsPanel shows retry button for failed step
+            3. RecoveryControlsPanel shows skip button only for skippable steps
+            4. RecoveryControlsPanel renders nothing when pipelineSteps is empty ({})
+            5. Force complete button shows confirmation dialog before firing
+            6. RecoveryControlsPanel shows "already in progress" on 409 error
+
+            ## Verification Gate
+            ```bash
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+            ```
+
+            ## Constraints
+            - Do NOT import from api.ts directly - use callback props
+            - Do NOT modify WaveBoard.tsx or any other existing file
+            - Force Mark Complete must have a confirmation step (window.confirm or inline)
+            - Match existing dark mode patterns (dark: prefixed Tailwind classes)
+            - Export as default export
+            - The pipelineSteps prop is Record<string, ...>, NOT PipelineStateResponse
+            - Handle 409 errors gracefully (show "already in progress", not generic error)
+          files:
+            - web/src/components/RecoveryControlsPanel.tsx
+            - web/src/components/__tests__/RecoveryControlsPanel.test.tsx
+      base_commit: f248711aa9b14ee471d2c31daf77c7f1f9f665b7
+    - number: 2
+      agents:
+        - id: D
+          task: |
+            ## What to Implement
+
+            Modify `pkg/api/wave_runner.go` to use pipelineTracker for step-level
+            state persistence during FinalizeWave, and modify `pkg/api/server.go`
+            to register recovery routes and initialize the pipelineTracker.
+
+            ### wave_runner.go changes:
+
+            1. Replace the monolithic FinalizeWave call in runWaveLoop with individual
+               step calls that record state via pipelineTracker. The new flow must
+               match engine/finalize.go EXACTLY (8 steps, in order):
+
+               ```
+               tracker.Start(slug, waveNum, StepVerifyCommits)
+               verifyResult, err := protocol.VerifyCommits(implPath, waveNum, repoPath)
+               if err != nil { tracker.Fail(slug, waveNum, StepVerifyCommits, err); publish("run_failed"...); return }
+               tracker.Complete(slug, waveNum, StepVerifyCommits)
+
+               tracker.Start(slug, waveNum, StepScanStubs)
+               // Assemble changedFiles from manifest completion reports:
+               // manifest.Waves[waveNum-1].Agents -> CompletionReports -> FilesChanged + FilesCreated
+               // ScanStubs is non-fatal: log error, still Complete the step
+               tracker.Complete(slug, waveNum, StepScanStubs)
+
+               tracker.Start(slug, waveNum, StepRunGates)
+               // stateDir := filepath.Join(repoPath, ".saw-state")
+               // cache := gatecache.New(stateDir, 5*time.Minute)
+               // gateResults, err := protocol.RunGatesWithCache(manifest, waveNum, repoPath, cache)
+               tracker.Complete(slug, waveNum, StepRunGates)
+
+               tracker.Start(slug, waveNum, StepValidateIntegration)
+               // protocol.ValidateIntegration(manifest, waveNum, repoPath) -- non-fatal
+               // Also call protocol.AppendIntegrationReport on success
+               tracker.Complete(slug, waveNum, StepValidateIntegration)
+
+               tracker.Start(slug, waveNum, StepMergeAgents)
+               // protocol.MergeAgents(implPath, waveNum, repoPath)
+               tracker.Complete(slug, waveNum, StepMergeAgents)
+
+               tracker.Start(slug, waveNum, StepFixGoMod)
+               // protocol.FixGoModReplacePaths(repoPath) -- non-fatal
+               tracker.Complete(slug, waveNum, StepFixGoMod)
+
+               tracker.Start(slug, waveNum, StepVerifyBuild)
+               // protocol.VerifyBuild(implPath, repoPath)
+               tracker.Complete(slug, waveNum, StepVerifyBuild)
+
+               tracker.Start(slug, waveNum, StepCleanup)
+               // protocol.Cleanup(implPath, waveNum, repoPath) -- non-fatal
+               tracker.Complete(slug, waveNum, StepCleanup)
+               ```
+
+            2. At the start of the finalization section, check if a previous pipeline
+               state exists and resume from the last successful step:
+               ```
+               if ps := defaultPipelineTracker.Read(slug); ps != nil && ps.Wave == waveNum {
+                 // Skip steps that already completed or were skipped
+               }
+               ```
+
+            3. Keep the existing onStage callbacks alongside the new pipeline tracking.
+               The stage_transition SSE events must still fire for UI backward compatibility.
+
+            4. Also publish a new `pipeline_step` SSE event for each step transition:
+               ```
+               publish("pipeline_step", map[string]interface{}{
+                 "slug": slug, "wave": waveNum,
+                 "step": string(step), "status": string(status),
+                 "error": errMsg,
+               })
+               ```
+
+            5. The pipelineTracker is accessed via the package-level variable
+               `defaultPipelineTracker` (set by server.go init). The runWaveLoop
+               function checks for nil before using it.
+
+            6. **IMPORTANT: Also update handleWaveFinalize** (the existing "Retry
+               Finalization" endpoint at POST /api/wave/{slug}/finalize, lines 423-506
+               of wave_runner.go). Currently it calls `engine.FinalizeWave` monolithically.
+               Update it to use the same decomposed pipeline with tracker, so that
+               "Retry Finalization" also emits pipeline_step events and updates
+               pipeline state. This prevents an unwired connection where the "Retry
+               Finalization" button bypasses the new pipeline tracker entirely.
+
+               Extract the decomposed pipeline into a helper function (e.g.,
+               `runFinalizeSteps(slug string, waveNum int, implPath string, repoPath string,
+               publish func(string, interface{}))`) that both runWaveLoop and
+               handleWaveFinalize can call. This avoids duplicating the step-by-step
+               code.
+
+            ### server.go changes:
+
+            1. Add `pipelineTracker *pipelineTracker` field to Server struct.
+            2. Initialize it in New() alongside stageManager:
+               `pipelineTracker: newPipelineTracker(cfg.IMPLDir),`
+            3. Set `defaultPipelineTracker = s.pipelineTracker` right after creation.
+            4. Register recovery routes:
+               ```
+               s.mux.HandleFunc("GET /api/wave/{slug}/pipeline", s.handlePipelineState)
+               s.mux.HandleFunc("POST /api/wave/{slug}/step/{step}/retry", s.handleStepRetry)
+               s.mux.HandleFunc("POST /api/wave/{slug}/step/{step}/skip", s.handleStepSkip)
+               s.mux.HandleFunc("POST /api/wave/{slug}/mark-complete", s.handleForceMarkComplete)
+               ```
+            5. Add `s.pipelineTracker.Clear(slug)` in handleWaveStart alongside
+               the existing `s.stages.Clear(slug)` call.
+
+            ### wave_runner_test.go changes:
+
+            Reference the existing test structure: wave_runner_test.go uses
+            `capturePublish()` for event capture and `runWaveLoopFunc` as a test seam
+            (package-level variable that can be overridden in tests). Existing tests:
+            - TestRunWaveLoop_PublishesRunFailed_OnBadPath
+            - TestRunWaveLoop_PublishesRunStarted_ThenRunComplete
+
+            The `runWaveLoopFunc` test seam should still work for tests that override
+            the entire loop. For testing the decomposed pipeline, set
+            `defaultPipelineTracker` to a test instance in setup, and restore to nil
+            in teardown.
+
+            ## Interfaces to Call
+
+            - pipelineTracker from pipeline_state.go (Agent A)
+            - Recovery handlers from recovery_handlers.go (Agent B)
+            - protocol.VerifyCommits, protocol.ScanStubs, protocol.RunGatesWithCache,
+              protocol.ValidateIntegration, protocol.MergeAgents,
+              protocol.FixGoModReplacePaths, protocol.VerifyBuild, protocol.Cleanup
+            - protocol.AppendIntegrationReport (for ValidateIntegration step)
+            - gatecache.New (for RunGates step)
+            - engine.MarkIMPLComplete (NOT a pipeline step -- called separately after all waves)
+
+            ## Tests to Write
+
+            1. TestRunWaveLoop_PipelineStepEvents - verify pipeline_step SSE events fire for all 8 steps
+            2. TestRunWaveLoop_ResumeFromFailedStep - verify steps before failure are skipped on resume
+            3. TestRunFinalizeSteps_EmitsEvents - verify the extracted helper emits correct events
+
+            ## Verification Gate
+            ```bash
+            cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./... && go vet ./pkg/api/... && go test ./pkg/api/...
+            ```
+
+            ## Constraints
+            - Do NOT break existing SSE event contracts (stage_transition must still fire)
+            - The runWaveLoopFunc test seam must continue to work
+            - Pipeline state Clear must happen at the same place as stages.Clear (handleWaveStart)
+            - Keep FinalizeWave as a fallback: if defaultPipelineTracker is nil, call
+              engine.FinalizeWave monolithically as before (backward compatibility)
+            - Import paths for protocol functions match existing imports in wave_runner.go
+            - Replicate the exact step order from engine/finalize.go (8 steps):
+              VerifyCommits, ScanStubs, RunGatesWithCache, ValidateIntegration,
+              MergeAgents, FixGoModReplacePaths, VerifyBuild, Cleanup
+            - handleWaveFinalize MUST be updated to use the decomposed pipeline
+            - Extract a shared helper function for the decomposed pipeline to avoid
+              duplicating the step-by-step logic between runWaveLoop and handleWaveFinalize
+          files:
+            - pkg/api/wave_runner.go
+            - pkg/api/server.go
+            - pkg/api/wave_runner_test.go
+          dependencies:
+            - A
+            - B
+        - id: E
+          task: |
+            ## What to Implement
+
+            Integrate the RecoveryControlsPanel into WaveBoard and add the supporting
+            API calls, reducer state, and SSE event listener.
+
+            ### api.ts additions:
+
+            Add these functions:
+            ```typescript
+            export async function retryStep(slug: string, step: string, wave: number): Promise<void> {
+              const res = await fetch(`/api/wave/${encodeURIComponent(slug)}/step/${step}/retry`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wave }),
+              })
+              if (!res.ok) throw new Error(await res.text())
+            }
+            export async function skipStep(slug: string, step: string, wave: number, reason: string): Promise<void> {
+              const res = await fetch(`/api/wave/${encodeURIComponent(slug)}/step/${step}/skip`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ wave, reason }),
+              })
+              if (!res.ok) throw new Error(await res.text())
+            }
+            export async function forceMarkComplete(slug: string): Promise<void> {
+              const res = await fetch(`/api/wave/${encodeURIComponent(slug)}/mark-complete`, { method: 'POST' })
+              if (!res.ok) throw new Error(await res.text())
+            }
+            ```
+
+            NOTE: Do NOT add fetchPipelineState -- the pipeline state comes from SSE
+            events via the reducer, not from a separate API fetch. This eliminates
+            the dual-source-of-truth problem.
+
+            ### waveEventsReducer.ts additions:
+
+            Add a new action type to the WaveAction union:
+            ```typescript
+            | { type: 'PIPELINE_STEP'; step: string; status: string; wave: number; error?: string }
+            ```
+
+            Add `pipelineSteps?: Record<string, { status: string; error?: string }>` to
+            AppWaveState interface. IMPORTANT: use optional field (`?:`) to avoid breaking
+            existing code that constructs AppWaveState (e.g., SEED_DISK_STATUS, tests).
+
+            Add `pipelineSteps: {}` to initialWaveState.
+
+            Handle the PIPELINE_STEP action in the reducer:
+            ```typescript
+            case 'PIPELINE_STEP':
+              return {
+                ...state,
+                pipelineSteps: {
+                  ...state.pipelineSteps,
+                  [action.step]: { status: action.status, error: action.error },
+                },
+              }
+            ```
+
+            ### useWaveEvents.ts addition:
+
+            Add a listener for the `pipeline_step` SSE event alongside the existing
+            stage_transition listener:
+            ```typescript
+            es.addEventListener('pipeline_step', (event: MessageEvent) => {
+              const data = JSON.parse(event.data) as {
+                step: string; status: string; wave: number; error?: string
+              }
+              dispatch({
+                type: 'PIPELINE_STEP',
+                step: data.step,
+                status: data.status,
+                wave: data.wave,
+                error: data.error,
+              })
+            })
+            ```
+
+            ### WaveBoard.tsx integration:
+
+            1. Import RecoveryControlsPanel and new API functions (retryStep, skipStep,
+               forceMarkComplete).
+            2. Do NOT add a separate useState for pipelineState or fetchPipelineState.
+               Use `state.pipelineSteps` from the reducer directly as the single source
+               of truth.
+            3. Render RecoveryControlsPanel in BOTH failure display paths:
+
+               a) Full-page failure display (state.runFailed && state.waves.length === 0):
+                  Render RecoveryControlsPanel below the existing buttons (Retry
+                  Finalization, Fix with AI) inside the centered flex-col container.
+
+               b) Inline failure banner (state.runFailed && state.waves.length > 0):
+                  Render RecoveryControlsPanel below the inline banner div.
+
+               In both cases, only show RecoveryControlsPanel when state.pipelineSteps
+               has at least one entry (Object.keys(state.pipelineSteps ?? {}).length > 0).
+               This ensures it doesn't render for non-pipeline failures.
+
+            4. Wire callback props:
+               ```typescript
+               <RecoveryControlsPanel
+                 slug={slug}
+                 wave={currentWave}
+                 pipelineSteps={state.pipelineSteps ?? {}}
+                 onRetryStep={async (step, wave) => { await retryStep(slug, step, wave) }}
+                 onSkipStep={async (step, wave, reason) => { await skipStep(slug, step, wave, reason) }}
+                 onForceComplete={async () => {
+                   if (window.confirm('Force mark this IMPL as complete? This skips remaining pipeline steps.')) {
+                     await forceMarkComplete(slug)
+                   }
+                 }}
+                 onRetryFinalize={async () => { await handleRetryFinalize() }}
+               />
+               ```
+
+            ## Interfaces to Call
+
+            - RecoveryControlsPanel from Agent C
+            - retryStep, skipStep, forceMarkComplete (new in api.ts)
+            - retryFinalize (existing in api.ts)
+
+            ## Tests to Write
+
+            1. PIPELINE_STEP reducer action updates pipelineSteps correctly
+            2. PIPELINE_STEP reducer action with optional field - verify existing state construction still works
+            3. forceMarkComplete API sends POST to correct endpoint
+
+            ## Verification Gate
+            ```bash
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+            ```
+
+            ## Constraints
+            - Do NOT break existing WaveBoard functionality (merge controls, test controls, gate handling)
+            - RecoveryControlsPanel should only render when state.runFailed is truthy AND
+              state.pipelineSteps has entries
+            - Render RecoveryControlsPanel in BOTH failure display paths (full-page and inline)
+            - The pipeline_step SSE event is additive - does not replace stage_transition
+            - Keep the existing "Retry Finalization" and "Fix with AI" buttons - RecoveryControlsPanel
+              is shown BELOW them as expanded controls
+            - forceMarkComplete must show a window.confirm dialog before executing
+            - Do NOT add fetchPipelineState - pipeline state comes from SSE reducer only
+            - pipelineSteps field in AppWaveState must be optional (`pipelineSteps?:`)
+            - No dual source of truth: state.pipelineSteps is the ONLY source for pipeline state in the UI
+          files:
+            - web/src/components/WaveBoard.tsx
+            - web/src/api.ts
+            - web/src/hooks/waveEventsReducer.ts
+            - web/src/hooks/useWaveEvents.ts
+          dependencies:
+            - C
+      base_commit: 4486d4f4bbcfd28aad43ee2b68a40376601b8f39
+quality_gates:
+    level: standard
+    gates:
+        - type: build
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./...
+          required: true
+        - type: test
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./pkg/api/...
+          required: true
+        - type: lint
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go vet ./pkg/api/...
+          required: false
+        - type: typecheck
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+          required: true
+completion_reports:
+    A:
+        status: complete
+        branch: wave1-agent-A
+        commit: d1d0e11
+        files_changed:
+            - pkg/api/pipeline_state.go
+            - pkg/api/pipeline_state_test.go
+        files_created:
+            - pkg/api/pipeline_state.go
+            - pkg/api/pipeline_state_test.go
+        tests_added:
+            - TestPipelineTracker_StartComplete
+            - TestPipelineTracker_FailAndRead
+            - TestPipelineTracker_Skip
+            - TestPipelineTracker_LastSuccessfulStep
+            - TestPipelineTracker_LastSuccessfulStep_SkippedSteps
+            - TestPipelineTracker_Clear
+            - TestPipelineTracker_ConcurrentAccess
+            - TestPipelineStepOrder
+        verification: PASS
+    B:
+        status: complete
+        branch: wave1-agent-B
+        commit: 0086d49
+        files_changed:
+            - pkg/api/recovery_handlers.go
+            - pkg/api/recovery_handlers_test.go
+        files_created:
+            - pkg/api/recovery_handlers.go
+            - pkg/api/recovery_handlers_test.go
+        tests_added:
+            - TestHandleStepRetry_InvalidStep
+            - TestHandleStepRetry_MissingWave
+            - TestHandleStepSkip_NonSkippable
+            - TestHandleStepSkip_Skippable
+            - TestHandleStepSkip_ValidateIntegration
+            - TestHandleForceMarkComplete_Success
+            - TestHandlePipelineState_NotFound
+            - TestHandlePipelineState_TrackerNil
+        verification: PASS
+    C:
+        status: complete
+        branch: wave1-agent-C
+        commit: 723b823
+        files_changed:
+            - web/src/components/RecoveryControlsPanel.tsx
+            - web/src/components/__tests__/RecoveryControlsPanel.test.tsx
+        files_created:
+            - web/src/components/RecoveryControlsPanel.tsx
+            - web/src/components/__tests__/RecoveryControlsPanel.test.tsx
+        tests_added:
+            - renders all 8 steps in correct order
+            - shows retry button for failed step
+            - shows skip button only for skippable failed steps
+            - renders nothing when pipelineSteps is empty
+            - force complete button shows confirmation dialog before firing
+            - shows Already in progress on 409 error
+        verification: PASS
+    D:
+        status: complete
+        branch: wave2-agent-D
+        commit: a8bfa37
+        files_changed:
+            - pkg/api/wave_runner.go
+            - pkg/api/server.go
+            - pkg/api/wave_runner_test.go
+        tests_added:
+            - TestRunFinalizeSteps_EmitsEvents
+            - TestRunWaveLoop_PipelineStepEvents
+            - TestRunFinalizeSteps_ResumeFromFailedStep
+        verification: PASS
+    E:
+        status: complete
+        branch: wave2-agent-E
+        commit: 8b78e0c
+        files_changed:
+            - web/src/api.ts
+            - web/src/hooks/waveEventsReducer.ts
+            - web/src/hooks/useWaveEvents.ts
+            - web/src/components/WaveBoard.tsx
+        files_created:
+            - web/src/hooks/__tests__/waveEventsReducer.test.ts
+        tests_added:
+            - PIPELINE_STEP adds new step
+            - PIPELINE_STEP updates existing step
+            - PIPELINE_STEP preserves other steps
+            - SEED_DISK_STATUS does not break without pipelineSteps
+            - forceMarkComplete sends POST to correct endpoint
+        verification: PASS
+pre_mortem:
+    overall_risk: medium
+    rows:
+        - scenario: Decomposed FinalizeWave diverges from engine.FinalizeWave behavior
+          likelihood: medium
+          impact: high
+          mitigation: |
+            Agent D must replicate the exact 8-step order from engine/finalize.go
+            (including ValidateIntegration and FixGoMod). The interface contract
+            specifies the step order. Post-merge verification runs the full test
+            suite to catch divergence.
+        - scenario: Pipeline state file left in inconsistent state after crash
+          likelihood: low
+          impact: medium
+          mitigation: |
+            pipelineTracker uses atomic write pattern (write to temp file, rename).
+            Read always returns valid state or nil. Steps are idempotent.
+        - scenario: Recovery handlers called while runWaveLoop is still active
+          likelihood: medium
+          impact: medium
+          mitigation: |
+            Recovery handlers check BOTH s.activeRuns (prevents retry while main
+            loop is running) AND s.mergingRuns (prevents concurrent retries).
+            Returns 409 Conflict if either guard is held. Frontend handles 409
+            by showing "already in progress" instead of generic error.
+        - scenario: Frontend TypeScript compilation fails due to new reducer state shape
+          likelihood: low
+          impact: low
+          mitigation: |
+            pipelineSteps is added as optional field (pipelineSteps?:) with
+            default {}. Existing components and SEED_DISK_STATUS don't reference it.
+            Only RecoveryControlsPanel uses it.
+        - scenario: handleWaveFinalize still uses monolithic FinalizeWave after decomposition
+          likelihood: low
+          impact: high
+          mitigation: |
+            Agent D is explicitly tasked with updating handleWaveFinalize to use
+            the same decomposed pipeline helper function as runWaveLoop. Both
+            paths share a single runFinalizeSteps helper.
+        - scenario: 'Multi-tab race: two users click Retry Step simultaneously'
+          likelihood: low
+          impact: low
+          mitigation: |
+            Server returns 409 for concurrent operations. RecoveryControlsPanel
+            handles 409 gracefully by showing "already in progress" inline message.
+state: "COMPLETE"
