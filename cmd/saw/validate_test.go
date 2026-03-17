@@ -21,6 +21,7 @@ waves:
   - number: 1
     agents:
       - id: "A"
+        task: "Implement file1.go"
         files:
           - "file1.go"
         dependencies: []
