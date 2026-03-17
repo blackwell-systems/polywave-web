@@ -8,7 +8,7 @@ import ImplEditor from './ImplEditor'
 import StageTimeline from './StageTimeline'
 import ConflictResolutionPanel from './ConflictResolutionPanel'
 import { AgentStatus, RepoEntry } from '../types'
-import { mergeWave, runWaveTests, rerunAgent, resolveConflicts, batchDeleteWorktrees } from '../api'
+import { mergeWave, runWaveTests, rerunAgent, resolveConflicts, batchDeleteWorktrees, startWave } from '../api'
 
 interface WaveBoardProps {
   slug: string
@@ -463,6 +463,16 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                               </pre>
                             )}
                           </div>
+                        )}
+
+                        {/* Start Next Wave — show after merge success if more waves remain */}
+                        {wave.wave < Math.max(...state.waves.map(w => w.wave)) && (
+                          <button
+                            onClick={() => void startWave(slug)}
+                            className="text-sm font-medium px-4 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                          >
+                            Start Wave {wave.wave + 1}
+                          </button>
                         )}
                       </div>
                     )}
