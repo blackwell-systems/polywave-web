@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -240,4 +241,103 @@ func extractConflictingFiles(errStr string) []string {
 		}
 	}
 	return files
+}
+
+// resolveConflictsFunc is the seam used by handleResolveConflicts. Tests can
+// replace this to inject a no-op and avoid real git/Claude API calls in unit tests.
+var resolveConflictsFunc = func(ctx context.Context, opts engine.ResolveConflictsOpts) error {
+	return engine.ResolveConflicts(ctx, opts)
+}
+
+// handleResolveConflicts handles POST /api/wave/{slug}/resolve-conflicts.
+// It guards against concurrent resolution/merge for the same slug (returns 409),
+// returns 202 immediately, then runs engine.ResolveConflicts in a background
+// goroutine and streams progress via the SSE broker.
+//
+// Request body: {"wave": <int>}
+//
+// SSE events published:
+//   - conflict_resolving: per-file progress (status="resolving")
+//   - conflict_resolved: per-file progress (status="resolved")
+//   - conflict_resolution_failed: on error
+//   - merge_complete: on success
+//
+// Route registration: POST /api/wave/{slug}/resolve-conflicts
+// (Must be wired in server.go by calling RegisterConflictRoutes)
+func (s *Server) handleResolveConflicts(w http.ResponseWriter, r *http.Request) {
+	slug := r.PathValue("slug")
+
+	var req MergeWaveRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Guard: return 409 if a merge or resolution is already in progress for this slug.
+	// We reuse mergingRuns because merge and resolve are mutually exclusive operations.
+	if _, loaded := s.mergingRuns.LoadOrStore(slug, struct{}{}); loaded {
+		http.Error(w, "merge or conflict resolution already in progress for this slug", http.StatusConflict)
+		return
+	}
+
+	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".yaml")
+	publish := s.makePublisher(slug)
+	wave := req.Wave
+
+	w.WriteHeader(http.StatusAccepted)
+
+	go func() {
+		defer s.mergingRuns.Delete(slug)
+
+		ctx := context.Background()
+
+		// Read saw.config.json for model selection (same pattern as chat_handler.go).
+		var sawCfg SAWConfig
+		if cfgData, err := os.ReadFile(filepath.Join(s.cfg.RepoPath, "saw.config.json")); err == nil {
+			_ = json.Unmarshal(cfgData, &sawCfg)
+		}
+
+		err := resolveConflictsFunc(ctx, engine.ResolveConflictsOpts{
+			IMPLPath: implPath,
+			RepoPath: s.cfg.RepoPath,
+			WaveNum:  wave,
+			OnProgress: func(file string, status string) {
+				eventName := ""
+				switch status {
+				case "resolving":
+					eventName = "conflict_resolving"
+				case "resolved":
+					eventName = "conflict_resolved"
+				}
+				if eventName != "" {
+					publish(eventName, map[string]interface{}{
+						"slug": slug,
+						"wave": wave,
+						"file": file,
+					})
+				}
+			},
+		})
+
+		if err != nil {
+			publish("conflict_resolution_failed", map[string]interface{}{
+				"slug":  slug,
+				"wave":  wave,
+				"error": err.Error(),
+			})
+			return
+		}
+
+		publish("merge_complete", map[string]interface{}{
+			"slug":   slug,
+			"wave":   wave,
+			"status": "success",
+		})
+	}()
+}
+
+// RegisterConflictRoutes registers the conflict resolution endpoint.
+// This should be called from server.go's New() function.
+func (s *Server) RegisterConflictRoutes() {
+	s.mux.HandleFunc("POST /api/wave/{slug}/resolve-conflicts", s.handleResolveConflicts)
 }

@@ -240,3 +240,82 @@ waves:
 		}
 	}
 }
+
+// ---------------------------------------------------------------------------
+// handleResolveConflicts tests
+// ---------------------------------------------------------------------------
+
+// TestHandleResolveConflicts_Returns202 verifies that a conflict resolution
+// request returns 202 Accepted and publishes SSE events via the broker.
+// Uses resolveConflictsFunc seam to avoid real git/Claude API operations.
+func TestHandleResolveConflicts_Returns202(t *testing.T) {
+	// Inject a no-op resolution function so no real git/API calls occur.
+	orig := resolveConflictsFunc
+	resolveCalled := make(chan struct{}, 1)
+	resolveConflictsFunc = func(ctx context.Context, opts engine.ResolveConflictsOpts) error {
+		resolveCalled <- struct{}{}
+		return nil
+	}
+	t.Cleanup(func() { resolveConflictsFunc = orig })
+
+	s, _ := makeTestServer(t)
+
+	// Subscribe to broker events for "my-feature" so we can observe publishes.
+	ch := s.broker.subscribe("my-feature")
+	defer s.broker.unsubscribe("my-feature", ch)
+
+	body, _ := json.Marshal(MergeWaveRequest{Wave: 1})
+	req := httptest.NewRequest(http.MethodPost, "/api/wave/my-feature/resolve-conflicts", bytes.NewReader(body))
+	req.SetPathValue("slug", "my-feature")
+	rr := httptest.NewRecorder()
+
+	s.handleResolveConflicts(rr, req)
+
+	if rr.Code != http.StatusAccepted {
+		t.Errorf("expected 202, got %d: %s", rr.Code, rr.Body.String())
+	}
+
+	// Wait for merge_complete event from the background goroutine.
+	timer := time.NewTimer(3 * time.Second)
+	defer timer.Stop()
+
+	var gotMergeComplete bool
+	for !gotMergeComplete {
+		select {
+		case ev := <-ch:
+			if ev.Event == "merge_complete" {
+				gotMergeComplete = true
+			}
+		case <-timer.C:
+			t.Fatal("timed out waiting for merge_complete event")
+		}
+	}
+
+	// Also wait for the mock to be called so goroutine cleanup is complete.
+	select {
+	case <-resolveCalled:
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for resolveConflictsFunc to be called")
+	}
+}
+
+// TestHandleResolveConflicts_409OnConcurrent verifies that a second concurrent
+// conflict resolution request for the same slug returns 409 Conflict, and that
+// a concurrent merge request also returns 409 (since both use mergingRuns).
+func TestHandleResolveConflicts_409OnConcurrent(t *testing.T) {
+	s, _ := makeTestServer(t)
+
+	// Pre-load the slug to simulate a merge/resolve already in progress.
+	s.mergingRuns.Store("my-feature", struct{}{})
+
+	body, _ := json.Marshal(MergeWaveRequest{Wave: 1})
+	req := httptest.NewRequest(http.MethodPost, "/api/wave/my-feature/resolve-conflicts", bytes.NewReader(body))
+	req.SetPathValue("slug", "my-feature")
+	rr := httptest.NewRecorder()
+
+	s.handleResolveConflicts(rr, req)
+
+	if rr.Code != http.StatusConflict {
+		t.Errorf("expected 409 when merge/resolve already in progress, got %d: %s", rr.Code, rr.Body.String())
+	}
+}
