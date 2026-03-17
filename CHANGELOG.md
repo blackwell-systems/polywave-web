@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.66.0] | 2026-03-16 | WaveBoard state persistence — disk-seeded agents/waves/merge state, inline worktree cleanup, waves_merged detection after branch cleanup |
+| [0.65.0] | 2026-03-16 | Merge lifecycle fixes — mark-complete on all-waves-done, resolve-conflicts route wired, WaveBoard toggle, stub report pipeline, merge abort/retry UI |
 | [0.64.0] | 2026-03-16 | Sidebar repo removal, View WaveBoard rename |
 | [0.63.0] | 2026-03-16 | Merge button persistence, cross-repo merge/test, completion report propagation, SSE/disk agent merge, Start Next Wave button |
 | [0.62.0] | 2026-03-16 | Wave recovery & execution UX — View Waves button, disk-based status recovery, worktree reuse for reruns, scaffold/wave animations, run_failed propagation |
