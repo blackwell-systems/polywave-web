@@ -181,7 +181,7 @@ export default function ImplList(props: ImplListProps): JSX.Element {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [pendingRemoveRepo, setPendingRemoveRepo] = useState<string | null>(null)
   const [collapsedRepos, setCollapsedRepos] = useState<Set<string>>(new Set())
-  const [showCompleted, setShowCompleted] = useState(false)
+  const [showCompletedRepos, setShowCompletedRepos] = useState<Set<string>>(new Set())
 
   // Group entries by repo
   const entriesByRepo = entries.reduce((acc, entry) => {
@@ -297,13 +297,17 @@ export default function ImplList(props: ImplListProps): JSX.Element {
                         <>
                           <div className="h-px bg-border my-2 ml-2" />
                           <button
-                            onClick={() => setShowCompleted(!showCompleted)}
+                            onClick={() => setShowCompletedRepos(prev => {
+                              const next = new Set(prev)
+                              next.has(repoName) ? next.delete(repoName) : next.add(repoName)
+                              return next
+                            })}
                             className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
                           >
                             <span>Completed ({completedEntries.length})</span>
-                            <span className="text-[10px]">{showCompleted ? '▼' : '▶'}</span>
+                            <span className="text-[10px]">{showCompletedRepos.has(repoName) ? '▼' : '▶'}</span>
                           </button>
-                          {showCompleted && completedEntries.map((e) => (
+                          {showCompletedRepos.has(repoName) && completedEntries.map((e) => (
                             <EntryRow
                               key={e.slug}
                               e={e}
@@ -363,13 +367,17 @@ export default function ImplList(props: ImplListProps): JSX.Element {
               <>
                 <div className="h-px bg-border my-2" />
                 <button
-                  onClick={() => setShowCompleted(!showCompleted)}
+                  onClick={() => setShowCompletedRepos(prev => {
+                    const next = new Set(prev)
+                    next.has('_all') ? next.delete('_all') : next.add('_all')
+                    return next
+                  })}
                   className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
                 >
                   <span>Completed ({Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').length})</span>
-                  <span className="text-[10px]">{showCompleted ? '▼' : '▶'}</span>
+                  <span className="text-[10px]">{showCompletedRepos.has('_all') ? '▼' : '▶'}</span>
                 </button>
-                {showCompleted && Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').map((e) => (
+                {showCompletedRepos.has('_all') && Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').map((e) => (
                   <EntryRow
                     key={e.slug}
                     e={e}
