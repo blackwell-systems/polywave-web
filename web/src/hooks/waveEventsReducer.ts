@@ -160,11 +160,27 @@ export function waveEventsReducer(state: AppWaveState, action: WaveAction): AppW
           mergeState.set(w, { status: 'success', output: '', conflictingFiles: [], resolvedFiles: [] })
         }
       }
+      // Merge disk agents with live state — never overwrite agents that SSE
+      // has already updated (running/complete from live events take priority
+      // over stale disk status). This prevents a race where the async disk
+      // fetch completes after SSE events have set agents to 'running'.
+      const liveKeys = new Set(state.agents.map(a => `${a.wave}:${a.agent}`))
+      const mergedAgents = [...state.agents]
+      for (const da of action.agents) {
+        if (!liveKeys.has(`${da.wave}:${da.agent}`)) {
+          mergedAgents.push(da)
+        }
+      }
+      const waves = buildWaves(mergedAgents, action.waves)
+      // Only seed scaffold if SSE hasn't already moved it past idle
+      const scaffoldStatus = state.scaffoldStatus !== 'idle'
+        ? state.scaffoldStatus
+        : action.scaffoldStatus
       return {
         ...state,
-        agents: action.agents,
-        waves: action.waves,
-        scaffoldStatus: action.scaffoldStatus,
+        agents: mergedAgents,
+        waves,
+        scaffoldStatus,
         wavesMergeState: mergeState,
       }
     }

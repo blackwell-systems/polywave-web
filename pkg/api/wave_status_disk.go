@@ -154,9 +154,12 @@ func (s *Server) handleWaveDiskStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(result) //nolint:errcheck
 }
 
-// diskBranchHasCommits checks if a branch has non-scaffold commits beyond main.
+// diskBranchHasCommits checks if a branch has non-scaffold commits beyond HEAD.
+// Uses HEAD as the base (not main) because wave branches are created from the
+// current HEAD, which may be ahead of main after prior wave merges. Comparing
+// against main would falsely count those prior merge commits as branch work.
 func diskBranchHasCommits(repoPath, branch string) bool {
-	cmd := exec.Command("git", "log", "main.."+branch, "--oneline")
+	cmd := exec.Command("git", "log", "HEAD.."+branch, "--oneline")
 	cmd.Dir = repoPath
 	out, err := cmd.Output()
 	if err != nil {
@@ -181,11 +184,40 @@ func diskBranchExists(repoPath, branch string) bool {
 }
 
 // diskBranchMerged returns true if the branch has been merged into HEAD.
-// Uses `git merge-base --is-ancestor` which exits 0 if branch is an ancestor of HEAD.
+// A branch is considered merged only if it is an ancestor of HEAD AND has
+// commits beyond its merge-base with HEAD (i.e., it had actual work that was
+// merged). A branch sitting at HEAD with no unique commits is not "merged work".
 func diskBranchMerged(repoPath, branch string) bool {
+	// Check ancestor
 	cmd := exec.Command("git", "merge-base", "--is-ancestor", branch, "HEAD")
 	cmd.Dir = repoPath
-	return cmd.Run() == nil
+	if cmd.Run() != nil {
+		return false
+	}
+	// Verify branch has unique commits that were merged (branch is behind HEAD,
+	// not exactly at HEAD with no divergence)
+	cmd2 := exec.Command("git", "log", "HEAD.."+branch, "--oneline")
+	cmd2.Dir = repoPath
+	// If branch is ancestor of HEAD, HEAD..branch is empty. Check branch..HEAD instead:
+	// if branch is strictly behind HEAD (ancestor + not equal), it was merged.
+	cmd3 := exec.Command("git", "rev-parse", branch)
+	cmd3.Dir = repoPath
+	branchSHA, err := cmd3.Output()
+	if err != nil {
+		return false
+	}
+	cmd4 := exec.Command("git", "rev-parse", "HEAD")
+	cmd4.Dir = repoPath
+	headSHA, err := cmd4.Output()
+	if err != nil {
+		return false
+	}
+	// Branch at exact same commit as HEAD = no unique work, not merged
+	if strings.TrimSpace(string(branchSHA)) == strings.TrimSpace(string(headSHA)) {
+		return false
+	}
+	// Branch is ancestor of HEAD and at a different commit = was merged
+	return true
 }
 
 // diskBranchHead returns the short HEAD SHA of a branch.

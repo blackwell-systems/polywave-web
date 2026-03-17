@@ -82,8 +82,9 @@ const NODE_W = 48
 const NODE_H = 48
 const WAVE_GAP = 160
 const AGENT_GAP = 72
-const PAD_X = 60
+const PAD_X = 100
 const PAD_Y = 40
+const LABEL_X = 44 // center of the left label column (outside the row bands)
 
 function getAgentFill(letter: string): { bg: string; border: string; text: string; dashed?: boolean } {
   if (letter === 'Scaffold') {
@@ -122,11 +123,18 @@ function layoutNodes(waves: ParsedWave[]): { nodes: NodePos[]; width: number; he
   const nodes: NodePos[] = []
   const maxAgents = Math.max(...waves.map(w => w.agents.length))
 
+  // The row band area runs from bandLeft to bandRight; center agents within it.
+  const bandLeft = PAD_X - 12
+  const agentAreaWidth = (maxAgents - 1) * AGENT_GAP + NODE_W
+  const width = bandLeft + agentAreaWidth + PAD_X
+  const bandRight = width - 4
+  const bandCenter = (bandLeft + bandRight) / 2
+
   for (let wi = 0; wi < waves.length; wi++) {
     const wave = waves[wi]
     const y = PAD_Y + wi * WAVE_GAP
-    const totalWidth = (wave.agents.length - 1) * AGENT_GAP
-    const startX = PAD_X + (maxAgents - 1) * AGENT_GAP / 2 - totalWidth / 2
+    const totalWidth = (wave.agents.length - 1) * AGENT_GAP + NODE_W
+    const startX = bandCenter - totalWidth / 2
 
     for (let ai = 0; ai < wave.agents.length; ai++) {
       nodes.push({
@@ -137,7 +145,6 @@ function layoutNodes(waves: ParsedWave[]): { nodes: NodePos[]; width: number; he
     }
   }
 
-  const width = PAD_X * 2 + (maxAgents - 1) * AGENT_GAP + NODE_W
   const height = PAD_Y * 2 + (waves.length - 1) * WAVE_GAP + NODE_H
 
   return { nodes, width, height }
@@ -170,13 +177,15 @@ export default function DependencyGraphPanel({ dependencyGraphText, executionSta
 
   // Helper to look up agent execution status
   function getExecStatus(letter: string, wave: number): AgentExecStatus | undefined {
-    if (!executionState || executionState.agents.size === 0) return undefined
-    // Scaffold node uses separate scaffoldStatus field
+    if (!executionState) return undefined
+    // Scaffold node uses separate scaffoldStatus field — check before agents map
+    // guard because scaffold runs while agents map is still empty
     if (letter === 'Scaffold' && wave === 0) {
       const s = executionState.scaffoldStatus
       if (s === 'idle') return undefined
       return { status: s === 'complete' ? 'complete' : 'running' } as AgentExecStatus
     }
+    if (executionState.agents.size === 0) return undefined
     return executionState.agents.get(`${wave}:${letter}`)
   }
 
@@ -299,10 +308,10 @@ export default function DependencyGraphPanel({ dependencyGraphText, executionSta
               return (
                 <rect
                   key={`bg-${wi}`}
-                  x={24}
+                  x={PAD_X - 12}
                   y={y}
-                  width={width - 28}
-                  height={rowH}
+                  width={width - PAD_X + 8}
+                  height={rowH + 4}
                   rx={12}
                   fill={color}
                   opacity={0.08}
@@ -310,21 +319,40 @@ export default function DependencyGraphPanel({ dependencyGraphText, executionSta
               )
             })}
 
-            {/* Wave labels (inside row bands) */}
-            {parsed.map((wave, wi) => (
-              <text
-                key={`label-${wave.number}`}
-                x={36}
-                y={PAD_Y + wi * WAVE_GAP + NODE_H / 2}
-                textAnchor="middle"
-                dominantBaseline="central"
-                className="fill-muted-foreground"
-                fontSize={11}
-                fontWeight={600}
-              >
-                W{wave.number}
-              </text>
-            ))}
+            {/* Wave labels — spelled out, left of row bands */}
+            {parsed.map((wave, wi) => {
+              const cy = PAD_Y + wi * WAVE_GAP + NODE_H / 2
+              const color = WAVE_COLORS[wi % WAVE_COLORS.length]
+              return (
+                <g key={`label-${wave.number}`}>
+                  <text
+                    x={LABEL_X}
+                    y={cy - 7}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={color}
+                    fontSize={10}
+                    fontWeight={600}
+                    letterSpacing={2.5}
+                    style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', textTransform: 'uppercase' }}
+                  >
+                    WAVE
+                  </text>
+                  <text
+                    x={LABEL_X}
+                    y={cy + 10}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={color}
+                    fontSize={20}
+                    fontWeight={800}
+                    style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+                  >
+                    {wave.number}
+                  </text>
+                </g>
+              )
+            })}
 
             {/* Edges */}
             {edges.map((edge, i) => {

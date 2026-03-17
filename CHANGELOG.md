@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.75.0] | 2026-03-17 | Execution state fixes — scaffold dep graph animation (getExecStatus order), SEED_DISK_STATUS race condition (merge vs replace), diskBranchHasCommits HEAD-relative comparison, diskBranchMerged same-commit guard, dep graph wave labels + agent centering |
 | [0.74.0] | 2026-03-17 | Autonomy web UI — Pipeline view (GET /api/pipeline), Queue CRUD (GET/POST/DELETE/PUT /api/queue), Autonomy config (GET/PUT /api/autonomy), Daemon control (start/stop/status/events SSE), PipelineView/QueuePanel/DaemonControl/AutonomySettings React components, autonomyApi.ts client module, Pipeline button in header nav |
 | [0.73.0] | 2026-03-17 | Vertical dep graph + file activity fix — dependency graph reoriented top-to-bottom, `useFileActivity` crash fix for agents without files array |
 | [0.72.0] | 2026-03-16 | Resume detection UI + structured retry context — `GET /api/sessions/interrupted` endpoint, amber sidebar banner for interrupted sessions, `retryctx.BuildRetryContext` replaces manual error formatting in agent reruns |
