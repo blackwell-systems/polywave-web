@@ -363,6 +363,13 @@ func (s *Server) handleResolveConflicts(w http.ResponseWriter, r *http.Request) 
 					})
 				}
 			},
+			OnOutput: func(chunk string) {
+				publish("merge_output", map[string]interface{}{
+					"slug":  slug,
+					"wave":  wave,
+					"chunk": chunk,
+				})
+			},
 		})
 
 		if err != nil {

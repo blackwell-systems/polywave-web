@@ -526,6 +526,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                             resolutionError={mergeState?.resolutionError}
                             failedFile={mergeState?.failedFile}
                             isResolving={false}
+                            output={mergeState?.output}
                           />
                         )}
                       </div>
@@ -543,6 +544,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                         resolutionError={mergeState?.resolutionError}
                         failedFile={mergeState?.failedFile}
                         isResolving={true}
+                        output={mergeState?.output}
                       />
                     )}
                   </>

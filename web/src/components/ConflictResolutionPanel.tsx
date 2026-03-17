@@ -8,6 +8,7 @@ interface ConflictResolutionPanelProps {
   resolutionError?: string
   failedFile?: string
   isResolving: boolean
+  output?: string
 }
 
 export default function ConflictResolutionPanel({
@@ -17,6 +18,7 @@ export default function ConflictResolutionPanel({
   resolutionError,
   failedFile,
   isResolving,
+  output,
 }: ConflictResolutionPanelProps): JSX.Element {
   return (
     <div className="mt-3 bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 space-y-2 dark:bg-violet-950 dark:border-violet-800">
@@ -82,6 +84,12 @@ export default function ConflictResolutionPanel({
         <p className="text-xs text-violet-700 dark:text-violet-300 mt-2">
           {resolvedFiles.length} of {conflictingFiles.length} files resolved
         </p>
+      )}
+
+      {output && (
+        <pre className="text-xs font-mono text-violet-700 bg-violet-100 dark:bg-violet-900 dark:text-violet-300 rounded p-2 overflow-y-auto max-h-48 whitespace-pre-wrap break-all mt-2">
+          {output}
+        </pre>
       )}
     </div>
   )
