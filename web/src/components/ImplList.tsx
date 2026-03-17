@@ -294,15 +294,14 @@ export default function ImplList(props: ImplListProps): JSX.Element {
                         />
                       ))}
                       {completedEntries.length > 0 && (
-                        <>
-                          <div className="h-px bg-border my-2 ml-2" />
+                        <div className="mt-2 ml-1 rounded-md bg-background/80">
                           <button
                             onClick={() => setShowCompletedRepos(prev => {
                               const next = new Set(prev)
                               next.has(repoName) ? next.delete(repoName) : next.add(repoName)
                               return next
                             })}
-                            className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
+                            className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted rounded-md transition-colors"
                           >
                             <span>Completed ({completedEntries.length})</span>
                             <span className="text-[10px]">{showCompletedRepos.has(repoName) ? '▼' : '▶'}</span>
@@ -317,7 +316,7 @@ export default function ImplList(props: ImplListProps): JSX.Element {
                               onRequestDelete={setPendingDelete}
                             />
                           ))}
-                        </>
+                        </div>
                       )}
                     </>
                   )}
@@ -364,15 +363,14 @@ export default function ImplList(props: ImplListProps): JSX.Element {
               />
             ))}
             {Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').length > 0 && (
-              <>
-                <div className="h-px bg-border my-2" />
+              <div className="mt-2 mx-1 rounded-md bg-background/80">
                 <button
                   onClick={() => setShowCompletedRepos(prev => {
                     const next = new Set(prev)
                     next.has('_all') ? next.delete('_all') : next.add('_all')
                     return next
                   })}
-                  className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
+                  className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted rounded-md transition-colors"
                 >
                   <span>Completed ({Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').length})</span>
                   <span className="text-[10px]">{showCompletedRepos.has('_all') ? '▼' : '▶'}</span>
@@ -387,7 +385,7 @@ export default function ImplList(props: ImplListProps): JSX.Element {
                     onRequestDelete={setPendingDelete}
                   />
                 ))}
-              </>
+              </div>
             )}
           </>
         )}
