@@ -39,13 +39,11 @@ export default function FileOwnershipPanel({ impl, repos = [], onFileClick }: Fi
   })
 
   function handleViewFile(entry: FileOwnershipEntry) {
-    // Determine which repo to use for the modal
-    let repoName = ''
-    if (entry.repo) {
-      repoName = entry.repo
-    } else if (repos.length > 0) {
-      repoName = repos[0].name
-    }
+    // Determine which repo to use for the modal:
+    // 1. Per-file repo tag (cross-repo IMPLs)
+    // 2. IMPL's own repo (most common)
+    // 3. First config repo (last resort)
+    const repoName = entry.repo || impl.repo || (repos.length > 0 ? repos[0].name : '')
     setModalState({ open: true, filePath: entry.file, repo: repoName })
   }
 
