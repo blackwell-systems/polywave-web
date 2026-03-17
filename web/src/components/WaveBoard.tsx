@@ -8,7 +8,7 @@ import ImplEditor from './ImplEditor'
 import StageTimeline from './StageTimeline'
 import ConflictResolutionPanel from './ConflictResolutionPanel'
 import { AgentStatus, RepoEntry } from '../types'
-import { mergeWave, runWaveTests, rerunAgent, resolveConflicts } from '../api'
+import { mergeWave, runWaveTests, rerunAgent, resolveConflicts, batchDeleteWorktrees } from '../api'
 
 interface WaveBoardProps {
   slug: string
@@ -272,15 +272,28 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
         {state.staleBranches && !staleDismissed && (
           <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-amber-800 text-sm dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400">
             <span>
-              {state.staleBranches.count} stale branch{state.staleBranches.count !== 1 ? 'es' : ''} detected from previous runs. Open Worktrees panel to clean up.
+              {state.staleBranches.count} stale branch{state.staleBranches.count !== 1 ? 'es' : ''} detected from previous runs.
             </span>
-            <button
-              onClick={() => setStaleDismissed(true)}
-              className="ml-3 text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 font-bold text-lg leading-none"
-              aria-label="Dismiss stale branch warning"
-            >
-              &times;
-            </button>
+            <div className="flex items-center gap-2 ml-3">
+              <button
+                onClick={async () => {
+                  try {
+                    await batchDeleteWorktrees(slug, { branches: state.staleBranches!.branches, force: true })
+                    setStaleDismissed(true)
+                  } catch { /* ignore */ }
+                }}
+                className="text-xs font-medium px-3 py-1 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+              >
+                Clean Up
+              </button>
+              <button
+                onClick={() => setStaleDismissed(true)}
+                className="text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 font-bold text-lg leading-none"
+                aria-label="Dismiss stale branch warning"
+              >
+                &times;
+              </button>
+            </div>
           </div>
         )}
 
@@ -407,8 +420,17 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                     {/* Merge success */}
                     {mergeStatus === 'success' && (
                       <div className="mt-3 space-y-2">
-                        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-green-800 text-sm dark:bg-green-950 dark:border-green-800 dark:text-green-400">
-                          Wave {wave.wave} merged successfully
+                        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2 dark:bg-green-950 dark:border-green-800">
+                          <span className="text-green-800 text-sm dark:text-green-400">Wave {wave.wave} merged successfully</span>
+                          <button
+                            onClick={async () => {
+                              const branches = wave.agents.map(a => `wave${wave.wave}-agent-${a.agent}`)
+                              try { await batchDeleteWorktrees(slug, { branches, force: true }) } catch { /* already cleaned */ }
+                            }}
+                            className="text-xs text-green-700 hover:text-green-900 dark:text-green-400 dark:hover:text-green-200 underline"
+                          >
+                            Clean worktrees
+                          </button>
                         </div>
 
                         {testStatus === 'idle' && (
