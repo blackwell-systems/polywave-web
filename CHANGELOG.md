@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.67.0] | 2026-03-16 | Conflict resolution streaming + worktree cleanup fix — live model output in ConflictResolutionPanel, post-resolve cleanup wired, multi-repo IMPL path resolution |
 | [0.66.0] | 2026-03-16 | WaveBoard state persistence — disk-seeded agents/waves/merge state, inline worktree cleanup, waves_merged detection after branch cleanup |
 | [0.65.0] | 2026-03-16 | Merge lifecycle fixes — mark-complete on all-waves-done, resolve-conflicts route wired, WaveBoard toggle, stub report pipeline, merge abort/retry UI |
 | [0.64.0] | 2026-03-16 | Sidebar repo removal, View WaveBoard rename |
@@ -15,6 +16,20 @@ All notable changes to this project will be documented in this file.
 | [0.56.0] | 2026-03-14 | File browser (waves 1-2) — 4 backend API endpoints + 7 frontend components for in-app codebase exploration with syntax highlighting |
 | [0.55.0] | 2026-03-14 | UI improvements — Fixed stale IMPL list, added collapsible repo sections, improved repo context visibility |
 | [0.54.0] | 2026-03-14 | Scout automation integration — 5 automation command wrappers added to web CLI (analyze-deps, analyze-suitability, detect-cascades, detect-scaffolds, extract-commands) |
+
+---
+
+## [0.67.0] - 2026-03-16
+
+### Added
+
+- **Conflict resolution streaming output** — `ConflictResolutionPanel` now displays live model output via a new `output` prop, rendered in a scrollable `<pre>` block. Both resolving-state and failed-state panel instances receive the prop.
+- **Post-resolve worktree cleanup** — `handleResolveConflicts` now runs go.mod fixup and `protocol.Cleanup` after successful AI conflict resolution, matching the `handleWaveMerge` post-merge pipeline.
+
+### Fixed
+
+- **Worktrees left behind after conflict resolution** — `handleResolveConflicts` published `merge_complete` but never called cleanup, leaving worktree directories and branches behind after every AI-resolved merge.
+- **Hardcoded IMPL path in resolve handler** — Switched from `filepath.Join(s.cfg.IMPLDir, ...)` to `s.resolveIMPLPath(slug)` for correct multi-repo IMPL discovery.
 
 ---
 
