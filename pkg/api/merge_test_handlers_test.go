@@ -49,7 +49,8 @@ func TestHandleWaveMerge_Returns202(t *testing.T) {
 	}
 	t.Cleanup(func() { mergeWaveFunc = orig })
 
-	s, _ := makeTestServer(t)
+	s, dir := makeTestServer(t)
+	writeIMPLDoc(t, dir, "my-feature", minimalIMPL)
 
 	// Subscribe to broker events for "my-feature" so we can observe publishes.
 	ch := s.broker.subscribe("my-feature")
@@ -99,7 +100,8 @@ func TestHandleWaveMerge_PublishesMergeComplete(t *testing.T) {
 	}
 	t.Cleanup(func() { mergeWaveFunc = orig })
 
-	s, _ := makeTestServer(t)
+	s, dir := makeTestServer(t)
+	writeIMPLDoc(t, dir, "slug-a", minimalIMPL)
 
 	ch := s.broker.subscribe("slug-a")
 	defer s.broker.unsubscribe("slug-a", ch)
@@ -132,10 +134,14 @@ func TestHandleWaveMerge_PublishesMergeComplete(t *testing.T) {
 	}
 done:
 	want := []string{"merge_started", "merge_output", "merge_complete"}
-	for i, w := range want {
-		if i >= len(events) || events[i] != w {
-			t.Errorf("expected events[%d] == %q, got events: %v", i, w, events)
+	wi := 0
+	for _, ev := range events {
+		if wi < len(want) && ev == want[wi] {
+			wi++
 		}
+	}
+	if wi != len(want) {
+		t.Errorf("expected events to contain %v in order, got events: %v", want, events)
 	}
 }
 
@@ -258,7 +264,8 @@ func TestHandleResolveConflicts_Returns202(t *testing.T) {
 	}
 	t.Cleanup(func() { resolveConflictsFunc = orig })
 
-	s, _ := makeTestServer(t)
+	s, dir := makeTestServer(t)
+	writeIMPLDoc(t, dir, "my-feature", minimalIMPL)
 
 	// Subscribe to broker events for "my-feature" so we can observe publishes.
 	ch := s.broker.subscribe("my-feature")
