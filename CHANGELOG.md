@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.79.0] | 2026-03-17 | Visual polish — PipelineRow status-colored left border accents, theme-aware colors, ActionButtons icon prefixes (Play/Pencil/X/Eye) + hover/press scale micro-interactions, visual-polish-v1 IMPL added |
 | [0.78.0] | 2026-03-17 | SAW protocol gaps v1 — DependencyGraphPanel structured-data fallback (renders wave graph from `impl` prop when dep_graph text empty), removed duplicate `window.confirm` on force-complete |
 | [0.77.0] | 2026-03-17 | Resilient execution lifecycle — step-level pipeline state tracking (PipelineStep enum, pipelineTracker with file persistence), 4 recovery HTTP endpoints (retry/skip/force-complete/pipeline-state), RecoveryControlsPanel React component, decomposed FinalizeWave into 8 resumable steps with SSE pipeline_step events, wired into WaveBoard with reducer + API integration |
 | [0.76.0] | 2026-03-17 | Sidebar square edges + resilient lifecycle IMPL — removed all rounded corners from sidebar (ImplList, ResumeBanner, App toggle buttons), IMPL-resilient-execution-lifecycle.yaml with review-driven revisions (8-step pipeline, corrected function signatures, handleWaveFinalize decomposition) |

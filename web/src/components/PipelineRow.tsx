@@ -6,10 +6,13 @@ interface PipelineRowProps {
   onSelect: (slug: string) => void
 }
 
-/**
- * Single row in the pipeline view. Shows status, title, progress, and action buttons.
- * Created by Agent D (wave 2).
- */
+const borderColors: Record<string, string> = {
+  executing: 'border-l-blue-500',
+  complete: 'border-l-green-500',
+  blocked: 'border-l-amber-500',
+  queued: 'border-l-border',
+}
+
 export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.Element {
   const statusIcon = () => {
     switch (entry.status) {
@@ -20,14 +23,14 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
       case 'blocked':
         return <PauseCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
       case 'queued':
-        return <Clock className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+        return <Clock className="w-5 h-5 text-muted-foreground" />
     }
   }
 
   const statusDetail = () => {
     if (entry.status === 'executing' && entry.wave_progress) {
       return (
-        <span className="text-sm text-gray-600 dark:text-gray-400">
+        <span className="text-sm text-muted-foreground">
           {entry.wave_progress}
           {entry.active_agent && ` · ${entry.active_agent}`}
         </span>
@@ -42,7 +45,7 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
     }
     if (entry.status === 'queued' && entry.queue_position !== undefined) {
       return (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-sm text-muted-foreground">
           Position #{entry.queue_position}
         </span>
       )
@@ -52,7 +55,7 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
         ? `${Math.floor(entry.elapsed_seconds / 60)}m ${entry.elapsed_seconds % 60}s`
         : ''
       return (
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-sm text-muted-foreground">
           {new Date(entry.completed_at).toLocaleTimeString()}
           {elapsed && ` · ${elapsed}`}
         </span>
@@ -65,8 +68,8 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
     if (entry.status === 'executing') {
       return (
         <button
-          onClick={() => onSelect(entry.slug)}
-          className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onSelect(entry.slug) }}
+          className="px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 rounded hover:bg-blue-200 dark:hover:bg-blue-900/50 active:scale-95 transition-all"
         >
           Live
         </button>
@@ -75,8 +78,8 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
     if (entry.status === 'complete') {
       return (
         <button
-          onClick={() => onSelect(entry.slug)}
-          className="px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 rounded hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onSelect(entry.slug) }}
+          className="px-4 py-2 text-sm font-medium text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/30 rounded hover:bg-green-200 dark:hover:bg-green-900/50 active:scale-95 transition-all"
         >
           Review
         </button>
@@ -85,8 +88,8 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
     if (entry.status === 'blocked') {
       return (
         <button
-          onClick={() => onSelect(entry.slug)}
-          className="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded hover:bg-amber-200 dark:hover:bg-amber-900/50 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onSelect(entry.slug) }}
+          className="px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 rounded hover:bg-amber-200 dark:hover:bg-amber-900/50 active:scale-95 transition-all"
         >
           View
         </button>
@@ -95,8 +98,8 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
     if (entry.status === 'queued') {
       return (
         <button
-          onClick={() => onSelect(entry.slug)}
-          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+          onClick={(e) => { e.stopPropagation(); onSelect(entry.slug) }}
+          className="px-4 py-2 text-sm font-medium text-muted-foreground bg-muted rounded hover:bg-muted/80 active:scale-95 transition-all"
         >
           View
         </button>
@@ -107,14 +110,14 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
 
   return (
     <div
-      className="flex items-center gap-4 px-6 py-4 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+      className={`flex items-center gap-4 px-6 py-4 border-b border-border border-l-[3px] ${borderColors[entry.status] ?? 'border-l-transparent'} hover:bg-muted/50 transition-all duration-150 cursor-pointer`}
       onClick={() => onSelect(entry.slug)}
     >
       <div className="flex-shrink-0">
         {statusIcon()}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="font-medium text-gray-900 dark:text-gray-100 truncate">
+        <div className="font-medium text-foreground truncate">
           {entry.title}
         </div>
         <div className="flex items-center gap-2 mt-1">
