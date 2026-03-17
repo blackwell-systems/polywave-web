@@ -147,7 +147,18 @@ func runWaveLoop(
 	currentWave := protocol.CurrentWave(manifest)
 	startIdx := 0
 	if currentWave == nil {
-		// All waves complete — nothing to run.
+		// All waves complete — mark IMPL done if not already marked (E15 + E18).
+		// This handles the case where waves completed in a previous session but
+		// mark-complete was never reached (e.g. server restart between last merge
+		// and completion marking).
+		if err := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
+			IMPLPath: implPath,
+			RepoPath: repoPath,
+			Date:     time.Now().Format("2006-01-02"),
+		}); err != nil {
+			// Non-fatal: may already be marked complete (archived)
+			publish("mark_complete_warning", map[string]string{"error": err.Error()})
+		}
 		publish("run_complete", map[string]interface{}{
 			"status": "success",
 			"waves":  len(waves),
