@@ -64,6 +64,8 @@ export interface AgentPromptEntry {
 
 export interface IMPLDocResponse {
   slug: string
+  repo: string // repo name this IMPL belongs to
+  repo_path: string // absolute path to the repo
   doc_status: string // "active" or "complete" (lowercase)
   completed_at?: string // ISO date, present only when complete
   suitability: SuitabilityInfo
