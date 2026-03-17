@@ -471,7 +471,7 @@ export default function DependencyGraphPanel({ dependencyGraphText, executionSta
                         opacity={0.9}
                       />
                       <path
-                        d="M-3,0 L-1,2.5 L3,-2.5"
+                        d="M-4,0 L-1,3 L4,-3"
                         stroke="white"
                         strokeWidth={1.5}
                         strokeLinecap="round"

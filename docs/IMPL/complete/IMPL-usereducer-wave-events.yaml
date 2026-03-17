@@ -1,0 +1,376 @@
+completion_date: "2026-03-16"
+title: Refactor useWaveEvents hook to useReducer pattern
+feature_slug: usereducer-wave-events
+verdict: SUITABLE
+suitability_assessment: |
+    The useWaveEvents hook contains ~400 lines with 20+ SSE event handlers that each
+    call setState with complex update logic. The refactoring cleanly splits into:
+    (A) a pure reducer function with typed actions and exhaustive tests, and
+    (B) the hook wiring that replaces useState/setState with useReducer/dispatch.
+
+    Agent A owns the reducer file (pure function, no React dependencies beyond types)
+    and its test file. Agent B owns the hook file refactoring. Both can work in
+    parallel because the interface contract (WaveAction union type + reducer signature)
+    is fully specifiable upfront.
+
+    All existing exports (AppWaveState, WaveMergeState, WaveTestState, StageEntry,
+    StaleBranchesInfo, useWaveEvents) must be preserved — consumers (WaveBoard,
+    useExecutionSync, StageTimeline) must not need changes.
+test_command: cd web && npx vitest run
+lint_command: cd web && npx tsc --noEmit
+file_ownership:
+    - file: web/src/hooks/waveEventsReducer.ts
+      agent: A
+      wave: 1
+      action: new
+    - file: web/src/hooks/waveEventsReducer.test.ts
+      agent: A
+      wave: 1
+      action: new
+    - file: web/src/hooks/useWaveEvents.ts
+      agent: B
+      wave: 2
+      action: modify
+    - file: web/src/hooks/useWaveEvents.test.ts
+      agent: B
+      wave: 2
+      action: new
+interface_contracts:
+    - name: WaveAction (discriminated union)
+      description: |
+        The discriminated union of all actions the reducer handles. Each SSE event
+        type maps to one action. The disk-status seeding also dispatches actions
+        through this same type.
+      definition: |
+        // Every action has a `type` field matching an SSE event name or internal operation.
+        // Data payloads match the existing JSON.parse casts in useWaveEvents.ts.
+
+        type WaveAction =
+          | { type: 'CONNECT' }
+          | { type: 'DISCONNECT'; error?: string }
+          | { type: 'SEED_DISK_STATUS'; agents: AgentStatus[]; waves: WaveState[]; scaffoldStatus: AppWaveState['scaffoldStatus']; mergedWaves: number[] }
+          | { type: 'SCAFFOLD_STARTED' }
+          | { type: 'SCAFFOLD_OUTPUT'; chunk: string }
+          | { type: 'SCAFFOLD_COMPLETE' }
+          | { type: 'SCAFFOLD_FAILED'; error: string }
+          | { type: 'AGENT_STARTED'; agent: string; wave: number; files: string[] }
+          | { type: 'AGENT_COMPLETE'; agent: string; wave: number; branch: string }
+          | { type: 'AGENT_FAILED'; agent: string; wave: number; failure_type: string; notes?: string; message: string }
+          | { type: 'AGENT_OUTPUT'; agent: string; wave: number; chunk: string }
+          | { type: 'AGENT_TOOL_CALL'; agent: string; wave: number; tool_id: string; tool_name: string; input: string; is_result: boolean; is_error: boolean; duration_ms: number }
+          | { type: 'WAVE_COMPLETE'; wave: number; merge_status: string }
+          | { type: 'RUN_COMPLETE'; status: string }
+          | { type: 'RUN_FAILED'; error: string }
+          | { type: 'WAVE_GATE_PENDING'; wave: number; next_wave: number }
+          | { type: 'WAVE_GATE_RESOLVED' }
+          | { type: 'MERGE_STARTED'; wave: number }
+          | { type: 'MERGE_OUTPUT'; wave: number; chunk: string }
+          | { type: 'MERGE_COMPLETE'; wave: number }
+          | { type: 'MERGE_FAILED'; wave: number; error: string; conflicting_files: string[] }
+          | { type: 'CONFLICT_RESOLVING'; wave: number; file: string }
+          | { type: 'CONFLICT_RESOLVED'; wave: number; file: string }
+          | { type: 'CONFLICT_RESOLUTION_FAILED'; wave: number; file: string; error: string }
+          | { type: 'TEST_STARTED'; wave: number }
+          | { type: 'TEST_OUTPUT'; wave: number; chunk: string }
+          | { type: 'TEST_COMPLETE'; wave: number }
+          | { type: 'TEST_FAILED'; wave: number; output: string }
+          | { type: 'STALE_BRANCHES_DETECTED'; slug: string; branches: string[]; count: number }
+          | { type: 'STAGE_TRANSITION'; entry: StageEntry }
+      location: web/src/hooks/waveEventsReducer.ts
+    - name: waveEventsReducer
+      description: |
+        Pure reducer function: (state: AppWaveState, action: WaveAction) => AppWaveState.
+        Contains all state transition logic currently scattered across setState callbacks.
+        Exported for direct unit testing.
+      definition: |
+        export function waveEventsReducer(state: AppWaveState, action: WaveAction): AppWaveState
+      location: web/src/hooks/waveEventsReducer.ts
+    - name: initialWaveState
+      description: |
+        The initial state constant, matching the current useState initializer.
+        Exported so the hook and tests can share it.
+      definition: |
+        export const initialWaveState: AppWaveState = {
+          agents: [],
+          scaffoldStatus: 'idle',
+          scaffoldOutput: '',
+          runComplete: false,
+          connected: false,
+          waves: [],
+          wavesMergeState: new Map(),
+          wavesTestState: new Map(),
+          stageEntries: [],
+        }
+      location: web/src/hooks/waveEventsReducer.ts
+    - name: buildWaves (helper, exported for testing)
+      description: |
+        Extracted helper that rebuilds WaveState[] from agents list.
+        Currently an inner function of the useEffect. Exported from the
+        reducer file so both the reducer and tests can use it.
+      definition: |
+        export function buildWaves(agents: AgentStatus[], prevWaves: WaveState[]): WaveState[]
+      location: web/src/hooks/waveEventsReducer.ts
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |
+            ## What to Implement
+
+            Create `web/src/hooks/waveEventsReducer.ts` containing:
+
+            1. **`WaveAction` discriminated union type** — One variant per SSE event type
+               plus internal actions (CONNECT, DISCONNECT, SEED_DISK_STATUS). Use
+               SCREAMING_SNAKE_CASE for type discriminants. See the interface contract
+               for the full union definition.
+
+            2. **`initialWaveState` constant** — The initial AppWaveState value (matches
+               the current useState initializer in useWaveEvents.ts).
+
+            3. **`buildWaves` helper** — Extracted from the current inner function in
+               useWaveEvents.ts (lines 164-177). Rebuilds WaveState[] from an agents
+               array, preserving existing wave metadata.
+
+            4. **`upsertAgent` helper** — Extracted from the current inner function
+               (lines 141-162). Takes state + agent ID + wave + partial update, returns
+               new state with updated agents and rebuilt waves.
+
+            5. **`waveEventsReducer` function** — `(state: AppWaveState, action: WaveAction) => AppWaveState`.
+               A pure function containing all state transition logic currently in the
+               setState callbacks of useWaveEvents.ts. Each case in the switch handles
+               one action type, matching the existing setState logic exactly.
+
+            Reference the current useWaveEvents.ts at
+            `/Users/dayna.blackwell/code/scout-and-wave-web/web/src/hooks/useWaveEvents.ts`
+            to extract the exact logic for each event handler. The reducer must produce
+            identical state transitions.
+
+            **Important:** Import types from `../types` (AgentStatus, WaveState,
+            AgentOutputData, AgentToolCallData, ToolCallEntry) and re-export
+            AppWaveState, WaveMergeState, WaveTestState, StageEntry, StaleBranchesInfo
+            from this file (they are currently defined in useWaveEvents.ts and will be
+            moved here).
+
+            ## Interfaces to Implement
+
+            - `WaveAction` type (discriminated union)
+            - `waveEventsReducer(state: AppWaveState, action: WaveAction): AppWaveState`
+            - `initialWaveState: AppWaveState`
+            - `buildWaves(agents: AgentStatus[], prevWaves: WaveState[]): WaveState[]`
+            - Re-export: `AppWaveState`, `WaveMergeState`, `WaveTestState`, `StageEntry`, `StaleBranchesInfo`
+
+            ## Interfaces to Call
+
+            - `AgentStatus`, `WaveState`, `AgentOutputData`, `AgentToolCallData`, `ToolCallEntry` from `../types`
+
+            ## Tests to Write
+
+            Create `web/src/hooks/waveEventsReducer.test.ts` with vitest. The reducer
+            is a pure function — no React rendering needed, just direct function calls.
+
+            1. TestInitialState — initialWaveState has correct defaults
+            2. TestConnect — CONNECT sets connected: true, clears error
+            3. TestDisconnect — DISCONNECT sets connected: false, sets error
+            4. TestSeedDiskStatus — SEED_DISK_STATUS populates agents, waves, scaffoldStatus, mergeState
+            5. TestScaffoldLifecycle — SCAFFOLD_STARTED/OUTPUT/COMPLETE/FAILED transitions
+            6. TestAgentStarted — AGENT_STARTED creates agent with status 'running'
+            7. TestAgentStartedUpsert — AGENT_STARTED updates existing agent
+            8. TestAgentComplete — sets status 'complete' and branch
+            9. TestAgentFailed — sets status 'failed', failure_type, notes, message
+            10. TestAgentOutput — appends chunk to existing agent output
+            11. TestAgentToolCallNew — prepends tool call entry with status 'running'
+            12. TestAgentToolCallResult — updates matching entry with duration and status
+            13. TestAgentToolCallCap — caps at 50 entries
+            14. TestWaveComplete — marks wave complete with merge_status
+            15. TestRunComplete — sets runComplete true
+            16. TestRunFailed — marks pending/running agents as failed, sets runFailed
+            17. TestWaveGatePending — sets waveGate
+            18. TestWaveGateResolved — clears waveGate
+            19. TestMergeLifecycle — MERGE_STARTED/OUTPUT/COMPLETE transitions
+            20. TestMergeFailed — sets failed status with error and conflicting files
+            21. TestConflictResolving — sets resolving status and resolvingFile
+            22. TestConflictResolved — appends to resolvedFiles
+            23. TestConflictResolutionFailed — sets failed with error and failedFile
+            24. TestTestLifecycle — TEST_STARTED/OUTPUT/COMPLETE/FAILED transitions
+            25. TestStaleBranches — STALE_BRANCHES_DETECTED sets staleBranches
+            26. TestStageTransition — appends new entry, updates running entry in-place
+            27. TestBuildWaves — verifies wave grouping and sort order
+
+            ## Verification Gate
+
+            ```bash
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && npx vitest run src/hooks/waveEventsReducer.test.ts
+            ```
+
+            ## Constraints
+
+            - This is a NEW file — do not modify useWaveEvents.ts (owned by Agent B).
+            - The reducer must be a pure function — no side effects, no API calls.
+            - State shape (AppWaveState) must exactly match the current interface.
+            - Map objects (wavesMergeState, wavesTestState) must be new Map instances
+              on every mutation (React immutability requirement).
+            - All type interfaces (AppWaveState, WaveMergeState, etc.) move to this
+              file but must also be re-exported so existing imports keep working
+              when Agent B updates useWaveEvents.ts.
+          files:
+            - web/src/hooks/waveEventsReducer.ts
+            - web/src/hooks/waveEventsReducer.test.ts
+    - number: 2
+      agents:
+        - id: B
+          task: |
+            ## What to Implement
+
+            Refactor `web/src/hooks/useWaveEvents.ts` to use the reducer from
+            `./waveEventsReducer`. The file should shrink from ~457 lines to ~80-100
+            lines. The refactored hook:
+
+            1. **Replaces `useState<AppWaveState>` with `useReducer(waveEventsReducer, initialWaveState)`.**
+
+            2. **Removes all type/interface definitions** (AppWaveState, WaveMergeState,
+               WaveTestState, StageEntry, StaleBranchesInfo) — these now live in
+               waveEventsReducer.ts. Re-export them from this file for backward
+               compatibility:
+               ```ts
+               export type { AppWaveState, WaveMergeState, WaveTestState, StageEntry, StaleBranchesInfo } from './waveEventsReducer'
+               ```
+
+            3. **Removes helper functions** (upsertAgent, buildWaves) — now in the reducer.
+
+            4. **Replaces every `setState(prev => ...)` call with `dispatch({ type: ... })`.**
+               Each SSE addEventListener callback becomes a thin dispatcher:
+               ```ts
+               es.addEventListener('agent_started', (event: MessageEvent) => {
+                 const data = JSON.parse(event.data)
+                 dispatch({ type: 'AGENT_STARTED', agent: data.agent, wave: data.wave, files: data.files })
+               })
+               ```
+
+            5. **Refactors disk-status seeding** to dispatch SEED_DISK_STATUS with the
+               pre-processed data (agent mapping, scaffold status, merged waves).
+               The disk-status useEffect still does the fetch + data transformation,
+               but calls `dispatch({ type: 'SEED_DISK_STATUS', ... })` instead of setState.
+
+            6. **Refactors connection state** — `es.onopen` dispatches CONNECT,
+               `es.onerror` dispatches DISCONNECT.
+
+            ## Interfaces to Implement
+
+            - `useWaveEvents(slug: string): AppWaveState` — same signature, same return type
+
+            ## Interfaces to Call
+
+            - `waveEventsReducer`, `initialWaveState`, `WaveAction` from `./waveEventsReducer`
+            - `fetchDiskWaveStatus` from `../api`
+            - React `useReducer`, `useEffect`, `useRef`
+
+            ## Tests to Write
+
+            Create `web/src/hooks/useWaveEvents.test.ts` with vitest + @testing-library/react.
+            These are integration tests verifying the hook dispatches correctly when SSE
+            events arrive.
+
+            1. TestInitialState — hook returns initialWaveState on mount
+            2. TestConnectedOnOpen — hook sets connected: true when EventSource opens
+            3. TestAgentStartedDispatch — mock EventSource fires agent_started, verify
+               state.agents contains the new agent with status 'running'
+            4. TestRunCompleteDispatch — mock EventSource fires run_complete, verify
+               state.runComplete is true
+            5. TestCleanup — hook closes EventSource on unmount
+
+            Use a minimal EventSource mock (vi.stubGlobal) that captures addEventListener
+            calls and allows firing events programmatically.
+
+            ## Verification Gate
+
+            ```bash
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && npx vitest run src/hooks/useWaveEvents.test.ts src/hooks/useExecutionSync.test.ts
+            ```
+
+            Run useExecutionSync.test.ts too — it mocks useWaveEvents and verifies the
+            public API contract. If those tests pass, the refactoring preserved the
+            interface correctly.
+
+            ## Constraints
+
+            - MUST preserve all existing exports: `useWaveEvents`, `AppWaveState`,
+              `WaveMergeState`, `WaveTestState`, `StageEntry`, `StaleBranchesInfo`.
+              Use `export type { ... } from './waveEventsReducer'` for type re-exports.
+            - MUST NOT change the return type of useWaveEvents.
+            - MUST NOT modify any consumer files (WaveBoard.tsx, useExecutionSync.ts,
+              StageTimeline.tsx).
+            - The EventSource setup and cleanup logic stays in this file — only the
+              state management moves to the reducer.
+            - Keep the esRef for cleanup. The useReducer dispatch is stable across
+              renders (unlike setState, but same practical effect here).
+          files:
+            - web/src/hooks/useWaveEvents.ts
+            - web/src/hooks/useWaveEvents.test.ts
+          dependencies:
+            - A
+quality_gates:
+    level: standard
+    gates:
+        - type: typecheck
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+          required: true
+        - type: test
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx vitest run
+          required: true
+        - type: custom
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx vite build
+          required: true
+          description: Vite production build (verifies no import errors)
+completion_reports:
+    A:
+        status: complete
+        worktree: /Users/dayna.blackwell/code/scout-and-wave-web/.claude/worktrees/wave1-agent-A
+        branch: wave1-agent-A
+        commit: 4505a842196cbc30583d34e92b16915a5c9891b9
+        files_changed:
+            - web/src/hooks/waveEventsReducer.test.ts
+            - web/src/hooks/waveEventsReducer.ts
+            - web/src/types.ts
+        notes: auto-committed by orchestrator (API agent)
+    B:
+        status: complete
+        worktree: /Users/dayna.blackwell/code/scout-and-wave-web/.claude/worktrees/wave2-agent-B
+        branch: wave2-agent-B
+        commit: 443e8ee3cc8edd5647ecbb7c3cf5921ab7ffc429
+        files_changed:
+            - REFACTORING_SUMMARY.md
+            - web/src/hooks/useWaveEvents.test.ts
+            - web/src/hooks/useWaveEvents.ts
+            - web/src/hooks/waveEventsReducer.ts
+        notes: auto-committed by orchestrator (API agent)
+integration_reports:
+    wave2:
+        wave: 2
+        gaps: []
+        valid: true
+        summary: 'Wave 2: all exports are integrated (no gaps detected)'
+pre_mortem:
+    overall_risk: low
+    rows:
+        - scenario: Re-exported types break import resolution for consumers
+          likelihood: low
+          impact: high
+          mitigation: |
+            Agent B's verification gate runs useExecutionSync.test.ts which imports
+            AppWaveState from useWaveEvents. TypeScript will catch any broken re-exports
+            at compile time. The tsc --noEmit gate covers WaveBoard and StageTimeline.
+        - scenario: Reducer produces subtly different state than original setState callbacks
+          likelihood: medium
+          impact: medium
+          mitigation: |
+            Agent A writes 27 unit tests covering every action type. Tests should
+            construct realistic prev-state and verify exact output, matching the
+            existing setState logic line-by-line.
+        - scenario: Map immutability — reducer returns same Map reference causing React skip
+          likelihood: low
+          impact: medium
+          mitigation: |
+            Agent A's tests should verify that wavesMergeState and wavesTestState
+            are new Map instances (using toBe/not.toBe referential checks) on every
+            mutation action.
+state: "COMPLETE"
