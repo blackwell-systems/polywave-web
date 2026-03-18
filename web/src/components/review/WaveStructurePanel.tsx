@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, useLayoutEffect } from 'react'
 import { IMPLDocResponse } from '../../types'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { getAgentColor, getAgentColorWithOpacity } from '../../lib/agentColors'
@@ -61,6 +61,18 @@ function Orb({ color, filled, filling, size = 20, type }: {
 }) {
   const [uid] = useState(() => `orb-${++orbCounter}`)
   const r = size / 2
+  const prevFilled = useRef(filled)
+  const [justFilled, setJustFilled] = useState(false)
+
+  // Detect unfilled → filled transition
+  useLayoutEffect(() => {
+    if (filled && !prevFilled.current) {
+      setJustFilled(true)
+      const timer = setTimeout(() => setJustFilled(false), 800)
+      return () => clearTimeout(timer)
+    }
+    prevFilled.current = filled
+  }, [filled])
 
   // Derive lighter/darker shades from the base color
   const lightColor = color + '80'
@@ -72,8 +84,14 @@ function Orb({ color, filled, filling, size = 20, type }: {
       width={size}
       height={size}
       viewBox={`0 0 ${size} ${size}`}
-      className={`flex-shrink-0 transition-all duration-700 ease-out${filling ? ' scale-110' : ''}`}
-      style={{ filter: filled ? `drop-shadow(0 0 6px ${color}60)` : undefined }}
+      className="flex-shrink-0"
+      style={{
+        filter: filled ? `drop-shadow(0 0 ${justFilled ? 12 : 6}px ${color}${justFilled ? 'aa' : '60'})` : undefined,
+        transform: justFilled ? 'scale(1.35)' : filling ? 'scale(1.1)' : 'scale(1)',
+        transition: justFilled
+          ? 'transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.15s ease-out'
+          : 'transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.5s ease-out',
+      }}
     >
       <defs>
         <radialGradient id={`${uid}-grad`} cx="35%" cy="35%" r="65%">
@@ -89,6 +107,12 @@ function Orb({ color, filled, filling, size = 20, type }: {
         </radialGradient>
         <radialGradient id={`${uid}-hl`} cx="30%" cy="25%" r="35%">
           <stop offset="0%" stopColor="white" stopOpacity={filled ? 0.7 : 0.3} />
+          <stop offset="100%" stopColor="white" stopOpacity="0" />
+        </radialGradient>
+        {/* Shine burst gradient — expands outward on fill */}
+        <radialGradient id={`${uid}-shine`} cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor="white" stopOpacity="0.8" />
+          <stop offset="60%" stopColor="white" stopOpacity="0.2" />
           <stop offset="100%" stopColor="white" stopOpacity="0" />
         </radialGradient>
       </defs>
@@ -108,6 +132,13 @@ function Orb({ color, filled, filling, size = 20, type }: {
       />
       {/* Inner highlight — glassy reflection */}
       <circle cx={r} cy={r} r={r - 2.5} fill={`url(#${uid}-hl)`} />
+      {/* Shine burst — plays once on fill transition */}
+      {justFilled && (
+        <circle cx={r} cy={r} r={r - 1} fill={`url(#${uid}-shine)`}>
+          <animate attributeName="r" from={`${r * 0.3}`} to={`${r + 2}`} dur="0.6s" fill="freeze" />
+          <animate attributeName="opacity" from="1" to="0" dur="0.6s" fill="freeze" />
+        </circle>
+      )}
       {/* Completion ring */}
       {type === 'complete' && filled && (
         <circle cx={r} cy={r} r={r - 0.5} fill="none" stroke={lightColor} strokeWidth="0.75" strokeOpacity={0.6}>
