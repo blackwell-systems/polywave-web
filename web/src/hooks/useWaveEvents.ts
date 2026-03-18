@@ -56,8 +56,8 @@ export function useWaveEvents(slug: string): AppWaveState {
         w.complete = w.agents.length > 0 && w.agents.every(a => a.status === 'complete')
       }
 
-      // Seed scaffold status
-      const scaffoldStatus = disk.scaffold_status === 'committed' || disk.scaffold_status === 'none'
+      // Seed scaffold status — 'none' means no scaffolds exist, keep idle
+      const scaffoldStatus = disk.scaffold_status === 'committed'
         ? ('complete' as const)
         : ('idle' as const)
 

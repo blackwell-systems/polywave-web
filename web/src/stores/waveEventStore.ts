@@ -101,9 +101,9 @@ export function subscribe(slug: string, listener: () => void): () => void {
             w.complete = w.agents.length > 0 && w.agents.every(a => a.status === 'complete')
           }
 
-          // Seed scaffold status
+          // Seed scaffold status — 'none' means no scaffolds exist, keep idle
           const scaffoldStatus =
-            disk.scaffold_status === 'committed' || disk.scaffold_status === 'none'
+            disk.scaffold_status === 'committed'
               ? 'complete'
               : 'idle'
 
