@@ -545,7 +545,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                     {allComplete && mergeStatus === 'idle' && !hasGate && (
                       <button
                         onClick={() => void handleMergeWave(wave.wave)}
-                        className="mt-3 text-sm font-medium px-4 py-1.5 rounded-md bg-violet-600 text-white hover:bg-violet-700 transition-colors"
+                        className="mt-3 w-full text-sm font-medium px-4 py-2.5 rounded-none bg-violet-600 text-white hover:bg-violet-700 active:scale-[0.98] transition-all"
                       >
                         Merge Wave {wave.wave}
                       </button>
@@ -577,7 +577,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                         {testStatus === 'idle' && (
                           <button
                             onClick={() => void handleRunTests(wave.wave)}
-                            className="text-sm font-medium px-4 py-1.5 rounded-md bg-teal-600 text-white hover:bg-teal-700 transition-colors"
+                            className="w-full text-sm font-medium px-4 py-2.5 rounded-none bg-teal-600 text-white hover:bg-teal-700 active:scale-[0.98] transition-all"
                           >
                             Run Tests
                           </button>

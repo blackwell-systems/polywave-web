@@ -97,7 +97,6 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("POST /api/impl/{slug}/approve", s.handleApprove)
 	s.mux.HandleFunc("POST /api/impl/{slug}/reject", s.handleReject)
 	s.mux.HandleFunc("GET /api/wave/{slug}/events", s.handleWaveEvents)
-	s.mux.HandleFunc("GET /api/git/{slug}/activity", s.handleGitActivity)
 	s.mux.HandleFunc("POST /api/wave/{slug}/start", s.handleWaveStart)
 	s.mux.HandleFunc("POST /api/scout/run", s.handleScoutRun)
 	s.mux.HandleFunc("POST /api/scout/{slug}/rerun", s.handleScoutRerun)

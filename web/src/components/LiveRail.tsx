@@ -2,10 +2,8 @@
 // Stub created by Scaffold Agent. Full implementation by Wave 1 Agent D.
 
 import { useEffect } from 'react'
-import { useGitActivity } from '../hooks/useGitActivity'
 import ScoutLauncher from './ScoutLauncher'
 import WaveBoard from './WaveBoard'
-import GitActivitySidebar from './git/GitActivitySidebar'
 import { X } from 'lucide-react'
 
 export type LiveView = null | 'scout' | 'wave'
@@ -23,7 +21,6 @@ export interface LiveRailProps {
 }
 
 export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady, onClose, repos, activeRepo }: LiveRailProps): JSX.Element {
-  const gitSnapshot = useGitActivity(liveView === 'wave' && slug ? slug : '')
 
   // Escape key handler to close the rail
   useEffect(() => {
@@ -61,14 +58,8 @@ export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady
 
       {/* Wave view */}
       {liveView === 'wave' && slug && (
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <div className="flex-1 overflow-y-auto min-h-0">
-            <WaveBoard slug={slug} compact={true} repos={repos} />
-          </div>
-          <div className="border-t shrink-0 p-3">
-            <h2 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Git Activity</h2>
-            <GitActivitySidebar slug={slug} snapshot={gitSnapshot} />
-          </div>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <WaveBoard slug={slug} compact={true} repos={repos} />
         </div>
       )}
 
