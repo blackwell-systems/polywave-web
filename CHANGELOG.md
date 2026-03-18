@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.87.0] | 2026-03-18 | UI fixes — close WaveBoard when opening Pipeline, right sidebar narrowed (340→320px), dark mode toggle flips light↔dark directly (fixes first click doing nothing when OS matches saved default) |
 | [0.86.0] | 2026-03-18 | Multi-repo IMPL watcher + WaveBoard UX — fsnotify watches all configured repos (fixes new IMPLs not showing in sidebar), scaffold-aware Start button (shows "Start Scaffold Agent" when scaffolds pending), hide Sc Complete card when no scaffolds exist, remove pipeline row left border (double-border cleanup) |
 | [0.85.0] | 2026-03-18 | Wave structure + WaveBoard fixes — orb fill pop animation (scale 1.35x + shine burst on completion), progress rail stops at unfilled orb top (no line through transparent glass), complete orb fills when all waves done, live merge failure overrides stale disk success, hide Start Wave button for already-complete waves |
 | [0.84.0] | 2026-03-18 | Wave structure live rail + button styling — line extends to running wave orb, WaveBoard buttons transparent/futuristic (backdrop-blur, border glow), Start Wave full-width |
