@@ -635,15 +635,20 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                           </div>
                         )}
 
-                        {/* Start Next Wave — show after merge success if next wave is still pending and no gate is active */}
-                        {wave.wave < Math.max(...state.waves.map(w => w.wave)) && !state.waves.find(w => w.wave === wave.wave + 1)?.complete && !hasGate && (
-                          <button
-                            onClick={() => void startWave(slug)}
-                            className="w-full text-sm font-medium px-4 py-2.5 rounded-none bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 hover:border-blue-500/50 active:scale-[0.98] transition-all backdrop-blur-sm"
-                          >
-                            Start Wave {wave.wave + 1}
-                          </button>
-                        )}
+                        {/* Start Next Wave — show after merge success if next wave is still fully pending and no gate is active */}
+                        {(() => {
+                          const nextWave = state.waves.find(w => w.wave === wave.wave + 1)
+                          const nextWaveFullyPending = nextWave && !nextWave.complete && nextWave.agents.every(a => a.status === 'pending' || !a.status)
+                          const isLastWave = wave.wave >= Math.max(...state.waves.map(w => w.wave))
+                          return !isLastWave && nextWaveFullyPending && !hasGate && !state.waveGate && (
+                            <button
+                              onClick={() => void startWave(slug)}
+                              className="w-full text-sm font-medium px-4 py-2.5 rounded-none bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 hover:border-blue-500/50 active:scale-[0.98] transition-all backdrop-blur-sm"
+                            >
+                              Start Wave {wave.wave + 1}
+                            </button>
+                          )
+                        })()}
                       </div>
                     )}
 
