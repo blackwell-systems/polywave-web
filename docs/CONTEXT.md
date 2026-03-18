@@ -13,3 +13,5 @@
   - IMPL doc: docs/IMPL/IMPL-live-file-activity.yaml
 - **autonomy-web-ui**: completed 2026-03-17, 2 waves, 6 agents
   - IMPL doc: docs/IMPL/IMPL-autonomy-web-ui.yaml
+- **external-wave-event-store**: completed 2026-03-18, 2 waves, 2 agents
+  - IMPL doc: docs/IMPL/IMPL-external-wave-event-store.yaml

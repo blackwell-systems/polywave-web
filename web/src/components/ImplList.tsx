@@ -28,27 +28,27 @@ function DeleteModal({ slug, onConfirm, onCancel }: DeleteModalProps): JSX.Eleme
       onClick={onCancel}
     >
       <div
-        className="bg-background border border-border rounded-lg shadow-lg p-5 w-80 flex flex-col gap-4"
+        className="bg-background border border-border rounded-none shadow-lg p-5 w-80 flex flex-col gap-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-1">
           <span className="text-sm font-semibold">Delete plan?</span>
           <span className="text-xs text-muted-foreground">
             This will permanently remove{' '}
-            <code className="font-mono text-destructive bg-destructive/10 px-1 rounded">{slug}</code>{' '}
+            <code className="font-mono text-destructive bg-destructive/10 px-1 rounded-none">{slug}</code>{' '}
             from disk. This cannot be undone.
           </span>
         </div>
         <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}
-            className="text-xs px-3 py-1.5 rounded-md border border-border bg-background text-foreground hover:bg-muted transition-colors"
+            className="text-xs px-3 py-1.5 rounded-none border border-border bg-background text-foreground hover:bg-muted transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="text-xs px-3 py-1.5 rounded-md bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium transition-colors"
+            className="text-xs px-3 py-1.5 rounded-none bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium transition-colors"
           >
             Delete
           </button>
@@ -77,12 +77,12 @@ function HoverCard({ slug }: { slug: string; anchorRef?: React.RefObject<HTMLDiv
   const totalAgents = data?.waves.reduce((sum, w) => sum + w.agents.length, 0) ?? 0
 
   return (
-    <div className="absolute left-full top-0 ml-2 z-50 w-56 bg-popover border border-border rounded-lg shadow-xl p-3 text-xs pointer-events-none">
+    <div className="absolute left-full top-0 ml-2 z-50 w-56 bg-popover border border-border rounded-none shadow-xl p-3 text-xs pointer-events-none">
       <p className="font-medium text-foreground truncate mb-2">{slug}</p>
       {loading ? (
         <div className="space-y-1.5">
-          <div className="animate-pulse h-3 bg-muted rounded w-3/4" />
-          <div className="animate-pulse h-3 bg-muted rounded w-1/2" />
+          <div className="animate-pulse h-3 bg-muted rounded-none w-3/4" />
+          <div className="animate-pulse h-3 bg-muted rounded-none w-1/2" />
         </div>
       ) : data ? (
         <div className="space-y-1 text-muted-foreground">
@@ -136,7 +136,7 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
         variant="ghost"
         size="sm"
         className={cn(
-          'flex-1 justify-start font-mono text-xs pr-6 gap-1.5 flex-col items-start h-auto py-1.5',
+          'flex-1 justify-start font-mono text-xs pr-6 gap-1.5 flex-col items-start h-auto py-1.5 rounded-none',
           isSelected && 'bg-primary/10 border-l-2 border-primary rounded-none',
           isComplete && !isSelected && 'opacity-40 text-muted-foreground line-through hover:opacity-80 hover:no-underline'
         )}
@@ -144,10 +144,10 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
         onClick={() => onSelect(e.slug)}
       >
         <div className="flex items-center gap-1.5 w-full">
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${isComplete ? 'bg-primary/40' : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'}`} />
+          <span className={`w-1.5 h-1.5 rounded-none shrink-0 ${isComplete ? 'bg-primary/40' : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'}`} />
           <span className="truncate">{isComplete ? '✓ ' : ''}{e.slug}</span>
           {e.is_multi_repo && (
-            <span className="text-[9px] px-1 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-mono shrink-0">multirepo</span>
+            <span className="text-[9px] px-1 py-0.5 rounded-none bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-mono shrink-0">multirepo</span>
           )}
         </div>
         {e.is_multi_repo && e.involved_repos && e.involved_repos.length > 0 && (
@@ -167,7 +167,7 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
       </Button>
       <button
         onClick={(ev) => { ev.stopPropagation(); onRequestDelete(e.slug) }}
-        className="absolute right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted-foreground hover:text-destructive transition-opacity"
+        className="absolute right-1 opacity-0 group-hover:opacity-100 p-0.5 rounded-none text-muted-foreground hover:text-destructive transition-opacity"
         title="Delete"
       >
         ✕
@@ -218,27 +218,27 @@ export default function ImplList(props: ImplListProps): JSX.Element {
           onClick={() => setPendingRemoveRepo(null)}
         >
           <div
-            className="bg-background border border-border rounded-lg shadow-lg p-5 w-80 flex flex-col gap-4"
+            className="bg-background border border-border rounded-none shadow-lg p-5 w-80 flex flex-col gap-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex flex-col gap-1">
               <span className="text-sm font-semibold">Remove repository?</span>
               <span className="text-xs text-muted-foreground">
                 This will remove{' '}
-                <code className="font-mono text-destructive bg-destructive/10 px-1 rounded">{pendingRemoveRepo}</code>{' '}
+                <code className="font-mono text-destructive bg-destructive/10 px-1 rounded-none">{pendingRemoveRepo}</code>{' '}
                 from the sidebar. You can re-add it in Settings.
               </span>
             </div>
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setPendingRemoveRepo(null)}
-                className="text-xs px-3 py-1.5 rounded-md border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                className="text-xs px-3 py-1.5 rounded-none border border-border bg-background text-foreground hover:bg-muted transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => { onRemoveRepo?.(pendingRemoveRepo); setPendingRemoveRepo(null) }}
-                className="text-xs px-3 py-1.5 rounded-md bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium transition-colors"
+                className="text-xs px-3 py-1.5 rounded-none bg-destructive hover:bg-destructive/90 text-destructive-foreground font-medium transition-colors"
               >
                 Remove
               </button>
@@ -249,7 +249,7 @@ export default function ImplList(props: ImplListProps): JSX.Element {
       <div className="flex flex-col gap-1 p-2">
         {entries.length === 0 ? (
           <p className="text-muted-foreground text-xs px-2">
-            No IMPL docs found. Run <code className="bg-muted px-1 rounded">saw scout</code> first.
+            No IMPL docs found. Run <code className="bg-muted px-1 rounded-none">saw scout</code> first.
           </p>
         ) : repos && repos.length >= 2 ? (
           // Multi-repo: group by repo with collapsible sections
@@ -294,14 +294,14 @@ export default function ImplList(props: ImplListProps): JSX.Element {
                         />
                       ))}
                       {completedEntries.length > 0 && (
-                        <div className="mt-2 ml-1 rounded-md bg-background/80">
+                        <div className="mt-2 ml-1 rounded-none bg-background/80">
                           <button
                             onClick={() => setShowCompletedRepos(prev => {
                               const next = new Set(prev)
                               next.has(repoName) ? next.delete(repoName) : next.add(repoName)
                               return next
                             })}
-                            className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted rounded-md transition-colors"
+                            className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted rounded-none transition-colors"
                           >
                             <span>Completed ({completedEntries.length})</span>
                             <span className="text-[10px]">{showCompletedRepos.has(repoName) ? '▼' : '▶'}</span>
@@ -363,14 +363,14 @@ export default function ImplList(props: ImplListProps): JSX.Element {
               />
             ))}
             {Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').length > 0 && (
-              <div className="mt-2 mx-1 rounded-md bg-background/80">
+              <div className="mt-2 mx-1 rounded-none bg-background/80">
                 <button
                   onClick={() => setShowCompletedRepos(prev => {
                     const next = new Set(prev)
                     next.has('_all') ? next.delete('_all') : next.add('_all')
                     return next
                   })}
-                  className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted rounded-md transition-colors"
+                  className="w-full flex items-center justify-between text-xs font-medium uppercase tracking-wider text-muted-foreground px-2 py-1.5 hover:bg-muted rounded-none transition-colors"
                 >
                   <span>Completed ({Object.values(entriesByRepo).flat().filter((e) => e.doc_status === 'complete').length})</span>
                   <span className="text-[10px]">{showCompletedRepos.has('_all') ? '▼' : '▶'}</span>

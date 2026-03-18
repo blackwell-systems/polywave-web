@@ -9,16 +9,16 @@ export default function ResumeBanner({ sessions, onSelect }: ResumeBannerProps):
   if (sessions.length === 0) return null
 
   return (
-    <div className="mx-2 mt-2 mb-1 rounded-md border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-2 space-y-1.5">
+    <div className="mx-2 mt-2 mb-1 rounded-none border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 p-2 space-y-1.5">
       <div className="flex items-center gap-1.5 text-xs font-medium text-amber-800 dark:text-amber-300">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+        <span className="w-1.5 h-1.5 rounded-none bg-amber-500 animate-pulse" />
         Interrupted {sessions.length === 1 ? 'session' : 'sessions'}
       </div>
       {sessions.map((s) => (
         <button
           key={s.impl_slug}
           onClick={() => onSelect(s.impl_slug)}
-          className="w-full text-left rounded px-2 py-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors group"
+          className="w-full text-left rounded-none px-2 py-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors group"
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-foreground truncate">{s.impl_slug}</span>
