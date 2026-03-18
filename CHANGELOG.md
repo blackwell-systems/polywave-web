@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.85.0] | 2026-03-18 | Wave structure + WaveBoard fixes — orb fill pop animation (scale 1.35x + shine burst on completion), progress rail stops at unfilled orb top (no line through transparent glass), complete orb fills when all waves done, live merge failure overrides stale disk success, hide Start Wave button for already-complete waves |
 | [0.84.0] | 2026-03-18 | Wave structure live rail + button styling — line extends to running wave orb, WaveBoard buttons transparent/futuristic (backdrop-blur, border glow), Start Wave full-width |
 | [0.83.0] | 2026-03-18 | Cross-repo resume + UI fixes — cross-repo `waveAgentsHaveCommits` checks branches in correct sibling repos, file ownership table sorts repo groups by earliest wave (fixes wave 1 appearing last), wave structure rail rewrite (discrete segments, IMPL-doc-only fill logic), scaffold skip on Wave 2+, sidebar execution indicator, dep graph larger arrows, WaveBoard merge box square edges |
 | [0.82.0] | 2026-03-17 | Scaffold + cross-repo model fix — scaffold failed node gets red outline (WaveStructurePanel + DependencyGraphPanel + useExecutionSync), cross-repo config merge (empty model strings in repo-local config no longer mask fallback Bedrock models), `ScaffoldModel` wired through `RunWaveOpts` |
