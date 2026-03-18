@@ -318,7 +318,7 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
           const nextOrbTop = nextRect.top + 14 - railTop
           // Extend the last segment to reach the running wave's orb top
           const lastSeg = segs[segs.length - 1]
-          const extendTo = nextOrbTop + 20 // reach through the orb
+          const extendTo = nextOrbTop // stop at the top of the unfilled orb
           lastSeg.height = extendTo - lastSeg.top
         }
       }
