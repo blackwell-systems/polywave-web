@@ -536,7 +536,9 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                 const testState = (state as AppWaveState & { wavesMergeState?: Map<number, WaveMergeState>; wavesTestState?: Map<number, WaveTestState> }).wavesTestState?.get(wave.wave)
                 const allComplete = waveComplete === waveTotal && waveTotal > 0
                 const alreadyMerged = wave.merge_status === 'merged' || wave.merge_status === 'success'
-                const mergeStatus = alreadyMerged ? 'success' : (mergeState?.status ?? 'idle')
+                // Live SSE merge state takes priority over disk-seeded status —
+                // if the pipeline just failed, don't show "merged" from a stale disk read.
+                const mergeStatus = mergeState?.status ?? (alreadyMerged ? 'success' : 'idle')
                 const testStatus = testState?.status ?? 'idle'
 
                 return (
