@@ -623,8 +623,8 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                           </div>
                         )}
 
-                        {/* Start Next Wave — show after merge success if more waves remain */}
-                        {wave.wave < Math.max(...state.waves.map(w => w.wave)) && (
+                        {/* Start Next Wave — show after merge success if next wave is still pending */}
+                        {wave.wave < Math.max(...state.waves.map(w => w.wave)) && !state.waves.find(w => w.wave === wave.wave + 1)?.complete && (
                           <button
                             onClick={() => void startWave(slug)}
                             className="w-full text-sm font-medium px-4 py-2.5 rounded-none bg-blue-500/15 text-blue-400 border border-blue-500/30 hover:bg-blue-500/25 hover:border-blue-500/50 active:scale-[0.98] transition-all backdrop-blur-sm"
