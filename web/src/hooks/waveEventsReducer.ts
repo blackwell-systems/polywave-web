@@ -272,7 +272,9 @@ export function waveEventsReducer(state: AppWaveState, action: WaveAction): AppW
           : a
       )
       const waves = buildWaves(updatedAgents, state.waves)
-      return { ...state, agents: updatedAgents, waves, runFailed: action.error }
+      // Also mark scaffold as failed if it was still running
+      const scaffoldStatus = state.scaffoldStatus === 'running' ? 'failed' as const : state.scaffoldStatus
+      return { ...state, agents: updatedAgents, waves, runFailed: action.error, scaffoldStatus }
     }
 
     case 'WAVE_GATE_PENDING':
