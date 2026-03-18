@@ -47,15 +47,13 @@ export function useDarkMode(): [boolean, () => void] {
     }
   }, [isDark])
 
-  // Toggle cycles through system -> light -> dark -> system
-  async function toggle() {
-    const config = await getConfig()
-    const currentTheme = config.appearance?.theme ?? 'system'
-
+  // Toggle cycles through system -> light -> dark -> system.
+  // Updates state synchronously for instant feedback, persists in background.
+  function toggle() {
     let nextTheme: 'system' | 'light' | 'dark'
-    if (currentTheme === 'system') {
+    if (themeMode === 'system') {
       nextTheme = isDark ? 'light' : 'dark'
-    } else if (currentTheme === 'light') {
+    } else if (themeMode === 'light') {
       nextTheme = 'dark'
     } else {
       nextTheme = 'system'
@@ -69,16 +67,14 @@ export function useDarkMode(): [boolean, () => void] {
       setIsDark(nextTheme === 'dark')
     }
 
-    // Save to config
-    const { saveConfig } = await import('../api')
-    const updated = {
-      ...config,
-      appearance: {
-        ...config.appearance,
-        theme: nextTheme
-      }
-    }
-    await saveConfig(updated).catch(() => {})
+    // Persist in background — don't block the UI
+    getConfig().then(async config => {
+      const { saveConfig } = await import('../api')
+      await saveConfig({
+        ...config,
+        appearance: { ...config.appearance, theme: nextTheme }
+      })
+    }).catch(() => {})
   }
 
   return [isDark, toggle]

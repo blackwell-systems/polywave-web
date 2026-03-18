@@ -381,8 +381,8 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                   ? 'border-t-red-500 text-red-700 dark:text-red-400 bg-red-500/10'
                   : 'border-t-red-500 text-red-600 dark:text-red-400 hover:bg-red-500/10'
                 : activePanels.includes('worktrees')
-                  ? 'border-t-slate-500 text-slate-700 dark:text-slate-400 bg-slate-500/10'
-                  : 'border-t-slate-500/40 text-muted-foreground hover:bg-slate-500/10 hover:text-foreground'
+                  ? 'border-t-amber-500 text-amber-700 dark:text-amber-400 bg-amber-500/10'
+                  : 'border-t-amber-500/40 text-muted-foreground hover:bg-amber-500/10 hover:text-foreground'
             }`}
           >
             Worktrees
