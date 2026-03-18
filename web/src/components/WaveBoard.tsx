@@ -711,23 +711,21 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
               {/* Wave gate banner — shown after this wave row when gate is pending */}
               {hasGate && state.waveGate && (
-                <div className="mt-3 bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
-                        Wave {wave.wave} complete
-                      </p>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-                        Review or edit the IMPL doc, then proceed to Wave {state.waveGate.nextWave}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => void handleProceedGate(state.waveGate!.nextWave)}
-                      className="text-sm font-medium px-4 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition-colors whitespace-nowrap"
-                    >
-                      Proceed to Wave {state.waveGate.nextWave} &rarr;
-                    </button>
+                <div className="mt-3 bg-blue-500/10 border border-blue-500/30 rounded-none p-4 space-y-4">
+                  <div>
+                    <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                      Wave {wave.wave} merged and verified
+                    </p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
+                      Review or edit the IMPL doc, then proceed to Wave {state.waveGate.nextWave}
+                    </p>
                   </div>
+                  <button
+                    onClick={() => void handleProceedGate(state.waveGate!.nextWave)}
+                    className="w-full text-sm font-medium px-4 py-2.5 rounded-none bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 active:scale-[0.98] transition-all"
+                  >
+                    Proceed to Wave {state.waveGate.nextWave} &rarr;
+                  </button>
                   <div className="overflow-x-hidden">
                     <ImplEditor slug={slug} />
                   </div>

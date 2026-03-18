@@ -281,8 +281,14 @@ export function waveEventsReducer(state: AppWaveState, action: WaveAction): AppW
       return { ...state, agents: updatedAgents, waves, runFailed: action.error, scaffoldStatus }
     }
 
-    case 'WAVE_GATE_PENDING':
-      return { ...state, waveGate: { wave: action.wave, nextWave: action.next_wave } }
+    case 'WAVE_GATE_PENDING': {
+      // The gate only fires after successful finalize (merge + verify build).
+      // Mark the completed wave as merged so the "Merged" badge shows.
+      const gateWaves = state.waves.map(w =>
+        w.wave === action.wave ? { ...w, complete: true, merge_status: 'merged' } : w
+      )
+      return { ...state, waves: gateWaves, waveGate: { wave: action.wave, nextWave: action.next_wave } }
+    }
 
     case 'WAVE_GATE_RESOLVED':
       return { ...state, waveGate: undefined }
@@ -390,14 +396,26 @@ export function waveEventsReducer(state: AppWaveState, action: WaveAction): AppW
     case 'FIX_BUILD_FAILED':
       return { ...state, fixBuildStatus: 'failed', fixBuildError: action.error }
 
-    case 'PIPELINE_STEP':
-      return {
+    case 'PIPELINE_STEP': {
+      let updatedState = {
         ...state,
         pipelineSteps: {
           ...state.pipelineSteps,
           [action.step]: { status: action.status, error: action.error },
         },
       }
+      // When merge_agents step completes, update the wave's merge_status
+      // so the "Merged" badge shows immediately.
+      if (action.step === 'merge_agents' && action.status === 'complete') {
+        updatedState = {
+          ...updatedState,
+          waves: updatedState.waves.map(w =>
+            w.wave === action.wave ? { ...w, merge_status: 'merged' } : w
+          ),
+        }
+      }
+      return updatedState
+    }
 
     default:
       return state
