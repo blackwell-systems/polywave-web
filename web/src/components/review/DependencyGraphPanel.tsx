@@ -215,7 +215,7 @@ export default function DependencyGraphPanel({ dependencyGraphText, impl, execut
     if (letter === 'Scaffold' && wave === 0) {
       const s = executionState.scaffoldStatus
       if (s === 'idle') return undefined
-      return { status: s === 'complete' ? 'complete' : 'running' } as AgentExecStatus
+      return { status: s === 'complete' ? 'complete' : s === 'failed' ? 'failed' : 'running' } as AgentExecStatus
     }
     if (executionState.agents.size === 0) return undefined
     return executionState.agents.get(`${wave}:${letter}`)

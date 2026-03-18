@@ -268,17 +268,22 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
                       <div
                         className={`flex items-center justify-center w-12 h-12 rounded-lg font-semibold text-base border-2${
                           isLive && executionState?.scaffoldStatus === 'running' ? ' exec-node-running' :
-                          isLive && executionState?.scaffoldStatus === 'complete' ? ' exec-node-complete' : ''
+                          isLive && executionState?.scaffoldStatus === 'complete' ? ' exec-node-complete' :
+                          isLive && executionState?.scaffoldStatus === 'failed' ? ' exec-node-failed' : ''
                         }`}
                         style={{
-                          backgroundColor: isLive && executionState?.scaffoldStatus === 'running'
+                          backgroundColor: isLive && executionState?.scaffoldStatus === 'failed'
+                            ? 'rgba(248,81,73,0.15)' : isLive && executionState?.scaffoldStatus === 'running'
                             ? 'rgba(245,158,11,0.15)' : 'rgba(100,116,139,0.08)',
-                          borderColor: isLive && executionState?.scaffoldStatus === 'running'
+                          borderColor: isLive && executionState?.scaffoldStatus === 'failed'
+                            ? 'rgb(248,81,73)' : isLive && executionState?.scaffoldStatus === 'running'
                             ? 'rgb(245,158,11)' : isLive && executionState?.scaffoldStatus === 'complete'
                             ? 'rgb(63,185,80)' : 'rgba(100,116,139,0.3)',
-                          color: isLive && executionState?.scaffoldStatus === 'running'
+                          color: isLive && executionState?.scaffoldStatus === 'failed'
+                            ? '#f85149' : isLive && executionState?.scaffoldStatus === 'running'
                             ? '#f59e0b' : '#64748b',
-                          boxShadow: isLive && executionState?.scaffoldStatus === 'running'
+                          boxShadow: isLive && executionState?.scaffoldStatus === 'failed'
+                            ? '0 0 12px rgba(248,81,73,0.5)' : isLive && executionState?.scaffoldStatus === 'running'
                             ? '0 0 12px rgba(245,158,11,0.4)' : isLive && executionState?.scaffoldStatus === 'complete'
                             ? '0 0 10px rgba(63,185,80,0.3)' : undefined,
                           '--exec-pulse-color': 'rgba(245,158,11,0.6)',

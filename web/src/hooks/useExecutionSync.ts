@@ -21,7 +21,7 @@ export interface ExecutionSyncState {
   /** Per-wave progress: complete/total counts */
   waveProgress: Map<number, WaveProgress>
   /** Scaffold lifecycle status */
-  scaffoldStatus: 'idle' | 'running' | 'complete'
+  scaffoldStatus: 'idle' | 'running' | 'complete' | 'failed'
   /** Whether any execution is active (SSE connected + not run_complete) */
   isLive: boolean
 }
@@ -51,9 +51,8 @@ function normalizeScaffoldStatus(
   raw: AppWaveState['scaffoldStatus']
 ): ExecutionSyncState['scaffoldStatus'] {
   // AppWaveState.scaffoldStatus can be 'idle' | 'running' | 'complete' | 'failed'
-  // ExecutionSyncState.scaffoldStatus is 'idle' | 'running' | 'complete'
-  // Map 'failed' to 'idle' as a safe fallback
-  if (raw === 'failed') return 'idle'
+  // ExecutionSyncState.scaffoldStatus now includes 'failed'
+  if (raw === 'failed') return 'failed'
   return raw
 }
 

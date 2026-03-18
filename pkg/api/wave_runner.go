@@ -112,10 +112,19 @@ func runWaveLoop(
 			scaffoldModel = sawCfg.Agent.ScaffoldModel
 			integrationModel = sawCfg.Agent.IntegrationModel
 		}
-	} else if fallbackSAWConfig != nil {
-		waveModel = fallbackSAWConfig.Agent.WaveModel
-		scaffoldModel = fallbackSAWConfig.Agent.ScaffoldModel
-		integrationModel = fallbackSAWConfig.Agent.IntegrationModel
+	}
+	// Fill empty values from the server's fallback config (the web app's own saw.config.json).
+	// Cross-repo IMPLs may live in repos with empty model strings.
+	if fallbackSAWConfig != nil {
+		if waveModel == "" {
+			waveModel = fallbackSAWConfig.Agent.WaveModel
+		}
+		if scaffoldModel == "" {
+			scaffoldModel = fallbackSAWConfig.Agent.ScaffoldModel
+		}
+		if integrationModel == "" {
+			integrationModel = fallbackSAWConfig.Agent.IntegrationModel
+		}
 	}
 
 	// Load the YAML manifest to get wave structure.
@@ -196,6 +205,7 @@ func runWaveLoop(
 			RepoPath:         repoPath,
 			Slug:             slug,
 			WaveModel:        waveModel,
+			ScaffoldModel:    scaffoldModel,
 			IntegrationModel: integrationModel,
 		}
 
@@ -625,6 +635,14 @@ func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request) {
 		if json.Unmarshal(cfgData, &sawCfg) == nil {
 			waveModel = sawCfg.Agent.WaveModel
 			integrationModel = sawCfg.Agent.IntegrationModel
+		}
+	}
+	if fallbackSAWConfig != nil {
+		if waveModel == "" {
+			waveModel = fallbackSAWConfig.Agent.WaveModel
+		}
+		if integrationModel == "" {
+			integrationModel = fallbackSAWConfig.Agent.IntegrationModel
 		}
 	}
 
