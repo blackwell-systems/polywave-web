@@ -262,7 +262,7 @@ export default function ImplList(props: ImplListProps): JSX.Element {
               const isCollapsed = collapsedRepos.has(repoName)
 
               return (
-                <div key={repoName} className="mb-3">
+                <div key={repoName} className="mb-3 border-l-2 border-primary/30 bg-primary/[0.03] dark:bg-primary/[0.06]">
                   <div className="flex items-center">
                     {onRemoveRepo && (
                       <button
@@ -275,10 +275,10 @@ export default function ImplList(props: ImplListProps): JSX.Element {
                     )}
                     <button
                       onClick={() => toggleRepo(repoName)}
-                      className="flex-1 flex items-center justify-between text-xs font-medium text-muted-foreground px-2 py-1.5 hover:bg-muted transition-colors"
+                      className="flex-1 flex items-center justify-between text-xs font-semibold text-foreground px-2 py-1.5 hover:bg-primary/10 transition-colors"
                     >
                       <span>{repoName}</span>
-                      <span className="text-[10px]">{isCollapsed ? '▶' : '▼'}</span>
+                      <span className="text-[10px] text-primary">{isCollapsed ? '▶' : '▼'}</span>
                     </button>
                   </div>
                   {!isCollapsed && (
