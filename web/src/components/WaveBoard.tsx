@@ -501,9 +501,9 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
               <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Wave {wave.wave}</span>
-                  {wave.complete && wave.merge_status && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                      merge: {wave.merge_status}
+                  {wave.complete && (wave.merge_status === 'merged' || wave.merge_status === 'success') && (
+                    <span className="text-xs text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900 px-2 py-0.5 rounded-full">
+                      Merged
                     </span>
                   )}
                 </div>
@@ -535,7 +535,8 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                 const mergeState = (state as AppWaveState & { wavesMergeState?: Map<number, WaveMergeState>; wavesTestState?: Map<number, WaveTestState> }).wavesMergeState?.get(wave.wave)
                 const testState = (state as AppWaveState & { wavesMergeState?: Map<number, WaveMergeState>; wavesTestState?: Map<number, WaveTestState> }).wavesTestState?.get(wave.wave)
                 const allComplete = waveComplete === waveTotal && waveTotal > 0
-                const mergeStatus = mergeState?.status ?? 'idle'
+                const alreadyMerged = wave.merge_status === 'merged' || wave.merge_status === 'success'
+                const mergeStatus = alreadyMerged ? 'success' : (mergeState?.status ?? 'idle')
                 const testStatus = testState?.status ?? 'idle'
 
                 return (

@@ -320,7 +320,20 @@ export default function DependencyGraphPanel({ dependencyGraphText, impl, execut
     }
   }
 
-  const isLive = !!(executionState?.isLive) || (executionState?.agents?.size ?? 0) > 0
+  const isLive = !!(executionState?.isLive)
+
+  // Classify each edge for animation purposes
+  type EdgeState = 'static' | 'active' | 'waiting' | 'failed'
+  function getEdgeState(edge: { from: NodePos; to: NodePos }): EdgeState {
+    if (!isLive) return 'static'
+    const sourceExec = getExecStatus(edge.from.agent.letter, edge.from.agent.wave)
+    const targetExec = getExecStatus(edge.to.agent.letter, edge.to.agent.wave)
+    if (sourceExec?.status === 'failed') return 'failed'
+    if (sourceExec?.status === 'complete' && targetExec?.status === 'running') return 'active'
+    if (sourceExec?.status === 'complete') return 'active'
+    if (sourceExec?.status === 'running') return 'waiting'
+    return 'waiting'
+  }
 
   return (
     <Card>
@@ -337,6 +350,23 @@ export default function DependencyGraphPanel({ dependencyGraphText, impl, execut
             className="block"
             onMouseLeave={handleMouseLeave}
           >
+            <defs>
+              <filter id="particle-glow" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="particle-glow-red" x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
             {/* Wave row backgrounds */}
             {parsed.map((_wave, wi) => {
               const y = PAD_Y + wi * WAVE_GAP - 16
@@ -391,20 +421,27 @@ export default function DependencyGraphPanel({ dependencyGraphText, impl, execut
               )
             })}
 
-            {/* Edges */}
+            {/* Edges + particles */}
             {edges.map((edge, i) => {
               const x1 = edge.from.x + NODE_W / 2
               const y1 = edge.from.y + NODE_H
               const x2 = edge.to.x + NODE_W / 2
               const y2 = edge.to.y
+              const edgeState = getEdgeState(edge)
 
-              // Determine edge class based on source node exec status
-              const sourceExec = getExecStatus(edge.from.agent.letter, edge.from.agent.wave)
+              // Build a cubic bezier path for smooth curves + animateMotion
+              const midY = (y1 + y2) / 2
+              const pathD = `M${x1},${y1} C${x1},${midY} ${x2},${midY} ${x2},${y2}`
+
               let edgeClassName: string | undefined
               let edgeOpacity: number | undefined
+              let strokeW = 2
 
               if (isLive) {
-                if (sourceExec?.status === 'complete') {
+                if (edgeState === 'active') {
+                  edgeClassName = 'exec-edge-active'
+                  strokeW = 2.5
+                } else if (edgeState === 'failed') {
                   edgeClassName = 'exec-edge-active'
                 } else {
                   edgeClassName = 'exec-edge-inactive'
@@ -413,49 +450,40 @@ export default function DependencyGraphPanel({ dependencyGraphText, impl, execut
                 edgeOpacity = 0.6
               }
 
-              return (
-                <line
-                  key={i}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke={edge.color}
-                  strokeWidth={2}
-                  opacity={edgeOpacity}
-                  className={edgeClassName}
-                />
-              )
-            })}
-
-            {/* Arrow markers at edge endpoints */}
-            {edges.map((edge, i) => {
-              const x2 = edge.to.x + NODE_W / 2
-              const y2 = edge.to.y
-
-              // Mirror edge class onto arrow tip
-              const sourceExec = getExecStatus(edge.from.agent.letter, edge.from.agent.wave)
-              let arrowClassName: string | undefined
-              let arrowOpacity: number | undefined
-
-              if (isLive) {
-                if (sourceExec?.status === 'complete') {
-                  arrowClassName = 'exec-edge-active'
-                } else {
-                  arrowClassName = 'exec-edge-inactive'
-                }
-              } else {
-                arrowOpacity = 0.6
-              }
+              const edgeColor = edgeState === 'failed' ? '#f85149' : edge.color
 
               return (
-                <polygon
-                  key={`arrow-${i}`}
-                  points={`${x2},${y2} ${x2 - 3},${y2 - 6} ${x2 + 3},${y2 - 6}`}
-                  fill={edge.color}
-                  opacity={arrowOpacity}
-                  className={arrowClassName}
-                />
+                <g key={`edge-group-${i}`}>
+                  {/* Edge line — curved bezier matching particle path */}
+                  <path
+                    d={pathD}
+                    stroke={edgeColor}
+                    strokeWidth={strokeW}
+                    fill="none"
+                    opacity={edgeOpacity}
+                    className={edgeClassName}
+                  />
+
+                  {/* Arrow marker */}
+                  <polygon
+                    points={`${x2},${y2} ${x2 - 3},${y2 - 6} ${x2 + 3},${y2 - 6}`}
+                    fill={edgeColor}
+                    opacity={edgeOpacity}
+                    className={edgeClassName}
+                  />
+
+                  {/* Flowing particle — single subtle dot on active edges */}
+                  {edgeState === 'active' && (
+                    <circle r="2.5" fill={edge.color} filter="url(#particle-glow)" opacity="0.6">
+                      <animateMotion dur="2.5s" repeatCount="indefinite" path={pathD} />
+                    </circle>
+                  )}
+                  {edgeState === 'failed' && (
+                    <circle r="2" fill="#f85149" filter="url(#particle-glow-red)" opacity="0.5">
+                      <animateMotion dur="4s" repeatCount="indefinite" path={pathD} />
+                    </circle>
+                  )}
+                </g>
               )
             })}
 

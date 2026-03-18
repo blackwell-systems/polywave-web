@@ -245,8 +245,13 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
       <div className="max-w-[1800px] mx-auto px-4 py-8 pb-4">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold flex items-center gap-3">
             Plan Review: <span className="font-mono text-primary">{slug}</span>
+            {impl.doc_status === 'complete' && (
+              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900/50 px-3 py-1 rounded-full">
+                <span className="text-green-600 dark:text-green-400">✓</span> Complete
+              </span>
+            )}
           </h1>
           {involvedRepos.length >= 2 && (
             <p className="text-sm text-muted-foreground mt-2">

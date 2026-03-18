@@ -51,8 +51,9 @@ function normalizeScaffoldStatus(
   raw: AppWaveState['scaffoldStatus']
 ): ExecutionSyncState['scaffoldStatus'] {
   // AppWaveState.scaffoldStatus can be 'idle' | 'running' | 'complete' | 'failed'
-  // ExecutionSyncState.scaffoldStatus now includes 'failed'
-  if (raw === 'failed') return 'failed'
+  // ExecutionSyncState.scaffoldStatus only supports 'idle' | 'running' | 'complete'
+  // 'failed' maps to 'idle'
+  if (raw === 'failed') return 'idle'
   return raw
 }
 
@@ -88,7 +89,14 @@ export function useExecutionSync(slug: string | undefined): ExecutionSyncState {
   }, [state.waves, state.wavesMergeState, slug])
 
   const scaffoldStatus = normalizeScaffoldStatus(state.scaffoldStatus)
-  const isLive = !!(slug) && state.connected && !state.runComplete
+
+  // isLive means execution is genuinely in progress — not just that SSE is connected.
+  // For completed IMPLs, SSE connects (disk-seeded state) but run_complete never fires
+  // because there's no active orchestrator run. Guard against this by requiring at least
+  // one agent in a non-terminal state (running/pending) or an active scaffold phase.
+  const hasActiveWork = state.agents.some(a => a.status === 'running' || a.status === 'pending')
+    || scaffoldStatus === 'running'
+  const isLive = !!(slug) && state.connected && !state.runComplete && hasActiveWork
 
   if (!slug) return IDLE_STATE
 

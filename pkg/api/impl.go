@@ -219,7 +219,7 @@ func (s *Server) handleReject(w http.ResponseWriter, r *http.Request) {
 // Used by handleGetImpl for .yaml IMPL docs (Scout v0.6.0+).
 func implDocResponseFromManifest(slug string, m *protocol.IMPLManifest) IMPLDocResponse {
 	docStatus := "active"
-	if m.State == protocol.StateComplete {
+	if m.State == protocol.StateComplete || m.CompletionDate != "" {
 		docStatus = "complete"
 	}
 

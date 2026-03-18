@@ -93,7 +93,7 @@ describe('WaveStructurePanel', () => {
     ])
     const executionState = makeLiveState({ agents })
 
-    const { container } = render(
+    render(
       <WaveStructurePanel impl={makeImpl()} executionState={executionState} />
     )
 
@@ -141,7 +141,7 @@ describe('WaveStructurePanel', () => {
     expect(style).toContain('rgb(248, 81, 73)')
   })
 
-  test('TestJewelFillsOnWaveComplete — when all agents in wave 1 are complete, wave 1 jewel is filled', () => {
+  test('TestOrbFillsOnWaveComplete — when all agents in wave 1 are complete, wave 1 orb has scale-110', () => {
     // Wave 1 complete: 3/3
     const waveProgress = new Map([
       [1, { complete: 3, total: 3 }],
@@ -153,13 +153,12 @@ describe('WaveStructurePanel', () => {
       <WaveStructurePanel impl={makeImpl()} executionState={executionState} />
     )
 
-    // The jewel for Wave 1 should have exec-jewel-filling class (filling = live && filled)
-    // Wave 1 jewel SVG should have the filling class
-    const svgs = container.querySelectorAll('svg.exec-jewel-filling')
-    expect(svgs.length).toBeGreaterThan(0)
+    // Filled orbs in live mode get the scale-110 class (filling animation)
+    const fillingOrbs = container.querySelectorAll('svg.scale-110')
+    expect(fillingOrbs.length).toBeGreaterThan(0)
   })
 
-  test('TestJewelFillsOnWaveComplete — incomplete wave has no filling class', () => {
+  test('TestOrbFillsOnWaveComplete — incomplete wave orb has no scale-110', () => {
     // Wave 1 only 1/3 complete
     const waveProgress = new Map([
       [1, { complete: 1, total: 3 }],
@@ -171,12 +170,9 @@ describe('WaveStructurePanel', () => {
       <WaveStructurePanel impl={makeImpl()} executionState={executionState} />
     )
 
-    // Scout jewel will be filled (orchestrator always fills when live)
-    // But wave 1 should NOT be filling since 1/3 != 3/3
-    // We check that total filling jewels is limited (only Scout)
-    const fillingJewels = container.querySelectorAll('svg.exec-jewel-filling')
-    // Only scout should be filling
-    expect(fillingJewels.length).toBe(1)
+    // Only scout orb should have scale-110 (orchestrator always fills when live)
+    const fillingOrbs = container.querySelectorAll('svg.scale-110')
+    expect(fillingOrbs.length).toBe(1)
   })
 
   test('TestProgressText — when live with 1/3 complete, shows "1/3 complete"', () => {
@@ -205,7 +201,7 @@ describe('WaveStructurePanel', () => {
     expect(screen.queryByText(/complete/)).toBeNull()
   })
 
-  test('TestScaffoldJewelFills — when scaffoldStatus is complete, scaffold jewel has filling class', () => {
+  test('TestScaffoldOrbFills — when scaffoldStatus is complete, scaffold orb has scale-110', () => {
     const executionState = makeLiveState({ scaffoldStatus: 'complete' })
 
     const { container } = render(
@@ -213,20 +209,20 @@ describe('WaveStructurePanel', () => {
     )
 
     // Both Scout (orchestrator, always filled when live) and Scaffold should be filling
-    const fillingJewels = container.querySelectorAll('svg.exec-jewel-filling')
-    expect(fillingJewels.length).toBeGreaterThanOrEqual(2)
+    const fillingOrbs = container.querySelectorAll('svg.scale-110')
+    expect(fillingOrbs.length).toBeGreaterThanOrEqual(2)
   })
 
-  test('TestScaffoldJewelFills — when scaffoldStatus is idle, scaffold jewel not filling', () => {
+  test('TestScaffoldOrbFills — when scaffoldStatus is idle, scaffold orb not filling', () => {
     const executionState = makeLiveState({ scaffoldStatus: 'idle' })
 
     const { container } = render(
       <WaveStructurePanel impl={makeImpl()} executionState={executionState} />
     )
 
-    // Only scout jewel should be filling (orchestrator always fills)
-    const fillingJewels = container.querySelectorAll('svg.exec-jewel-filling')
-    expect(fillingJewels.length).toBe(1)
+    // Only scout orb should be filling (orchestrator always fills)
+    const fillingOrbs = container.querySelectorAll('svg.scale-110')
+    expect(fillingOrbs.length).toBe(1)
   })
 
   test('TestStaticRendering — no executionState shows parallel text', () => {
@@ -236,14 +232,14 @@ describe('WaveStructurePanel', () => {
   })
 
   test('backward compat — undefined executionState, COMPLETE doc fills all static', () => {
-    const impl = makeImpl('COMPLETE')
+    const impl = makeImpl('complete')
     const { container } = render(<WaveStructurePanel impl={impl} />)
 
-    // No filling class in static mode (no live animation)
-    const fillingJewels = container.querySelectorAll('svg.exec-jewel-filling')
-    expect(fillingJewels.length).toBe(0)
+    // No filling animation in static mode (no live execution)
+    const fillingOrbs = container.querySelectorAll('svg.scale-110')
+    expect(fillingOrbs.length).toBe(0)
 
-    // But filled=true still applied to jewels (gradient opacities changed internally)
+    // But filled=true still applied to orbs (gradient opacities changed internally)
     // Just verify it renders without errors
     expect(screen.getByText('Complete')).toBeInTheDocument()
   })
