@@ -62,9 +62,11 @@ func (s *Server) handleWaveMerge(w http.ResponseWriter, r *http.Request) {
 	wave := req.Wave
 
 	w.WriteHeader(http.StatusAccepted)
+	s.globalBroker.broadcast("impl_list_updated") // execution started
 
 	go func() {
 		defer s.mergingRuns.Delete(slug)
+		defer s.globalBroker.broadcast("impl_list_updated") // execution ended
 
 		ctx := context.Background()
 

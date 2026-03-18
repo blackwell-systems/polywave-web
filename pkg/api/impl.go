@@ -20,8 +20,9 @@ type implListEntry struct {
 	DocStatus    string   `json:"doc_status"`     // "active" or "complete"
 	WaveCount    int      `json:"wave_count"`     // number of waves (0 if not yet planned)
 	AgentCount   int      `json:"agent_count"`    // total agents across all waves
-	IsMultiRepo  bool     `json:"is_multi_repo"`  // true when file ownership spans 2+ repos
-	InvolvedRepos []string `json:"involved_repos"` // list of repo names from file ownership (for multirepo IMPLs)
+	IsMultiRepo   bool     `json:"is_multi_repo"`   // true when file ownership spans 2+ repos
+	InvolvedRepos []string `json:"involved_repos"`  // list of repo names from file ownership (for multirepo IMPLs)
+	IsExecuting   bool     `json:"is_executing"`    // true when wave/scout/merge/test is in progress
 }
 
 // handleListImpls serves GET /api/impl and returns a JSON array of impl entries.
@@ -109,6 +110,22 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 					repoName = filepath.Base(repo.Path)
 				}
 
+				// Check if any execution is in progress for this slug
+				_, waveActive := s.activeRuns.Load(slug)
+				_, merging := s.mergingRuns.Load(slug)
+				_, testing := s.testingRuns.Load(slug)
+				isExecuting := waveActive || merging || testing
+				// Also check scoutRuns (keyed by runID, not slug) — scan for slug prefix
+				if !isExecuting {
+					s.scoutRuns.Range(func(key, _ any) bool {
+						if runID, ok := key.(string); ok && strings.HasPrefix(runID, slug) {
+							isExecuting = true
+							return false
+						}
+						return true
+					})
+				}
+
 				result = append(result, implListEntry{
 					Slug:          slug,
 					Repo:          repoName,
@@ -118,6 +135,7 @@ func (s *Server) handleListImpls(w http.ResponseWriter, r *http.Request) {
 					AgentCount:    agentCount,
 					IsMultiRepo:   isMultiRepo,
 					InvolvedRepos: involvedRepos,
+					IsExecuting:   isExecuting,
 				})
 			}
 		}
@@ -243,10 +261,26 @@ func implDocResponseFromManifest(slug string, m *protocol.IMPLManifest) IMPLDocR
 		for _, a := range w.Agents {
 			agents = append(agents, a.ID)
 		}
+		// Derive wave status from completion reports
+		waveStatus := "pending"
+		if len(m.CompletionReports) > 0 && len(agents) > 0 {
+			completeCount := 0
+			for _, a := range w.Agents {
+				if cr, ok := m.CompletionReports[a.ID]; ok && cr.Status == "complete" {
+					completeCount++
+				}
+			}
+			if completeCount == len(agents) {
+				waveStatus = "complete"
+			} else if completeCount > 0 {
+				waveStatus = "partial"
+			}
+		}
 		waveInfos = append(waveInfos, WaveInfo{
 			Number:       w.Number,
 			Agents:       agents,
 			Dependencies: []int{},
+			Status:       waveStatus,
 		})
 	}
 

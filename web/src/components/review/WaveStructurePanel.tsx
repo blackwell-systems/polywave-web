@@ -209,29 +209,42 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
   // Compute filled state per node.
   // Uses executionState when available (live or disk-seeded), falls back to
   // isComplete for nodes that can't be determined from agent data alone.
+  // Look up wave status from the IMPL doc data (persisted, not just live SSE)
+  const getWaveStatus = useCallback((waveNum: number): string => {
+    const wave = sortedWaves.find(w => w.number === waveNum)
+    return wave?.status ?? 'pending'
+  }, [sortedWaves])
+
   const isNodeFilled = useCallback((node: TimelineNode): boolean => {
     switch (node.type) {
       case 'orchestrator':
-        // Scout always ran — we're viewing its output
         return true
 
       case 'scaffold':
-        return executionState?.scaffoldStatus === 'complete' || isComplete
+        // Scaffold is done if execution says so, or if any wave has progress
+        // (waves can't start without scaffolds), or if doc is complete
+        if (executionState?.scaffoldStatus === 'complete') return true
+        if (isComplete) return true
+        return sortedWaves.some(w => w.status === 'complete' || w.status === 'partial')
 
       case 'wave': {
         if (isComplete) return true
-        const waveNum = node.waveNum!
-        const progress = executionState?.waveProgress.get(waveNum)
-        if (!progress) return isComplete
-        return progress.total > 0 && progress.complete === progress.total
+        // Check IMPL doc status first (persisted across sessions)
+        const docStatus = getWaveStatus(node.waveNum!)
+        if (docStatus === 'complete') return true
+        // Fall back to live execution state
+        const progress = executionState?.waveProgress.get(node.waveNum!)
+        if (progress && progress.total > 0 && progress.complete === progress.total) return true
+        return false
       }
 
       case 'merge': {
         if (isComplete) return true
-        const waveNum = node.waveNum!
-        const progress = executionState?.waveProgress.get(waveNum)
-        if (!progress) return isComplete
-        return progress.mergeStatus === 'success'
+        const docStatus = getWaveStatus(node.waveNum!)
+        if (docStatus === 'complete') return true
+        const progress = executionState?.waveProgress.get(node.waveNum!)
+        if (progress?.mergeStatus === 'success') return true
+        return false
       }
 
       case 'complete':
@@ -240,52 +253,50 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
       default:
         return isComplete
     }
-  }, [isComplete, executionState])
+  }, [isComplete, executionState, sortedWaves, getWaveStatus])
 
-  // Track node element positions for the progress rail
+  // Track node element positions for per-segment colored lines
   const railRef = useRef<HTMLDivElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const nodeRefs = useRef<(HTMLDivElement | null)[]>([])
-  const [progressHeight, setProgressHeight] = useState(0)
-  const [progressGradient, setProgressGradient] = useState('')
+  const [segments, setSegments] = useState<{ top: number; height: number; color: string }[]>([])
 
-  // Compute progress rail height and gradient based on filled nodes
+  // Compute colored line segments between filled orbs.
+  // Each segment extends from one filled node to the next, colored by the node it starts from.
   useEffect(() => {
-    if (!containerRef.current || !railRef.current) return
-
+    if (!railRef.current) return
     const railTop = railRef.current.getBoundingClientRect().top
-    const railHeight = railRef.current.getBoundingClientRect().height
 
-    if (railHeight === 0) return
-
-    // Find the last filled node's position and build gradient stops
-    let lastFilledBottom = 0
-    const gradientStops: string[] = []
-
+    // Compute each orb's top and bottom edge relative to the rail.
+    // nodeRefs point to the content div; the orb is at top:14 (20px) or top:2 (12px merge).
+    const filled: { top: number; bottom: number; color: string }[] = []
     for (let i = 0; i < nodes.length; i++) {
       const el = nodeRefs.current[i]
-      if (!el) continue
-
-      const nodeRect = el.getBoundingClientRect()
-      const nodeCenter = nodeRect.top + nodeRect.height / 2 - railTop
-      const filled = isNodeFilled(nodes[i])
-      const color = getNodeColor(nodes[i])
-
-      if (filled) {
-        lastFilledBottom = nodeCenter
-        gradientStops.push(`${color} ${(nodeCenter / railHeight) * 100}%`)
-      }
+      if (!el || !isNodeFilled(nodes[i])) continue
+      const rect = el.getBoundingClientRect()
+      const isMerge = nodes[i].type === 'merge'
+      const orbTopOffset = isMerge ? 2 : 14
+      const orbSize = isMerge ? 12 : 20
+      const orbTop = rect.top + orbTopOffset - railTop
+      filled.push({ top: orbTop, bottom: orbTop + orbSize, color: getNodeColor(nodes[i]) })
     }
 
-    if (gradientStops.length > 0) {
-      // Add transparent stop at the end of filled region
-      const pct = Math.min((lastFilledBottom / railHeight) * 100, 100)
-      setProgressHeight(pct)
-      setProgressGradient(`linear-gradient(to bottom, ${gradientStops.join(', ')}, transparent ${pct}%)`)
-    } else {
-      setProgressHeight(0)
-      setProgressGradient('')
+    // Each node's color extends from its own top edge to the next node's top edge.
+    // This means each orb has its OWN color behind it, and the previous color
+    // stops exactly where the next orb starts — no protrusion.
+    const segs: { top: number; height: number; color: string }[] = []
+    for (let i = 0; i < filled.length - 1; i++) {
+      segs.push({
+        top: filled[i].top,
+        height: filled[i + 1].top - filled[i].top,
+        color: filled[i].color,
+      })
     }
+    // Cover the last orb with its own color
+    if (filled.length > 0) {
+      const last = filled[filled.length - 1]
+      segs.push({ top: last.top, height: last.bottom - last.top, color: last.color })
+    }
+    setSegments(segs)
   }, [nodes, isNodeFilled, executionState])
 
   // Ensure refs array matches nodes length
@@ -299,25 +310,27 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
         <CardTitle>Wave Structure</CardTitle>
       </CardHeader>
       <CardContent>
-        <div ref={containerRef} className="relative pl-8">
+        <div className="relative pl-8">
           {/* Background rail — always visible */}
           <div
             ref={railRef}
             className="absolute left-[9px] top-2 bottom-2 w-px bg-border"
           />
 
-          {/* Progress rail overlay — fills from top as nodes complete */}
-          {(isComplete || isLive) && progressGradient && (
+          {/* Colored line segments between filled orbs (z-0, behind orbs) */}
+          {segments.map((seg, i) => (
             <div
-              className="absolute left-[8px] top-2 w-[3px] rounded-full"
+              key={i}
+              className="absolute left-[8px] w-[3px] rounded-full"
               style={{
-                height: `${progressHeight}%`,
-                background: progressGradient,
-                transition: 'height 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                top: `calc(0.5rem + ${seg.top}px)`,
+                height: `${seg.height}px`,
+                backgroundColor: seg.color,
                 opacity: 0.9,
+                zIndex: 0,
               }}
             />
-          )}
+          ))}
 
           {nodes.map((node, i) => {
             const filled = isNodeFilled(node)
@@ -332,7 +345,7 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
                 className={`relative ${i > 0 ? (node.type === 'wave' || node.type === 'scaffold' ? 'mt-6' : 'mt-4') : ''}`}
               >
                 {/* Orb on rail */}
-                <div className="absolute -left-8 flex items-center justify-center w-5" style={{ top: node.type === 'merge' ? 2 : 14 }}>
+                <div className="absolute -left-8 flex items-center justify-center w-5" style={{ top: node.type === 'merge' ? 2 : 14, zIndex: 1 }}>
                   <Orb
                     type={node.type}
                     color={color}

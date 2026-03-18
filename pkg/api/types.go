@@ -60,6 +60,7 @@ type WaveInfo struct {
 	Number       int      `json:"number"`
 	Agents       []string `json:"agents"`
 	Dependencies []int    `json:"dependencies"`
+	Status       string   `json:"status"` // "pending" | "complete" | "partial"
 }
 
 // ScaffoldInfo describes the scaffold section of the IMPL doc.

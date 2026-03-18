@@ -62,12 +62,13 @@ func (s *Server) handleWaveStart(w http.ResponseWriter, r *http.Request) {
 	s.progressTracker.Clear(slug)
 	onStage := s.makeStageCallback(slug, publish)
 
+	// Notify sidebar that execution started (is_executing becomes true).
+	s.globalBroker.broadcast("impl_list_updated")
+
 	go func() {
 		defer s.activeRuns.Delete(slug)
+		defer s.globalBroker.broadcast("impl_list_updated") // is_executing becomes false
 		runWaveLoopFunc(implPath, slug, repoPath, publish, onStage)
-		// Notify all sidebar clients that doc status may have changed
-		// (e.g. COMPLETE marker written, waves finished).
-		s.globalBroker.broadcast("impl_list_updated")
 	}()
 
 	w.WriteHeader(http.StatusAccepted)
@@ -140,16 +141,19 @@ func runWaveLoop(
 
 	ctx := context.Background()
 
-	// Run scaffold agent if needed (engine handles the check internally).
-	onStage(StageScaffold, StageStatusRunning, 0, "")
-	if err := engine.RunScaffold(ctx, implPath, repoPath, "", scaffoldModel, func(ev engine.Event) {
-		publish(ev.Event, ev.Data)
-	}); err != nil {
-		onStage(StageScaffold, StageStatusFailed, 0, err.Error())
-		publish("run_failed", map[string]string{"error": err.Error()})
-		return
+	// Run scaffold agent only when scaffolds exist and are not yet committed.
+	// This prevents the scaffold stage from flashing in the UI on Wave 2+ starts.
+	if !protocol.AllScaffoldsCommitted(manifest) {
+		onStage(StageScaffold, StageStatusRunning, 0, "")
+		if err := engine.RunScaffold(ctx, implPath, repoPath, "", scaffoldModel, func(ev engine.Event) {
+			publish(ev.Event, ev.Data)
+		}); err != nil {
+			onStage(StageScaffold, StageStatusFailed, 0, err.Error())
+			publish("run_failed", map[string]string{"error": err.Error()})
+			return
+		}
+		onStage(StageScaffold, StageStatusComplete, 0, "")
 	}
-	onStage(StageScaffold, StageStatusComplete, 0, "")
 
 	waves := manifest.Waves
 	totalAgents := 0
@@ -742,6 +746,7 @@ func (s *Server) handleWaveFinalize(w http.ResponseWriter, r *http.Request) {
 	wave := body.Wave
 
 	w.WriteHeader(http.StatusAccepted)
+	s.globalBroker.broadcast("impl_list_updated") // execution started
 
 	// Resolve integration model for the integration agent step.
 	finalizeIntModel := ""
@@ -757,6 +762,7 @@ func (s *Server) handleWaveFinalize(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		defer s.mergingRuns.Delete(slug)
+		defer s.globalBroker.broadcast("impl_list_updated") // execution ended
 
 		publish("merge_started", map[string]interface{}{
 			"slug": slug,

@@ -18,6 +18,7 @@ export interface WaveInfo {
   number: number
   agents: string[]
   dependencies: number[]
+  status: 'pending' | 'complete' | 'partial'
 }
 
 export interface ContractEntry {
@@ -92,6 +93,7 @@ export interface IMPLListEntry {
   agent_count?: number
   is_multi_repo?: boolean
   involved_repos?: string[] // list of repo names from file ownership (for multirepo IMPLs)
+  is_executing?: boolean    // true when wave/scout/merge/test is in progress
 }
 
 // SSE event data shapes

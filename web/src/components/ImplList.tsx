@@ -144,7 +144,13 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
         onClick={() => onSelect(e.slug)}
       >
         <div className="flex items-center gap-1.5 w-full">
-          <span className={`w-1.5 h-1.5 rounded-none shrink-0 ${isComplete ? 'bg-primary/40' : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'}`} />
+          <span className={`w-1.5 h-1.5 rounded-none shrink-0 ${
+            e.is_executing
+              ? 'bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.7)]'
+              : isComplete
+                ? 'bg-primary/40'
+                : 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'
+          }`} />
           <span className="truncate">{isComplete ? '✓ ' : ''}{e.slug}</span>
           {e.is_multi_repo && (
             <span className="text-[9px] px-1 py-0.5 rounded-none bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300 font-mono shrink-0">multirepo</span>
