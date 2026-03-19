@@ -302,10 +302,16 @@ export default function App() {
       <header className="flex items-stretch justify-between h-[61px] border-b shrink-0">
         <div className="flex items-stretch">
           <button
-            onClick={() => { setShowPipeline(v => !v); if (!showPipeline) { setSelectedSlug(null); setImpl(null); setLiveView(null) } }}
+            onClick={() => { setShowPipeline(v => !v); setShowPrograms(false); if (!showPipeline) { setSelectedSlug(null); setImpl(null); setLiveView(null) } }}
             className={`flex items-center justify-center text-sm font-medium px-6 transition-colors border-r ${showPipeline ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800' : 'bg-emerald-50/40 hover:bg-emerald-100/60 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/40 dark:text-emerald-500 dark:border-emerald-900'}`}
           >
             Pipeline
+          </button>
+          <button
+            onClick={() => setLiveView(v => v === 'scout' ? null : 'scout')}
+            className="flex items-center justify-center text-sm font-medium px-6 transition-colors border-r bg-blue-50/60 hover:bg-blue-100/80 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 dark:border-blue-800"
+          >
+            New Plan
           </button>
           <button
             onClick={() => {
@@ -322,12 +328,6 @@ export default function App() {
             className="flex items-center justify-center text-sm font-medium px-6 transition-colors border-r bg-violet-50/60 hover:bg-violet-100/80 text-violet-700 border-violet-200 dark:bg-violet-950/40 dark:hover:bg-violet-900/60 dark:text-violet-400 dark:border-violet-800"
           >
             New Program
-          </button>
-          <button
-            onClick={() => setLiveView(v => v === 'scout' ? null : 'scout')}
-            className="flex items-center justify-center text-sm font-medium px-6 transition-colors border-r bg-blue-50/60 hover:bg-blue-100/80 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 dark:border-blue-800"
-          >
-            New Plan
           </button>
           <button
             onClick={() => setShowPalette(true)}
