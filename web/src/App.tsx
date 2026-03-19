@@ -43,8 +43,9 @@ export default function App() {
   const [waveModel, setWaveModel] = useState<string>('claude-sonnet-4-6')
   const [integrationModel, setIntegrationModel] = useState<string>('claude-sonnet-4-6')
   const [chatModel, setChatModel] = useState<string>('claude-sonnet-4-6')
+  const [plannerModel, setPlannerModel] = useState<string>('claude-sonnet-4-6')
 
-  const [pickerOpen, setPickerOpen] = useState<'scout' | 'scaffold' | 'wave' | 'integration' | 'chat' | 'all' | null>(null)
+  const [pickerOpen, setPickerOpen] = useState<'scout' | 'scaffold' | 'wave' | 'integration' | 'chat' | 'planner' | 'all' | null>(null)
 
   const [interruptedSessions, setInterruptedSessions] = useState<InterruptedSession[]>([])
   const [sseConnected, setSseConnected] = useState(false)
@@ -130,6 +131,7 @@ export default function App() {
       setWaveModel(config.agent?.wave_model || 'claude-sonnet-4-6')
       setIntegrationModel(config.agent?.integration_model || 'claude-sonnet-4-6')
       setChatModel(config.agent?.chat_model || 'claude-sonnet-4-6')
+      setPlannerModel(config.agent?.planner_model || 'claude-sonnet-4-6')
     }).catch(() => {})
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
       Notification.requestPermission()
@@ -234,7 +236,7 @@ export default function App() {
     }
   }
 
-  async function saveModel(field: 'scout' | 'scaffold' | 'wave' | 'integration' | 'chat' | 'all', value: string) {
+  async function saveModel(field: 'scout' | 'scaffold' | 'wave' | 'integration' | 'chat' | 'planner' | 'all', value: string) {
     try {
       const cfg = await getConfig()
       const updated = {
@@ -246,7 +248,8 @@ export default function App() {
           ...(field === 'wave' && { wave_model: value }),
           ...(field === 'integration' && { integration_model: value }),
           ...(field === 'chat' && { chat_model: value }),
-          ...(field === 'all' && { scout_model: value, scaffold_model: value, wave_model: value, integration_model: value, chat_model: value }),
+          ...(field === 'planner' && { planner_model: value }),
+          ...(field === 'all' && { scout_model: value, scaffold_model: value, wave_model: value, integration_model: value, chat_model: value, planner_model: value }),
         }
       }
       await saveConfig(updated)
@@ -255,7 +258,8 @@ export default function App() {
       if (field === 'wave') setWaveModel(value)
       if (field === 'integration') setIntegrationModel(value)
       if (field === 'chat') setChatModel(value)
-      if (field === 'all') { setScoutModel(value); setScaffoldModel(value); setWaveModel(value); setIntegrationModel(value); setChatModel(value) }
+      if (field === 'planner') setPlannerModel(value)
+      if (field === 'all') { setScoutModel(value); setScaffoldModel(value); setWaveModel(value); setIntegrationModel(value); setChatModel(value); setPlannerModel(value) }
     } catch { /* ignore */ }
   }
 
@@ -328,8 +332,8 @@ export default function App() {
           </button>
         </div>
         <div className="flex items-stretch">
-          {(['scout', 'scaffold', 'wave', 'integration', 'chat'] as const).map(field => {
-            const model = field === 'scout' ? scoutModel : field === 'scaffold' ? scaffoldModel : field === 'wave' ? waveModel : field === 'integration' ? integrationModel : chatModel
+          {(['scout', 'scaffold', 'wave', 'integration', 'planner', 'chat'] as const).map(field => {
+            const model = field === 'scout' ? scoutModel : field === 'scaffold' ? scaffoldModel : field === 'wave' ? waveModel : field === 'integration' ? integrationModel : field === 'planner' ? plannerModel : chatModel
             const label = field.charAt(0).toUpperCase() + field.slice(1)
             return (
               <div key={field} className="relative flex items-stretch border-r border-border">
@@ -511,6 +515,7 @@ export default function App() {
               setWaveModel(config.agent?.wave_model ?? '')
               setIntegrationModel(config.agent?.integration_model ?? '')
               setChatModel(config.agent?.chat_model ?? '')
+              setPlannerModel(config.agent?.planner_model ?? '')
             }).catch(() => {})
           }}
           onReposChange={handleReposChange}

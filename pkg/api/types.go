@@ -218,6 +218,7 @@ type AgentConfig struct {
 	ChatModel        string `json:"chat_model"`
 	ScaffoldModel    string `json:"scaffold_model"`
 	IntegrationModel string `json:"integration_model"`
+	PlannerModel     string `json:"planner_model"`
 }
 
 type QualityConfig struct {
