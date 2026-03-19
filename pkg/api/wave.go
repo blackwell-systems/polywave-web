@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
 
 // agentSnapshot holds the latest lifecycle SSE event per agent for a given slug.
@@ -151,6 +152,9 @@ func (s *Server) handleWaveEvents(w http.ResponseWriter, r *http.Request) {
 	}
 	flusher.Flush()
 
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case ev := <-ch:
@@ -164,6 +168,9 @@ func (s *Server) handleWaveEvents(w http.ResponseWriter, r *http.Request) {
 			if ev.Event == "agent_tool_call" {
 				s.ParseAndEmitProgress(ev, slug)
 			}
+		case <-ticker.C:
+			fmt.Fprintf(w, ": ping\n\n")
+			flusher.Flush()
 		case <-r.Context().Done():
 			return
 		}

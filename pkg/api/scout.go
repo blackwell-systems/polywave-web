@@ -88,6 +88,9 @@ func (s *Server) handleScoutEvents(w http.ResponseWriter, r *http.Request) {
 	ch := s.broker.subscribe(brokerKey)
 	defer s.broker.unsubscribe(brokerKey, ch)
 
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
 	for {
 		select {
 		case ev := <-ch:
@@ -96,6 +99,9 @@ func (s *Server) handleScoutEvents(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", ev.Event, data)
+			flusher.Flush()
+		case <-ticker.C:
+			fmt.Fprintf(w, ": ping\n\n")
 			flusher.Flush()
 		case <-r.Context().Done():
 			return
