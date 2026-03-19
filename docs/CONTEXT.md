@@ -23,3 +23,9 @@
   - IMPL doc: docs/IMPL/complete/IMPL-pipeline-program-hardening.yaml
 - **format-gate**: completed 2026-03-19, 1 waves, 4 agents
   - IMPL doc: docs/IMPL/complete/IMPL-format-gate.yaml
+- **protocol-engine-drift-fixes**: completed 2026-03-19, 2 waves, 6 agents
+  - IMPL doc: docs/IMPL/complete/IMPL-protocol-engine-drift-fixes.yaml
+- **auto-fix-failures**: completed 2026-03-19, 1 waves, 4 agents
+  - IMPL doc: docs/IMPL/complete/IMPL-auto-fix-failures.yaml
+- **reactions-system**: completed 2026-03-19, 2 waves, 5 agents
+  - IMPL doc: docs/IMPL/complete/IMPL-reactions-system.yaml
