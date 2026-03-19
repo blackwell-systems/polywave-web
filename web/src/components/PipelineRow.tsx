@@ -131,12 +131,17 @@ export default function PipelineRow({ entry, onSelect, onSelectProgram }: Pipeli
             <button
               onClick={(e) => {
                 e.stopPropagation()
-                onSelectProgram?.(entry.program_slug!)
+                onSelectProgram?.(entry.program_slug)
               }}
               title={`Part of program: ${entry.program_title || entry.program_slug}`}
               className="text-xs font-medium text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/40 px-1.5 py-0.5 rounded hover:bg-violet-200 dark:hover:bg-violet-800/60 transition-colors"
             >
               ◈ {entry.program_title || entry.program_slug}
+              {entry.program_tier !== undefined && entry.program_tiers_total !== undefined && (
+                <span className="ml-1 opacity-70">
+                  · Tier {entry.program_tier}/{entry.program_tiers_total}
+                </span>
+              )}
             </button>
           )}
           {statusDetail()}
