@@ -1,0 +1,818 @@
+completion_date: "2026-03-19"
+title: FORMAT Gate — Pre-Validation Auto-Formatting Quality Gate
+feature_slug: format-gate
+verdict: SUITABLE
+suitability_assessment: |-
+    **Suitability Assessment: SUITABLE**
+
+    1. File decomposition: Changes span 3 repos across ~9 distinct files with clean
+       ownership. The SDK owns type definitions, validation logic, gate runner, and
+       errparse detection. The protocol repo owns the orchestrator skill doc and scout
+       prompt. The web app owns the UI type for the new field. No two agents need the
+       same file — fully disjoint.
+
+    2. Investigation-first: No root cause analysis required. The feature is
+       straightforward: add "format" to the gate type allowlist, implement toolchain
+       detection in a new pkg/format/ package, wire the Fix field into the gate runner,
+       and invalidate the cache when fix mode modifies files. All code paths are known.
+
+    3. Interface discoverability: All interfaces can be defined before implementation
+       starts. The FormatConfig struct, RunFormatCheck signature, and Fix field on
+       QualityGate are fully specifiable from the existing codebase analysis.
+
+    4. Pre-implementation status: No requirements file. Current status — "format"
+       as a gate type is entirely absent from the codebase. Running sawtools validate
+       --fix on any IMPL doc with quality_gates[*].type = "format" currently rewrites
+       it to "custom" (FixGateTypes in validation.go). All 5 areas of work are TODO.
+
+    5. Parallelization value: 4 agents across 3 repos. Build/test cycle for
+       scout-and-wave-go is Go (go test ./...). Two SDK agents can run in parallel
+       (pkg/format/ and protocol validation are disjoint). The web agent and protocol
+       doc agent are also independent of the SDK agents. High parallelization value
+       with 2 independent agent pairs across repos.
+
+    Estimated times:
+    - Scout phase: ~10 min (3-repo analysis, interface design, IMPL doc)
+    - Agent execution: ~20 min (4 agents; SDK agents ~15 min each in parallel,
+      web agent ~10 min, protocol doc agent ~5 min)
+    - Merge and verification: ~5 min
+    Total SAW time: ~35 min
+    Sequential baseline: ~55 min (4 agents x ~12 min avg + overhead)
+    Time savings: ~20 min (~36% faster)
+
+    Recommendation: Clear speedup with fully independent agent pairs. Proceed.
+test_command: go test ./...
+lint_command: go vet ./...
+file_ownership:
+    - file: pkg/format/detect.go
+      agent: A
+      wave: 1
+      action: new
+      repo: scout-and-wave-go
+    - file: pkg/format/detect_test.go
+      agent: A
+      wave: 1
+      action: new
+      repo: scout-and-wave-go
+    - file: pkg/errparse/format_parsers.go
+      agent: A
+      wave: 1
+      action: new
+      repo: scout-and-wave-go
+    - file: pkg/errparse/format_parsers_test.go
+      agent: A
+      wave: 1
+      action: new
+      repo: scout-and-wave-go
+    - file: pkg/protocol/types.go
+      agent: B
+      wave: 1
+      action: modify
+      repo: scout-and-wave-go
+    - file: pkg/protocol/validation.go
+      agent: B
+      wave: 1
+      action: modify
+      repo: scout-and-wave-go
+    - file: pkg/protocol/jsonschema_validator.go
+      agent: B
+      wave: 1
+      action: modify
+      repo: scout-and-wave-go
+    - file: pkg/protocol/gates.go
+      agent: B
+      wave: 1
+      action: modify
+      repo: scout-and-wave-go
+    - file: pkg/protocol/gates_test.go
+      agent: B
+      wave: 1
+      action: modify
+      repo: scout-and-wave-go
+    - file: pkg/protocol/validation_test.go
+      agent: B
+      wave: 1
+      action: modify
+      repo: scout-and-wave-go
+    - file: pkg/api/types.go
+      agent: C
+      wave: 1
+      action: modify
+      repo: scout-and-wave-web
+    - file: implementations/claude-code/prompts/saw-skill.md
+      agent: D
+      wave: 1
+      action: modify
+      repo: scout-and-wave
+interface_contracts:
+    - name: FormatConfig
+      description: |-
+        Toolchain detection result and formatter command for a given project root.
+        Returned by DetectFormatter. Zero value (Tool == "") means no formatter detected.
+      definition: |-
+        // In pkg/format/detect.go
+        package format
+
+        // FormatConfig describes the formatter for a project.
+        type FormatConfig struct {
+            Tool        string // "gofmt", "prettier", "ruff", "cargo-fmt", ""
+            CheckCmd    string // command to run in check/report mode (exit 1 if unformatted)
+            FixCmd      string // command to run in fix/write mode (rewrites files in place)
+            Description string // human-readable description, e.g. "Go: gofmt -l ./..."
+        }
+
+        // DetectFormatter inspects the project root for known toolchain marker files
+        // and returns the appropriate FormatConfig. Returns zero FormatConfig if
+        // no known formatter is detected.
+        //
+        // Detection priority:
+        //   go.mod      → gofmt (CheckCmd: "gofmt -l .", FixCmd: "gofmt -w .")
+        //   package.json → prettier (CheckCmd: "npx prettier --check .", FixCmd: "npx prettier --write .")
+        //   pyproject.toml or setup.py → ruff (CheckCmd: "ruff format --check .", FixCmd: "ruff format .")
+        //   Cargo.toml  → cargo fmt (CheckCmd: "cargo fmt --check", FixCmd: "cargo fmt")
+        //
+        // When Command is set on the gate (non-empty), DetectFormatter is bypassed
+        // and the caller's explicit Command is used as-is.
+        func DetectFormatter(projectRoot string) FormatConfig
+      location: pkg/format/detect.go
+    - name: QualityGate.Fix
+      description: |-
+        New boolean field on QualityGate struct. When true, the gate runs in
+        fix/write mode (auto-applies formatting). When false (default), runs in
+        check mode (reports unformatted files, returns non-zero exit). Only
+        meaningful for type="format" gates; ignored for all other gate types.
+      definition: |-
+        // In pkg/protocol/types.go — modified QualityGate struct
+        type QualityGate struct {
+            Type        string `yaml:"type" json:"type"`
+            Command     string `yaml:"command" json:"command"`
+            Required    bool   `yaml:"required" json:"required"`
+            Description string `yaml:"description,omitempty" json:"description,omitempty"`
+            Repo        string `yaml:"repo,omitempty" json:"repo,omitempty"`
+            Fix         bool   `yaml:"fix,omitempty" json:"fix,omitempty"` // NEW: fix mode for format gates
+        }
+      location: pkg/protocol/types.go
+    - name: runFormatGate
+      description: |-
+        Internal function in gates.go that handles a format gate. Called from
+        the RunGates/RunGatesWithCache loop when gate.Type == "format".
+        Detects formatter (or uses gate.Command), runs in check or fix mode,
+        and invalidates the cache when fix mode modifies files.
+      definition: |-
+        // In pkg/protocol/gates.go (unexported helper)
+        //
+        // runFormatGate executes a format gate for the given project root.
+        // If gate.Fix is true, runs in fix mode (auto-applies) and invalidates
+        // cache (since files changed). Otherwise runs in check mode.
+        // Returns a fully-populated GateResult.
+        func runFormatGate(gate QualityGate, repoDir string, cache *gatecache.Cache) GateResult
+      location: pkg/protocol/gates.go
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |-
+            ## Agent A — SDK: pkg/format/ toolchain detection + errparse format parsers
+
+            ### Context
+            You are implementing the toolchain detection package and errparse format parsers
+            for the FORMAT gate feature in the scout-and-wave-go SDK.
+
+            **IMPL doc:** /Users/dayna.blackwell/code/scout-and-wave-web/docs/IMPL/IMPL-format-gate.yaml
+            **Repo:** /Users/dayna.blackwell/code/scout-and-wave-go
+            **Wave:** 1, **Agent:** A
+
+            ### Files to create
+            - `pkg/format/detect.go` — new package
+            - `pkg/format/detect_test.go` — tests
+            - `pkg/errparse/format_parsers.go` — format-specific parsers
+            - `pkg/errparse/format_parsers_test.go` — tests
+
+            ### What to implement
+
+            **pkg/format/detect.go:**
+
+            ```go
+            package format
+
+            import (
+                "os"
+                "path/filepath"
+            )
+
+            type FormatConfig struct {
+                Tool        string
+                CheckCmd    string
+                FixCmd      string
+                Description string
+            }
+
+            func DetectFormatter(projectRoot string) FormatConfig {
+                // Check go.mod → gofmt
+                if _, err := os.Stat(filepath.Join(projectRoot, "go.mod")); err == nil {
+                    return FormatConfig{
+                        Tool:        "gofmt",
+                        CheckCmd:    "gofmt -l .",
+                        FixCmd:      "gofmt -w .",
+                        Description: "Go: gofmt",
+                    }
+                }
+                // Check package.json → prettier
+                if _, err := os.Stat(filepath.Join(projectRoot, "package.json")); err == nil {
+                    return FormatConfig{
+                        Tool:        "prettier",
+                        CheckCmd:    "npx prettier --check .",
+                        FixCmd:      "npx prettier --write .",
+                        Description: "TypeScript/JS: prettier",
+                    }
+                }
+                // Check pyproject.toml or setup.py → ruff
+                for _, marker := range []string{"pyproject.toml", "setup.py"} {
+                    if _, err := os.Stat(filepath.Join(projectRoot, marker)); err == nil {
+                        return FormatConfig{
+                            Tool:        "ruff",
+                            CheckCmd:    "ruff format --check .",
+                            FixCmd:      "ruff format .",
+                            Description: "Python: ruff format",
+                        }
+                    }
+                }
+                // Check Cargo.toml → cargo fmt
+                if _, err := os.Stat(filepath.Join(projectRoot, "Cargo.toml")); err == nil {
+                    return FormatConfig{
+                        Tool:        "cargo-fmt",
+                        CheckCmd:    "cargo fmt --check",
+                        FixCmd:      "cargo fmt",
+                        Description: "Rust: cargo fmt",
+                    }
+                }
+                return FormatConfig{} // no formatter detected
+            }
+            ```
+
+            **pkg/format/detect_test.go:**
+            Write table-driven tests using os.MkdirTemp. Create marker files in temp dirs
+            and assert DetectFormatter returns the expected Tool, CheckCmd, FixCmd.
+            Test cases: go.mod → gofmt, package.json → prettier, pyproject.toml → ruff,
+            Cargo.toml → cargo-fmt, empty dir → zero value.
+            Priority order test: go.mod takes precedence over package.json when both exist.
+
+            **pkg/errparse/format_parsers.go:**
+            Implement format parsers for gofmt, prettier, ruff, and cargo-fmt output.
+
+            - gofmt -l outputs filenames of unformatted files (one per line, no prefix).
+              Parser: split stdout by newline, each non-empty line is a StructuredError{
+                  File: line, Severity: "warning", Message: "file is not gofmt-formatted",
+                  Tool: "gofmt" }
+            - prettier --check outputs filenames prefixed with "Checking " and uses exit 1.
+              Parser: look for lines matching "^Checking " or lines in the "[warn]" section.
+              Each unformatted file → StructuredError{File, Severity:"warning",
+                  Message:"file is not prettier-formatted", Tool:"prettier"}
+            - ruff format --check outputs "Would reformat: <file>" lines.
+              Parser: lines matching "^Would reformat: " → StructuredError{File: ...,
+                  Severity:"warning", Message:"file needs ruff format", Tool:"ruff-format"}
+            - cargo fmt --check outputs "Diff in <file>:" lines.
+              Parser: lines starting "Diff in " → extract filename up to ":" →
+                  StructuredError{File, Severity:"warning", Message:"file needs cargo fmt",
+                  Tool:"cargo-fmt"}
+
+            Also update `DetectTool` in pkg/errparse/registry.go to detect format tools:
+            ```go
+            // Format tools — detect by gate type "format" or command content
+            if strings.ToLower(gateType) == "format" {
+                if strings.Contains(cmd, "prettier") { return "prettier-format" }
+                if strings.Contains(cmd, "ruff") { return "ruff-format" }
+                if strings.Contains(cmd, "cargo fmt") { return "cargo-fmt" }
+                return "gofmt" // default for format gate type
+            }
+            // Also detect by command for explicit format commands
+            if strings.Contains(cmd, "gofmt") { return "gofmt" }
+            if strings.Contains(cmd, "prettier") { return "prettier-format" }
+            ```
+
+            Register each parser in an init() function in format_parsers.go:
+            ```go
+            func init() {
+                Register(&GofmtParser{})
+                Register(&PrettierFormatParser{})
+                Register(&RuffFormatParser{})
+                Register(&CargoFmtParser{})
+            }
+            ```
+
+            **pkg/errparse/format_parsers_test.go:**
+            Table-driven tests for each parser. Use synthetic stdout strings matching real
+            tool output formats. Assert correct File, Severity, Message, Tool fields.
+
+            ### Interface contracts
+            Follow the FormatConfig interface contract exactly as defined in this IMPL doc.
+            DetectFormatter signature must match exactly.
+
+            ### Verification gate
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-go
+            go build ./pkg/format/... ./pkg/errparse/...
+            go vet ./pkg/format/... ./pkg/errparse/...
+            go test ./pkg/format/... ./pkg/errparse/...
+            ```
+
+            ### Constraints
+            - Do NOT modify pkg/protocol/gates.go, types.go, or validation.go — Agent B owns those.
+            - Do NOT modify pkg/errparse/registry.go beyond adding DetectTool detection
+              for format tools (the minimum surface needed — do not restructure existing cases).
+            - The format package must have no imports from pkg/protocol to avoid circular deps.
+            - Use only stdlib + existing project dependencies. No new go.mod entries.
+          files:
+            - pkg/format/detect.go
+            - pkg/format/detect_test.go
+            - pkg/errparse/format_parsers.go
+            - pkg/errparse/format_parsers_test.go
+        - id: B
+          task: |-
+            ## Agent B — SDK: gate type validation, Fix field, gates.go runner
+
+            ### Context
+            You are wiring the "format" gate type into the SAW protocol engine. This includes
+            adding "format" to the allowlist, adding a Fix field to QualityGate, implementing
+            the runFormatGate helper, and ensuring cache invalidation in fix mode.
+
+            **IMPL doc:** /Users/dayna.blackwell/code/scout-and-wave-web/docs/IMPL/IMPL-format-gate.yaml
+            **Repo:** /Users/dayna.blackwell/code/scout-and-wave-go
+            **Wave:** 1, **Agent:** B
+
+            ### Files to modify
+            - `pkg/protocol/types.go` — add Fix field to QualityGate
+            - `pkg/protocol/validation.go` — add "format" to ValidGateTypes, update error message
+            - `pkg/protocol/jsonschema_validator.go` — add "format" to validGateTypes slice
+            - `pkg/protocol/gates.go` — add runFormatGate, wire into RunGates + RunGatesWithCache
+            - `pkg/protocol/gates_test.go` — test format gate (check mode, fix mode, detection)
+            - `pkg/protocol/validation_test.go` — test "format" is now a valid gate type
+
+            ### What to implement
+
+            **pkg/protocol/types.go — add Fix field:**
+            In QualityGate struct, add:
+            ```go
+            Fix bool `yaml:"fix,omitempty" json:"fix,omitempty"` // fix mode for format gates
+            ```
+            The comment on Type field should be updated:
+            `// "build" | "lint" | "test" | "typecheck" | "format" | "custom"`
+
+            **pkg/protocol/validation.go — add "format" to allowlist:**
+            In `ValidGateTypes` map, add:
+            ```go
+            "format": true,
+            ```
+            In `validateGateTypes`, update the error message to include "format":
+            `"quality gate type %q is invalid — must be one of: build, lint, test, typecheck, format, custom"`
+            The `FixGateTypes` function no longer rewrites "format" → "custom" since
+            it is now valid. No code change needed there (it uses ValidGateTypes).
+
+            **pkg/protocol/jsonschema_validator.go — add "format" to enum:**
+            Find `validGateTypes := []string{"build", "lint", "test", "typecheck", "custom"}`
+            and add "format":
+            `validGateTypes := []string{"build", "lint", "test", "typecheck", "format", "custom"}`
+
+            **pkg/protocol/gates.go — implement runFormatGate + wire into loop:**
+
+            Add import for the format package:
+            ```go
+            import (
+                ...
+                "github.com/blackwell-systems/scout-and-wave-go/pkg/format"
+            )
+            ```
+
+            Add isSourceGateType("format") — format gates should be skipped for docs-only waves:
+            ```go
+            func isSourceGateType(t string) bool {
+                switch t {
+                case "build", "test", "tests", "lint", "format":
+                    return true
+                }
+                return false
+            }
+            ```
+
+            Add runFormatGate function:
+            ```go
+            // runFormatGate executes a format gate for the given project root.
+            // If gate.Command is non-empty, it is used as-is (bypasses auto-detection).
+            // If gate.Fix is true, runs the fix command (rewrites files) and invalidates
+            // the cache (if non-nil) because file content has changed.
+            // If gate.Fix is false (default), runs the check command (report only).
+            func runFormatGate(gate QualityGate, repoDir string, cache *gatecache.Cache) GateResult {
+                result := GateResult{
+                    Type:     gate.Type,
+                    Command:  gate.Command,
+                    Required: gate.Required,
+                }
+
+                // Detect formatter if no explicit command provided.
+                var cmd string
+                if gate.Command != "" {
+                    cmd = gate.Command
+                } else {
+                    cfg := format.DetectFormatter(repoDir)
+                    if cfg.Tool == "" {
+                        // No formatter detected — treat as skipped (not an error).
+                        result.Passed = true
+                        result.Skipped = true
+                        result.SkipReason = "no formatter detected for project type"
+                        return result
+                    }
+                    if gate.Fix {
+                        cmd = cfg.FixCmd
+                    } else {
+                        cmd = cfg.CheckCmd
+                    }
+                    result.Command = cmd
+                }
+
+                // Execute the formatter command.
+                execCmd := exec.Command("sh", "-c", cmd)
+                execCmd.Dir = repoDir
+                var stdout, stderr bytes.Buffer
+                execCmd.Stdout = &stdout
+                execCmd.Stderr = &stderr
+                err := execCmd.Run()
+                result.Stdout = stdout.String()
+                result.Stderr = stderr.String()
+
+                if err != nil {
+                    if exitErr, ok := err.(*exec.ExitError); ok {
+                        result.ExitCode = exitErr.ExitCode()
+                    } else {
+                        result.ExitCode = -1
+                        if result.Stderr == "" {
+                            result.Stderr = fmt.Sprintf("format gate failed to execute: %v", err)
+                        }
+                    }
+                    result.Passed = false
+                } else {
+                    result.ExitCode = 0
+                    result.Passed = true
+                }
+
+                // In fix mode: if files were modified (exit 0 but stdout contains filenames,
+                // or any non-zero output), invalidate the cache so subsequent gates
+                // see the freshly-formatted files.
+                if gate.Fix && cache != nil {
+                    _ = cache.Invalidate()
+                }
+
+                // Parse structured errors from formatter output.
+                if pr := errparse.ParseOutput(gate.Type, result.Command, result.Stdout, result.Stderr); pr != nil {
+                    result.ParsedErrors = pr.Errors
+                }
+
+                return result
+            }
+            ```
+
+            Wire runFormatGate into the RunGates loop. In the main gate loop,
+            BEFORE the generic `cmd := exec.Command("sh", "-c", gate.Command)` block,
+            add a branch:
+            ```go
+            // Format gates use the dedicated runner for auto-detection + fix mode.
+            if gate.Type == "format" {
+                results = append(results, runFormatGate(gate, repoDir, nil))
+                continue
+            }
+            ```
+
+            Do the same in RunGatesWithCache loop, passing the cache:
+            ```go
+            if gate.Type == "format" {
+                results = append(results, runFormatGate(gate, repoDir, cache))
+                continue
+            }
+            ```
+            Place this branch AFTER the cache-hit check (so cached format results
+            are still returned from cache when not in fix mode), and BEFORE the
+            generic exec.Command block. Note: fix mode bypasses the cache anyway
+            since we invalidate after running.
+
+            **pkg/protocol/gates_test.go — add format gate tests:**
+            Add tests:
+            - TestRunGates_FormatGate_CheckMode: gate.Type="format", gate.Fix=false.
+              Use a temp dir with go.mod to trigger gofmt detection. The command will be
+              "gofmt -l ." which succeeds (exit 0) on a well-formatted file. Assert
+              result.Type=="format", result.Passed==true.
+            - TestRunGates_FormatGate_FixMode: gate.Type="format", gate.Fix=true.
+              Assert result type is "format" and cache is invalidated after fix mode.
+            - TestRunGates_FormatGate_SkipNoFormatter: gate.Type="format" in a dir
+              with no marker files. Assert result.Skipped==true, result.Passed==true.
+            - TestIsSourceGateType_Format: assert isSourceGateType("format") == true.
+
+            **pkg/protocol/validation_test.go — add format gate type test:**
+            Add "format" to the valid gate types test (TestValidateGateTypes_Valid).
+            Verify FixGateTypes no longer rewrites "format" → "custom".
+
+            ### Interface contracts
+            - The Fix field on QualityGate must be yaml:"fix,omitempty" json:"fix,omitempty"
+            - runFormatGate signature: func runFormatGate(gate QualityGate, repoDir string, cache *gatecache.Cache) GateResult
+            - Import path for format package: "github.com/blackwell-systems/scout-and-wave-go/pkg/format"
+
+            ### Dependency on Agent A
+            Agent A creates pkg/format/detect.go. Your import of
+            "github.com/blackwell-systems/scout-and-wave-go/pkg/format" depends on it.
+            **IMPORTANT:** Agent A is in the same wave (Wave 1). Since agents run in
+            parallel worktrees, the format package will NOT be present in your worktree.
+            To work around this:
+            - Write gates.go with the import and runFormatGate as described.
+            - For the go build verification step, you may need to create a stub
+              pkg/format/detect.go temporarily if the package is missing.
+            - The proper resolution happens at merge time. Your verification gate
+              should use: `go build ./pkg/protocol/...` not `go build ./...` to avoid
+              the missing format package compile error.
+            - Document this in your completion report.
+
+            ### Verification gate
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-go
+            go build ./pkg/protocol/...
+            go vet ./pkg/protocol/...
+            go test ./pkg/protocol/... -run TestRunGates
+            go test ./pkg/protocol/... -run TestValidate
+            ```
+
+            ### Constraints
+            - Do NOT create pkg/format/ — that is Agent A's ownership.
+            - Do NOT modify pkg/errparse/format_parsers.go — that is Agent A's ownership.
+            - Do NOT change the errparse.ParseOutput signature or return type.
+            - Fix field must be additive-only (no breaking YAML changes; omitempty).
+          files:
+            - pkg/protocol/types.go
+            - pkg/protocol/validation.go
+            - pkg/protocol/jsonschema_validator.go
+            - pkg/protocol/gates.go
+            - pkg/protocol/gates_test.go
+            - pkg/protocol/validation_test.go
+        - id: C
+          task: |-
+            ## Agent C — Web app: QualityGate type mirror + fix field
+
+            ### Context
+            The web app has a local mirror of the QualityGate struct in pkg/api/types.go.
+            This mirror needs the new Fix field added to match the SDK's updated struct.
+            The web UI gate result display is handled generically (gate type shown as a
+            badge label) — no new component is needed, but the type must be updated.
+
+            **IMPL doc:** /Users/dayna.blackwell/code/scout-and-wave-web/docs/IMPL/IMPL-format-gate.yaml
+            **Repo:** /Users/dayna.blackwell/code/scout-and-wave-web
+            **Wave:** 1, **Agent:** C
+
+            ### Files to modify
+            - `pkg/api/types.go` — add Fix field to QualityGate struct
+
+            ### What to implement
+
+            In pkg/api/types.go, find the QualityGate struct:
+            ```go
+            type QualityGate struct {
+                Type        string `json:"type"`
+                Command     string `json:"command"`
+                Required    bool   `json:"required"`
+                Description string `json:"description,omitempty"`
+            }
+            ```
+            Add the Fix field:
+            ```go
+            type QualityGate struct {
+                Type        string `json:"type"`
+                Command     string `json:"command"`
+                Required    bool   `json:"required"`
+                Description string `json:"description,omitempty"`
+                Fix         bool   `json:"fix,omitempty"` // fix mode: auto-apply formatting (format gates only)
+            }
+            ```
+
+            Also update the comment on QualityGates struct to mention "format":
+            In the QualityGate doc comment, update the Type comment:
+            `// Type is one of: "build", "lint", "test", "typecheck", "format", "custom"`
+
+            ### Verification gate
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web
+            go build ./pkg/api/...
+            go vet ./pkg/api/...
+            go test ./pkg/api/...
+            ```
+
+            ### Constraints
+            - Only modify pkg/api/types.go. The web UI renders gate type as a badge label
+              using the string value directly — no React component changes are needed for
+              basic "format" gate display. The fix field is informational for the review screen.
+            - Do NOT change any other files. The QualityGatesPanel.tsx renders gate.type
+              as a plain string badge, so "format" will display correctly without code changes.
+          files:
+            - pkg/api/types.go
+        - id: D
+          task: |-
+            ## Agent D — Protocol docs: saw-skill.md gate type list
+
+            ### Context
+            The protocol spec (saw-skill.md) references the valid gate types in one
+            location: the `--fix` auto-correction note that says invalid gate types are
+            rewritten to "custom". This implies a finite list of valid types that users
+            and the Scout must know. Update that reference and any quality gate guidance
+            to include "format" as a valid first-class type.
+
+            **IMPL doc:** /Users/dayna.blackwell/code/scout-and-wave-web/docs/IMPL/IMPL-format-gate.yaml
+            **Repo:** /Users/dayna.blackwell/code/scout-and-wave (protocol spec repo)
+            **Wave:** 1, **Agent:** D
+
+            ### Files to modify
+            - `implementations/claude-code/prompts/saw-skill.md`
+
+            ### What to implement
+
+            Search saw-skill.md for references to valid gate types. The primary location is:
+            > "e.g. invalid gate types → `custom`"
+
+            Find the sentence describing the `--fix` flag behavior and update it to clarify
+            that "format" is a valid gate type that is NOT rewritten to custom:
+            Change the parenthetical to:
+            > "(e.g. invalid gate types → `custom`; valid types: build, lint, test, typecheck, format, custom)"
+
+            Also search for any quality gate documentation section that lists valid types
+            (grep for "build.*lint.*test" or "typecheck" or "valid gate"). If found,
+            add "format" to those lists.
+
+            Look for the Scout prompt guidance section describing quality gate types and
+            add a note about the format gate:
+            > **format** — Auto-formatting check. Detects project formatter (gofmt,
+            > prettier, ruff, cargo fmt) and runs in check mode (report-only) or fix
+            > mode (auto-apply). Set `fix: true` to auto-apply. Cache is invalidated
+            > after fix mode. Use before lint gates to reduce noise.
+
+            If the scout.md prompt (implementations/claude-code/prompts/scout.md) has a
+            quality gates section listing valid types, update it similarly. Check the
+            "Auto-detect from marker files" table in the scout prompt — add a "format"
+            row if the table exists.
+
+            ### Verification gate
+            This is a documentation-only change. Verify with:
+            ```
+            grep -n "format" /Users/dayna.blackwell/code/scout-and-wave/implementations/claude-code/prompts/saw-skill.md
+            ```
+            Confirm "format" appears in the gate type list context.
+
+            ### Constraints
+            - Only modify saw-skill.md (and scout.md if it has gate type lists).
+            - Do not change execution rules in protocol/execution-rules.md — that is
+              a separate documentation file not in scope for this wave.
+            - Minimal edits: add "format" to existing lists and add the format gate
+              description. Do not restructure the document.
+          files:
+            - implementations/claude-code/prompts/saw-skill.md
+      base_commit: bd0ecb3b54dfe44213a472cf84abd323b2596513
+quality_gates:
+    level: standard
+    gates:
+        - type: build
+          command: go build ./...
+          required: true
+          description: SDK build verification
+          repo: scout-and-wave-go
+        - type: test
+          command: go test ./...
+          required: true
+          description: SDK test suite
+          repo: scout-and-wave-go
+        - type: build
+          command: go build ./...
+          required: true
+          description: Web app build verification
+          repo: scout-and-wave-web
+        - type: test
+          command: go test ./...
+          required: true
+          description: Web app test suite
+          repo: scout-and-wave-web
+completion_reports:
+    A:
+        status: complete
+        branch: saw/format-gate/wave1-agent-A
+        commit: cf84d4e
+        files_changed:
+            - pkg/format/detect.go
+            - pkg/format/detect_test.go
+            - pkg/errparse/format_parsers.go
+            - pkg/errparse/format_parsers_test.go
+            - pkg/errparse/registry.go
+        files_created:
+            - pkg/format/detect.go
+            - pkg/format/detect_test.go
+            - pkg/errparse/format_parsers.go
+            - pkg/errparse/format_parsers_test.go
+        tests_added:
+            - TestDetectFormatter
+            - TestDetectFormatter_NonexistentDir
+            - TestGofmtParser_Name
+            - TestGofmtParser_Parse
+            - TestPrettierFormatParser_Name
+            - TestPrettierFormatParser_Parse
+            - TestRuffFormatParser_Name
+            - TestRuffFormatParser_Parse
+            - TestCargoFmtParser_Name
+            - TestCargoFmtParser_Parse
+            - TestDetectTool_FormatGateType
+            - TestFormatParsers_Registered
+        verification: PASS
+    B:
+        status: complete
+        branch: saw/format-gate/wave1-agent-B
+        commit: edbade9
+        files_changed:
+            - pkg/protocol/types.go
+            - pkg/protocol/validation.go
+            - pkg/protocol/jsonschema_validator.go
+            - pkg/protocol/gates.go
+            - pkg/protocol/gates_test.go
+            - pkg/protocol/validation_test.go
+        files_created:
+            - pkg/format/detect.go
+        tests_added:
+            - TestIsSourceGateType_Format
+            - TestRunGates_FormatGate_CheckMode
+            - TestRunGates_FormatGate_FixMode
+            - TestRunGates_FormatGate_SkipNoFormatter
+            - TestRunGates_FormatGate_ExplicitCommandSucceeds
+            - TestValidateGateTypes_FormatIsValid
+            - TestFixGateTypes_FormatNotRewrittenToCustom
+        verification: PASS
+    C:
+        status: complete
+        branch: saw/format-gate/wave1-agent-C
+        commit: d489f48
+        files_changed:
+            - pkg/api/types.go
+        verification: PASS
+    D:
+        status: complete
+        branch: saw/format-gate/wave1-agent-D
+        commit: 42f22af
+        files_changed:
+            - implementations/claude-code/prompts/saw-skill.md
+            - implementations/claude-code/prompts/agents/scout.md
+        verification: PASS (grep confirms format appears in gate type list context on line 232 of saw-skill.md)
+pre_mortem:
+    overall_risk: medium
+    rows:
+        - scenario: |-
+            Agent B imports pkg/format/ which Agent A creates in the same wave.
+            Parallel worktrees will not have each other's new packages at build time,
+            causing Agent B's go build ./... to fail with "cannot find package".
+          likelihood: high
+          impact: medium
+          mitigation: |-
+            Agent B's verification gate is scoped to go build ./pkg/protocol/... (not
+            ./...) to avoid the missing format package. Agent B should create a minimal
+            stub pkg/format/detect.go in its worktree ONLY for compilation purposes,
+            clearly marked as a temporary stub. At merge time, Agent A's real
+            implementation overwrites the stub. This is documented in Agent B's
+            constraints section.
+        - scenario: |-
+            gofmt -l . outputs relative paths (e.g. "main.go") while the StructuredError.File
+            field is expected to be a file path. If the web UI or CLI tries to open the file
+            by path, relative paths may fail when the working directory differs.
+          likelihood: medium
+          impact: low
+          mitigation: |-
+            The gofmt parser in format_parsers.go should note that paths are relative to
+            the project root (repoDir). The GateResult already captures stdout as a string;
+            ParsedErrors is advisory for display. No path resolution is needed at parse time.
+        - scenario: |-
+            prettier --check output format varies by version (v2 vs v3 differ in output
+            format). The prettier parser may miss unformatted files.
+          likelihood: medium
+          impact: low
+          mitigation: |-
+            The prettier parser should be conservative: parse both "Checking " prefix lines
+            (v2) and "warn" keyword lines (v3). Since ParsedErrors is advisory (the real
+            pass/fail comes from exit code), a missed parse does not affect correctness.
+        - scenario: |-
+            Cache invalidation in fix mode calls cache.Invalidate() which removes ALL
+            cached gate results, not just the format gate. This means subsequent lint/test
+            gates that were cached will re-run unnecessarily.
+          likelihood: high
+          impact: low
+          mitigation: |-
+            This is intentional and correct. When format changes files, all previously
+            cached gate results are stale (e.g., lint ran on pre-format code). Invalidating
+            the full cache ensures accurate results. The TTL is 5 minutes; the overhead
+            of re-running lint/test is acceptable. Document this behavior in runFormatGate.
+        - scenario: |-
+            The go.mod marker is present in scout-and-wave-go but the test repos used
+            in pkg/format/detect_test.go are temp dirs. If a test creates a temp dir
+            that happens to be inside the repo root, DetectFormatter may walk up and
+            find the real go.mod, causing test interference.
+          likelihood: low
+          impact: low
+          mitigation: |-
+            DetectFormatter only checks the given projectRoot — it does not walk parent
+            directories. Tests use os.MkdirTemp (outside the repo) and create marker files
+            explicitly. No directory walk means no interference.
+state: "COMPLETE"

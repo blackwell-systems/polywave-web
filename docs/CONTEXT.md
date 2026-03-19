@@ -21,3 +21,5 @@
   - IMPL doc: docs/IMPL/IMPL-program-layer-web-integration.yaml
 - **pipeline-program-hardening**: completed 2026-03-19, 2 waves, 7 agents
   - IMPL doc: docs/IMPL/complete/IMPL-pipeline-program-hardening.yaml
+- **format-gate**: completed 2026-03-19, 1 waves, 4 agents
+  - IMPL doc: docs/IMPL/complete/IMPL-format-gate.yaml
