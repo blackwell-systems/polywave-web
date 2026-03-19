@@ -29,6 +29,7 @@ export interface ContractEntry {
 
 export interface ScaffoldInfo {
   required: boolean
+  committed: boolean // true when all scaffold files have status "committed"
   files: string[]
   contracts: ContractEntry[]
 }

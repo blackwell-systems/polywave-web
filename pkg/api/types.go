@@ -66,6 +66,7 @@ type WaveInfo struct {
 // ScaffoldInfo describes the scaffold section of the IMPL doc.
 type ScaffoldInfo struct {
 	Required  bool            `json:"required"`
+	Committed bool            `json:"committed"` // true when all scaffold files have status "committed"
 	Files     []string        `json:"files"`
 	Contracts []ContractEntry `json:"contracts"`
 }

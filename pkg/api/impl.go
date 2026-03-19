@@ -424,6 +424,7 @@ func implDocResponseFromManifest(slug string, m *protocol.IMPLManifest) IMPLDocR
 		Waves:         waveInfos,
 		Scaffold: ScaffoldInfo{
 			Required:  len(scaffoldFiles) > 0,
+			Committed: allScaffoldsCommitted(m.Scaffolds),
 			Files:     scaffoldFiles,
 			Contracts: []ContractEntry{},
 		},
@@ -639,4 +640,17 @@ func (s *Server) handleArchiveImpl(w http.ResponseWriter, r *http.Request) {
 
 	s.globalBroker.broadcast("impl_list_updated")
 	w.WriteHeader(http.StatusOK)
+}
+
+// allScaffoldsCommitted returns true when every scaffold file has status "committed".
+func allScaffoldsCommitted(scaffolds []protocol.ScaffoldFile) bool {
+	if len(scaffolds) == 0 {
+		return false
+	}
+	for _, sf := range scaffolds {
+		if !strings.HasPrefix(sf.Status, "committed") {
+			return false
+		}
+	}
+	return true
 }

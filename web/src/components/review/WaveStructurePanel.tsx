@@ -275,10 +275,10 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
         return true
 
       case 'scaffold':
-        // Always filled — the Scout already ran to produce this IMPL doc,
-        // so the line from Scout→Scaffold should be solid. The scaffold orb
-        // itself animates its fill on execution completion separately.
-        return true
+        // Filled only when scaffold files have been committed, or when live
+        // execution reports scaffold complete.
+        if (isLive && executionState) return executionState.scaffoldStatus === 'complete'
+        return impl.scaffold.committed
 
       case 'wave':
         return getWaveStatus(node.waveNum!) === 'complete'
@@ -294,7 +294,7 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
       default:
         return false
     }
-  }, [isComplete, highestCompleteWave, getWaveStatus, isLive, executionState, isWaveRunning])
+  }, [isComplete, highestCompleteWave, getWaveStatus, isLive, executionState, isWaveRunning, impl.scaffold.committed])
 
   // Track node element positions for per-segment colored lines
   const railRef = useRef<HTMLDivElement>(null)
@@ -349,7 +349,8 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
       if (lastFilledIdx >= 0 && lastFilledIdx + 1 < nodes.length) {
         const nextNode = nodes[lastFilledIdx + 1]
         const nextEl = nodeRefs.current[lastFilledIdx + 1]
-        if (nextEl && nextNode.type === 'wave' && isWaveRunning(nextNode.waveNum!)) {
+        const nextIsUncommittedScaffold = nextNode.type === 'scaffold' && !impl.scaffold.committed
+        if (nextEl && ((nextNode.type === 'wave' && isWaveRunning(nextNode.waveNum!)) || nextIsUncommittedScaffold)) {
           const nextRect = nextEl.getBoundingClientRect()
           const nextOrbTop = nextRect.top + 14 - railTop
           // Extend the last segment to reach the running wave's orb top
@@ -360,7 +361,7 @@ export default function WaveStructurePanel({ impl, executionState }: WaveStructu
       }
     }
     setSegments(segs)
-  }, [nodes, isNodeFilled, isWaveRunning, executionState])
+  }, [nodes, isNodeFilled, isWaveRunning, executionState, impl.scaffold.committed])
 
   // Ensure refs array matches nodes length
   if (nodeRefs.current.length !== nodes.length) {

@@ -94,7 +94,7 @@ export default function WaveStructureDiagram({ waves, scaffold }: WaveStructureD
         {/* Scaffold node */}
         {scaffold.required && (
           <>
-            <TrunkNode label="Scaffold" icon="◆" />
+            <TrunkNode label="Scaffold" icon="◆" muted={!scaffold.committed} />
             <TrunkLine />
           </>
         )}
