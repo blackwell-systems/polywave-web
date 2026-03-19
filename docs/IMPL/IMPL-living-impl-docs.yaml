@@ -56,10 +56,12 @@ quality_gates:
     - type: build
       command: go build ./...
       required: true
+      repo: scout-and-wave-go
       description: Build scout-and-wave-go SDK
     - type: test
       command: go test ./...
       required: true
+      repo: scout-and-wave-go
       description: Full test suite for scout-and-wave-go SDK
     - type: build
       command: go build ./...
@@ -469,10 +471,12 @@ waves:
           3. Check raw file for SAW:COMPLETE marker using `strings.Contains(rawBytes, "SAW:COMPLETE")` → same error
 
           **For AddWave:**
-          1. Find the highest wave number in m.Waves
-          2. Append a new `Wave{Number: maxWave+1, Agents: []Agent{}}` to m.Waves
-          3. Save manifest (protocol.Save)
-          4. Run `protocol.Validate(m)` — if validation errors, roll back and return error wrapping ErrAmendBlocked
+          1. Find the highest wave number in m.Waves (gaps are fine; new wave = maxWave+1)
+          2. Construct the candidate new wave: `newWave := Wave{Number: maxWave+1, Agents: []Agent{}}`
+          3. Validate BEFORE mutating: append newWave to a copy, run `protocol.Validate(mCopy)`.
+             If validation fails, return error wrapping ErrAmendBlocked — do NOT save the manifest.
+             This avoids needing rollback logic (validate-first pattern).
+          4. If validation passes, append to the real manifest and save
           5. Return `&AmendImplResult{Operation: "add-wave", NewWaveNumber: maxWave+1}`
 
           **For RedirectAgent:**
@@ -488,11 +492,15 @@ waves:
           **Worktree commit check for RedirectAgent:**
           - Construct branch name: `saw/<slug>/wave<N>-agent-<ID>` (use m.FeatureSlug)
           - If m.Waves[waveIdx].BaseCommit is empty: skip git check, emit Warning "base_commit not set; skipping worktree commit check"
-          - Otherwise: run `git log <baseCommit>..<branchName> --oneline` in the repo dir (filepath.Dir of manifest path, walk up to find .git)
+          - Otherwise: find repo root using `git -C <manifestDir> rev-parse --show-toplevel`
+            (do NOT walk parent directories manually — this approach fails when manifest is
+            in a subdirectory like docs/IMPL/ that is several levels from .git).
+            If git rev-parse fails, emit Warning "could not find repo root; skipping worktree commit check" and skip.
+          - Run `exec.Command("git", "-C", repoRoot, "log", baseCommit+".."+branchName, "--oneline")`
+            (use exec.Command with separate args — not sh -c — to avoid any shell injection risk
+            from baseCommit or branchName values containing special characters)
           - If git command fails (branch not found): no commits, proceed
           - If output is non-empty: return `fmt.Errorf("%w: agent %s has commits on branch %s; cannot redirect a committed agent", ErrAmendBlocked, AgentID, branchName)`
-
-          **Helper: find repo root** — walk from manifestPath directory upward until .git is found (or return manifestDir as fallback).
 
           ### Tests to write
           Create `amend_test.go` in the same package (or `amend_test.go` with `package protocol_test`).

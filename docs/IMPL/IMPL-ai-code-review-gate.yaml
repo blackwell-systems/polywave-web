@@ -127,6 +127,7 @@ interface_contracts:
           Summary    string           `json:"summary"`
           Model      string           `json:"model"`
           DiffBytes  int              `json:"diff_bytes"`
+          Truncated  bool             `json:"truncated,omitempty"` // true when diff was truncated to 50k bytes
       }
 
       type DimensionScore struct {
@@ -198,6 +199,7 @@ interface_contracts:
           Summary    string           `json:"summary"`
           Model      string           `json:"model"`
           DiffBytes  int              `json:"diff_bytes"`
+          Truncated  bool             `json:"truncated,omitempty"` // mirrors ReviewResult.Truncated
           Wave       int              `json:"wave"`
           Slug       string           `json:"slug"`
       }
@@ -429,20 +431,25 @@ waves:
               "summary": "..."
             }
             ```
+          - Check `os.Getenv("ANTHROPIC_API_KEY")` before making any API call. If empty,
+            return `nil, fmt.Errorf("ANTHROPIC_API_KEY not set; code review requires API access")`.
+            This produces a clear actionable error instead of a cryptic auth failure.
           - Use `anthropic.NewClient(option.WithAPIKey(os.Getenv("ANTHROPIC_API_KEY")))`.
           - Use `client.Messages.New(ctx, params)` (non-streaming, single turn — no tool use).
           - Set MaxTokens to 1024 (sufficient for review JSON).
           - Parse the JSON response text into ReviewResult. Set `Passed = (Overall >= threshold)`.
           - If diff is empty string, return a ReviewResult with all zeros and
             Passed=true (nothing to review).
-          - If diff exceeds 50000 bytes, truncate to first 50000 bytes and note
-            truncation in the user message.
+          - If diff exceeds 50000 bytes, truncate to first 50000 bytes, append
+            "[diff truncated to 50000 bytes]" to the user message, and set
+            `result.Truncated = true` in the returned ReviewResult.
 
           **RunCodeReview:**
           - Return (nil, nil) when cfg.Enabled is false.
           - Get the diff via `exec.Command("git", "-C", repoPath, "diff", "HEAD~1..HEAD")`.
-          - If git command fails (e.g. only one commit), fall back to
-            `git diff HEAD` (shows unstaged/staged changes) — do not error.
+          - If git command fails (e.g. only one commit — HEAD~1 does not exist), fall back to
+            `exec.Command("git", "-C", repoPath, "show", "HEAD")` which shows the full
+            content of the most recent commit regardless of history depth. Do not error.
           - Build ReviewOpts from cfg: Model, Threshold, Dimensions.
           - Call ReviewDiff and return its result.
 
@@ -620,11 +627,15 @@ waves:
               if cfgData, err := os.ReadFile(filepath.Join(repoPath, "saw.config.json")); err == nil {
                   var sawCfg SAWConfig
                   if json.Unmarshal(cfgData, &sawCfg) == nil {
+                      // Nil-guard: CodeReview is a value type (CodeReviewCfg), not a pointer,
+                      // so field access is safe after successful unmarshal. Only access Quality
+                      // fields after confirming Quality itself is the zero value or populated.
+                      cr := sawCfg.Quality.CodeReview // CodeReviewCfg value (never nil)
                       reviewCfg = codereview.CodeReviewConfig{
-                          Enabled:   sawCfg.Quality.CodeReview.Enabled,
-                          Blocking:  sawCfg.Quality.CodeReview.Blocking,
-                          Model:     sawCfg.Quality.CodeReview.Model,
-                          Threshold: sawCfg.Quality.CodeReview.Threshold,
+                          Enabled:   cr.Enabled,
+                          Blocking:  cr.Blocking,
+                          Model:     cr.Model,
+                          Threshold: cr.Threshold,
                       }
                       // Fill review model from agent config if not set in code_review
                       if reviewCfg.Model == "" {
@@ -802,9 +813,15 @@ waves:
             (green "PASSED" or red "FAILED") and the overall score as a percentage
           - The summary paragraph in muted text
           - A grid of 5 dimension cards (or however many dimensions are present),
-            each showing: dimension name (formatted as "Code Quality" from
-            "code_quality"), score as a colored progress bar (green >= 80,
-            yellow >= 60, red < 60), and the rationale text
+            each showing: dimension name formatted as title case (e.g. "Code Quality"
+            from "code_quality") — implement a `formatDimName` helper:
+            ```ts
+            function formatDimName(name: string): string {
+              return name.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+            }
+            ```
+            Score as a colored progress bar (green >= 80, yellow >= 60, red < 60),
+            and the rationale text
           - Model attribution in small text at the bottom
 
           Style using Tailwind classes consistent with the existing design system

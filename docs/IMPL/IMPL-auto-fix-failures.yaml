@@ -164,7 +164,8 @@ interface_contracts:
       // In pkg/orchestrator/orchestrator.go
 
       // retryCount tracks how many times each agent has been retried in this wave run.
-      // Key format: "<waveNum>:<agentLetter>" e.g. "1:A"
+      // Key format: "<slug>:<waveNum>:<agentLetter>" e.g. "my-feature:1:A"
+      // Slug-scoped to prevent interference between concurrent IMPL executions in the same process.
       // This is transient state — not persisted to the IMPL doc.
       var retryCount sync.Map // map[string]int
 
@@ -437,8 +438,11 @@ waves:
 
           ```go
           // Reset per-agent retry counts for this wave run (transient state).
+          // Use slug-scoped key to avoid interference between concurrent IMPL executions.
+          // Obtain slug via o.implSlug() or derive from manifest path (filepath.Base strips ext).
+          implSlug := o.implSlug() // or: strings.TrimSuffix(filepath.Base(o.manifestPath), ".yaml")
           for _, a := range wave.Agents {
-              retryCountMap.Delete(fmt.Sprintf("%d:%s", waveNum, a.Letter))
+              retryCountMap.Delete(fmt.Sprintf("%s:%d:%s", implSlug, waveNum, a.Letter))
           }
           ```
 
@@ -486,10 +490,14 @@ waves:
               failureType := report.FailureType
 
               // Determine max retries per E19.
+              // timeout uses MaxFixableRetries (1) not MaxTransientRetries (2):
+              // failure.go maps timeout → ActionRetryWithScope (retry once with scope-reduction note).
               var maxRetries int
               switch failureType {
-              case "transient", "timeout":
+              case "transient":
                   maxRetries = MaxTransientRetries
+              case "timeout":
+                  maxRetries = MaxFixableRetries // E19: timeout retries once with scope-reduction note
               case "fixable":
                   maxRetries = MaxFixableRetries
               default:
@@ -498,10 +506,14 @@ waves:
               }
 
               // Check and increment retry count.
-              key := fmt.Sprintf("%d:%s", waveNum, agentSpec.Letter)
+              // Use slug-scoped key to prevent cross-IMPL contamination in concurrent server runs.
+              implSlug := o.implSlug()
+              key := fmt.Sprintf("%s:%d:%s", implSlug, waveNum, agentSpec.Letter)
               count := 0
               if v, ok := retryCountMap.Load(key); ok {
-                  count = v.(int)
+                  if n, ok := v.(int); ok { // safe assertion; panics if wrong type otherwise
+                      count = n
+                  }
               }
               if count >= maxRetries {
                   o.publish(OrchestratorEvent{
