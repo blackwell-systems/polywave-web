@@ -265,6 +265,32 @@ func runWaveLoop(
 			for _, gate := range finalizeResult.GateResults {
 				publish("quality_gate_result", gate)
 			}
+			// Wiring gap events (E35): run wiring validation post-finalize and
+			// emit per-gap and summary SSE events. Non-blocking — does not abort
+			// the wave. The engine's FinalizeWaveResult does not carry a WiringReport,
+			// so we run it inline here.
+			if manifest != nil && len(manifest.Wiring) > 0 {
+				if wiringResult, wiringErr := protocol.ValidateWiringDeclarations(manifest, repoPath); wiringErr == nil {
+					if wiringResult != nil && !wiringResult.Valid {
+						for _, gap := range wiringResult.Gaps {
+							publish("wiring_gap", map[string]interface{}{
+								"wave":                waveNum,
+								"symbol":              gap.Declaration.Symbol,
+								"defined_in":          gap.Declaration.DefinedIn,
+								"must_be_called_from": gap.Declaration.MustBeCalledFrom,
+								"agent":               gap.Declaration.Agent,
+								"reason":              gap.Reason,
+								"severity":            gap.Severity,
+							})
+						}
+						publish("wiring_gaps_summary", map[string]interface{}{
+							"wave":      waveNum,
+							"gap_count": len(wiringResult.Gaps),
+							"summary":   wiringResult.Summary,
+						})
+					}
+				}
+			}
 		}
 		onStage(StageWaveMerge, StageStatusComplete, waveNum, "")
 
@@ -485,6 +511,34 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		}
 		_ = tracker.Complete(slug, waveNum, StepValidateIntegration)
 		publishPipelineStep(publish, slug, waveNum, StepValidateIntegration, StepComplete, "")
+	}
+
+	// --- Step 4b: ValidateWiring (non-fatal, E35 Layer 3B) ---
+	// Run wiring declaration check after integration validation, before merge.
+	// Emit per-gap and summary SSE events so the UI can surface wiring gaps.
+	// Does NOT block the pipeline — wiring gaps are advisory at this stage.
+	if len(manifest.Wiring) > 0 {
+		wiringResult, wiringErr := protocol.ValidateWiringDeclarations(manifest, repoPath)
+		if wiringErr != nil {
+			log.Printf("runFinalizeSteps: validate-wiring non-fatal error: %v", wiringErr)
+		} else if wiringResult != nil && !wiringResult.Valid {
+			for _, gap := range wiringResult.Gaps {
+				publish("wiring_gap", map[string]interface{}{
+					"wave":                waveNum,
+					"symbol":              gap.Declaration.Symbol,
+					"defined_in":          gap.Declaration.DefinedIn,
+					"must_be_called_from": gap.Declaration.MustBeCalledFrom,
+					"agent":               gap.Declaration.Agent,
+					"reason":              gap.Reason,
+					"severity":            gap.Severity,
+				})
+			}
+			publish("wiring_gaps_summary", map[string]interface{}{
+				"wave":      waveNum,
+				"gap_count": len(wiringResult.Gaps),
+				"summary":   wiringResult.Summary,
+			})
+		}
 	}
 
 	// --- Step 5: MergeAgents ---
