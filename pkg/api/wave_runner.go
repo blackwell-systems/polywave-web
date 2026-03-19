@@ -214,6 +214,7 @@ func runWaveLoop(
 		}
 
 		enginePublisher := func(ev engine.Event) {
+			// auto_retry_started and auto_retry_exhausted events from E19 flow through here.
 			publish(ev.Event, ev.Data)
 		}
 
@@ -901,13 +902,16 @@ func (s *Server) resolveIMPLPath(slug string) (string, string, error) {
 // makePublisher creates a function that maps orchestrator events to SSE events.
 // Agent lifecycle events (agent_started, agent_complete, agent_failed) are cached
 // so late-connecting SSE clients can receive a state snapshot on connect.
+// auto_retry_started and auto_retry_exhausted (E19) are also cached so late clients
+// can reconstruct the current retry state.
 func (s *Server) makePublisher(slug string) func(event string, data interface{}) {
 	return func(event string, data interface{}) {
 		ev := SSEEvent{Event: event, Data: data}
 		switch event {
 		case "run_started":
 			s.clearAgentSnapshot(slug)
-		case "agent_started", "agent_complete", "agent_failed":
+		case "agent_started", "agent_complete", "agent_failed",
+			"auto_retry_started", "auto_retry_exhausted":
 			s.cacheAgentEvent(slug, ev)
 		}
 		s.broker.Publish(slug, ev)
@@ -916,11 +920,13 @@ func (s *Server) makePublisher(slug string) func(event string, data interface{})
 
 // makeEnginePublisher converts engine.Event to api.SSEEvent and publishes to the broker.
 // Agent lifecycle events are cached for SSE replay (same as makePublisher).
+// auto_retry_started and auto_retry_exhausted (E19) are also cached.
 func (s *Server) makeEnginePublisher(slug string) func(engine.Event) {
 	return func(ev engine.Event) {
 		sseEv := SSEEvent{Event: ev.Event, Data: ev.Data}
 		switch ev.Event {
-		case "agent_started", "agent_complete", "agent_failed":
+		case "agent_started", "agent_complete", "agent_failed",
+			"auto_retry_started", "auto_retry_exhausted":
 			s.cacheAgentEvent(slug, sseEv)
 		}
 		s.broker.Publish(slug, sseEv)

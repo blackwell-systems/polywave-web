@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
 
 // capturePublish returns a publish func and a getter for collected events.
@@ -304,5 +306,134 @@ waves:
 	// or earlier. Verify we got an error back.
 	if err == nil {
 		t.Error("expected runFinalizeSteps to return an error")
+	}
+}
+
+// newMinimalServer creates a minimal Server with only the fields needed to test
+// makePublisher and makeEnginePublisher (broker + agentSnapshots).
+func newMinimalServer() *Server {
+	return &Server{
+		broker: &sseBroker{
+			clients: make(map[string][]chan SSEEvent),
+		},
+	}
+}
+
+// TestMakePublisher_CachesAutoRetryEvents verifies that auto_retry_started and
+// auto_retry_exhausted events are cached by cacheAgentEvent via makePublisher,
+// so late-connecting SSE clients receive the retry state in the snapshot.
+func TestMakePublisher_CachesAutoRetryEvents(t *testing.T) {
+	s := newMinimalServer()
+	slug := "test-slug"
+	publish := s.makePublisher(slug)
+
+	// Publish auto_retry_started with the required agent/wave fields.
+	publish("auto_retry_started", map[string]interface{}{
+		"agent":        "A",
+		"wave":         1,
+		"failure_type": "transient",
+		"attempt":      1,
+		"max_attempts": 2,
+	})
+
+	// Publish auto_retry_exhausted.
+	publish("auto_retry_exhausted", map[string]interface{}{
+		"agent":        "B",
+		"wave":         1,
+		"failure_type": "fixable",
+		"attempts":     1,
+	})
+
+	// Both events should appear in the agent snapshot.
+	snapshot := s.snapshotAgentEvents(slug)
+	if len(snapshot) != 2 {
+		t.Fatalf("expected 2 cached events, got %d: %+v", len(snapshot), snapshot)
+	}
+
+	eventNames := make(map[string]bool)
+	for _, ev := range snapshot {
+		eventNames[ev.Event] = true
+	}
+	if !eventNames["auto_retry_started"] {
+		t.Error("expected auto_retry_started to be cached in agent snapshot")
+	}
+	if !eventNames["auto_retry_exhausted"] {
+		t.Error("expected auto_retry_exhausted to be cached in agent snapshot")
+	}
+}
+
+// TestMakePublisher_CachesAutoRetryEvents_AgentFailed verifies that agent_failed
+// is still cached alongside the new retry events (regression guard).
+func TestMakePublisher_CachesAutoRetryEvents_AgentFailed(t *testing.T) {
+	s := newMinimalServer()
+	slug := "test-slug-2"
+	publish := s.makePublisher(slug)
+
+	// Publish agent_failed to confirm existing behaviour is preserved.
+	publish("agent_failed", map[string]interface{}{
+		"agent":  "A",
+		"wave":   1,
+		"status": "failed",
+	})
+
+	// Also publish an auto_retry_started for the same agent — the cache
+	// key is "wave:agent", so it overwrites the previous agent_failed.
+	publish("auto_retry_started", map[string]interface{}{
+		"agent":        "A",
+		"wave":         1,
+		"failure_type": "transient",
+		"attempt":      1,
+		"max_attempts": 2,
+	})
+
+	snapshot := s.snapshotAgentEvents(slug)
+	// Only 1 entry because both events share the same "1:A" cache key.
+	if len(snapshot) != 1 {
+		t.Fatalf("expected 1 cached event (same key overwrite), got %d", len(snapshot))
+	}
+	if snapshot[0].Event != "auto_retry_started" {
+		t.Errorf("expected latest event to be auto_retry_started, got %q", snapshot[0].Event)
+	}
+}
+
+// TestMakeEnginePublisher_CachesAutoRetryEvents verifies makeEnginePublisher
+// caches auto_retry_started and auto_retry_exhausted (same contract as makePublisher).
+func TestMakeEnginePublisher_CachesAutoRetryEvents(t *testing.T) {
+	s := newMinimalServer()
+	slug := "engine-pub-slug"
+
+	enginePub := s.makeEnginePublisher(slug)
+
+	// Subscribe to the broker to drain events (prevent blocking on a full channel).
+	ch := s.broker.subscribe(slug)
+	defer s.broker.unsubscribe(slug, ch)
+
+	enginePub(engine.Event{
+		Event: "auto_retry_started",
+		Data: map[string]interface{}{
+			"agent":        "C",
+			"wave":         2,
+			"failure_type": "transient",
+			"attempt":      1,
+			"max_attempts": 2,
+		},
+	})
+	enginePub(engine.Event{
+		Event: "auto_retry_exhausted",
+		Data: map[string]interface{}{
+			"agent":        "C",
+			"wave":         2,
+			"failure_type": "transient",
+			"attempts":     2,
+		},
+	})
+
+	snapshot := s.snapshotAgentEvents(slug)
+	// Same "2:C" cache key — exhausted overwrites started, so expect 1 entry.
+	if len(snapshot) != 1 {
+		t.Fatalf("expected 1 cached event (same key overwrite), got %d", len(snapshot))
+	}
+	if snapshot[0].Event != "auto_retry_exhausted" {
+		t.Errorf("expected latest cached event to be auto_retry_exhausted, got %q", snapshot[0].Event)
 	}
 }
