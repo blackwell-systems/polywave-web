@@ -11,49 +11,34 @@ interface ProgramBoardProps {
 
 function getImplStatusColor(status: string): string {
   switch (status) {
-    case 'complete':
-      return 'rgb(63, 185, 80)'
-    case 'running':
-      return 'rgb(88, 166, 255)'
-    case 'failed':
-      return 'rgb(248, 81, 73)'
-    default:
-      return 'rgba(140, 140, 150, 0.4)'
+    case 'complete':      return 'rgb(63, 185, 80)'
+    case 'executing':
+    case 'in-progress':   return 'rgb(88, 166, 255)'
+    case 'reviewed':      return 'rgb(210, 153, 34)'
+    case 'scouting':      return 'rgb(130, 100, 220)'
+    case 'blocked':
+    case 'not-suitable':  return 'rgb(248, 81, 73)'
+    default:              return 'rgba(140, 140, 150, 0.4)'
   }
 }
 
 function getImplStatusBadge(status: string): JSX.Element {
   switch (status) {
     case 'complete':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">
-          Complete
-        </span>
-      )
-    case 'running':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 animate-pulse">
-          Running
-        </span>
-      )
-    case 'failed':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
-          Failed
-        </span>
-      )
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">Complete</span>
+    case 'executing':
+    case 'in-progress':
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 animate-pulse">Executing</span>
+    case 'reviewed':
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800">Reviewed</span>
+    case 'scouting':
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800 animate-pulse">Scouting</span>
     case 'blocked':
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-400 border border-gray-200 dark:border-gray-800">
-          Blocked
-        </span>
-      )
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">Blocked</span>
+    case 'not-suitable':
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">Not Suitable</span>
     default:
-      return (
-        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
-          Pending
-        </span>
-      )
+      return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">Pending</span>
   }
 }
 
@@ -77,7 +62,7 @@ function ImplCard({ impl, onClick }: { impl: ImplTierStatus; onClick?: () => voi
         {getImplStatusBadge(impl.status)}
       </div>
       {/* Progress bar placeholder - would need wave data to show accurate progress */}
-      {impl.status === 'running' && (
+      {(impl.status === 'executing' || impl.status === 'in-progress' || impl.status === 'scouting') && (
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
           <div
             className="bg-blue-500 h-1.5 rounded-full animate-pulse"

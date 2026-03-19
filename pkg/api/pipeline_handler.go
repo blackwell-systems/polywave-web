@@ -12,6 +12,42 @@ import (
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/queue"
 )
 
+// implProgramInfo holds the parent program identifiers for a given IMPL slug.
+type implProgramInfo struct {
+	programSlug  string
+	programTitle string
+}
+
+// buildImplProgramMap scans each repo's docs/PROGRAM-*.yaml files and returns
+// a map of implSlug → implProgramInfo for use in tagging pipeline entries.
+func buildImplProgramMap(repos []RepoEntry) map[string]implProgramInfo {
+	result := make(map[string]implProgramInfo)
+	for _, repo := range repos {
+		docsDir := filepath.Join(repo.Path, "docs")
+		entries, err := os.ReadDir(docsDir)
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			name := e.Name()
+			if !strings.HasPrefix(name, "PROGRAM-") || !strings.HasSuffix(name, ".yaml") {
+				continue
+			}
+			manifest, err := protocol.ParseProgramManifest(filepath.Join(docsDir, name))
+			if err != nil {
+				continue
+			}
+			for _, impl := range manifest.Impls {
+				result[impl.Slug] = implProgramInfo{
+					programSlug:  manifest.ProgramSlug,
+					programTitle: manifest.Title,
+				}
+			}
+		}
+	}
+	return result
+}
+
 // PipelineEntry represents a single IMPL in the pipeline view.
 type PipelineEntry struct {
 	Slug          string   `json:"slug"`
@@ -25,6 +61,8 @@ type PipelineEntry struct {
 	DependsOn     []string `json:"depends_on,omitempty"`
 	CompletedAt   string   `json:"completed_at,omitempty"`
 	ElapsedSecs   int      `json:"elapsed_seconds,omitempty"`
+	ProgramSlug   string   `json:"program_slug,omitempty"`
+	ProgramTitle  string   `json:"program_title,omitempty"`
 }
 
 // PipelineMetrics contains throughput and status counts.
@@ -49,6 +87,8 @@ type PipelineResponse struct {
 func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 	repos := s.getConfiguredRepos()
 	includeCompleted := r.URL.Query().Get("include_completed") == "true"
+
+	implProgramMap := buildImplProgramMap(repos)
 
 	var entries []PipelineEntry
 	completedCount := 0
@@ -76,12 +116,17 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 				if m, err := protocol.Load(fullPath); err == nil && m.Title != "" {
 					title = m.Title
 				}
-				entries = append(entries, PipelineEntry{
+				e := PipelineEntry{
 					Slug:   slug,
 					Title:  title,
 					Status: "complete",
 					Repo:   repo.Name,
-				})
+				}
+				if pi, ok := implProgramMap[slug]; ok {
+					e.ProgramSlug = pi.programSlug
+					e.ProgramTitle = pi.programTitle
+				}
+				entries = append(entries, e)
 			}
 		}
 
@@ -104,12 +149,17 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 				if _, loaded := s.activeRuns.Load(slug); loaded {
 					status = "executing"
 				}
-				entries = append(entries, PipelineEntry{
+				e := PipelineEntry{
 					Slug:   slug,
 					Title:  title,
 					Status: status,
 					Repo:   repo.Name,
-				})
+				}
+				if pi, ok := implProgramMap[slug]; ok {
+					e.ProgramSlug = pi.programSlug
+					e.ProgramTitle = pi.programTitle
+				}
+				entries = append(entries, e)
 			}
 		}
 
@@ -138,6 +188,10 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 				}
 				if item.Status == "blocked" {
 					entry.BlockedReason = "dependency"
+				}
+				if pi, ok := implProgramMap[item.Slug]; ok {
+					entry.ProgramSlug = pi.programSlug
+					entry.ProgramTitle = pi.programTitle
 				}
 				entries = append(entries, entry)
 				queueDepth++

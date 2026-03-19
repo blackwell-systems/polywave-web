@@ -16,6 +16,7 @@ import ModelPicker from './components/ModelPicker'
 import ResumeBanner from './components/ResumeBanner'
 import PipelineView from './components/PipelineView'
 import ProgramBoard from './components/ProgramBoard'
+import ProgramList from './components/ProgramList'
 import { listPrograms } from './programApi'
 import { InterruptedSession } from './types'
 import type { ProgramDiscovery } from './types/program'
@@ -403,17 +404,27 @@ export default function App() {
             <div className="relative shrink-0" style={{ width: leftWidthPx }}>
               {/* Inner div: scroll container, separate from button positioning */}
               <div className="flex flex-col overflow-y-auto h-full border-r bg-muted w-full">
-                <ResumeBanner sessions={interruptedSessions} onSelect={handleSelect} />
-                <ImplList
-                  entries={entries}
-                  selectedSlug={selectedSlug}
-                  onSelect={handleSelect}
-                  onDelete={handleDelete}
-                  loading={loading}
-                  repos={repos}
-                  onManageRepos={() => setShowSettings(true)}
-                  onRemoveRepo={(name) => void handleRemoveRepo(name)}
-                />
+                {showPrograms ? (
+                  <ProgramList
+                    programs={programs}
+                    selectedSlug={selectedProgramSlug}
+                    onSelect={setSelectedProgramSlug}
+                  />
+                ) : (
+                  <>
+                    <ResumeBanner sessions={interruptedSessions} onSelect={handleSelect} />
+                    <ImplList
+                      entries={entries}
+                      selectedSlug={selectedSlug}
+                      onSelect={handleSelect}
+                      onDelete={handleDelete}
+                      loading={loading}
+                      repos={repos}
+                      onManageRepos={() => setShowSettings(true)}
+                      onRemoveRepo={(name) => void handleRemoveRepo(name)}
+                    />
+                  </>
+                )}
               </div>
               <button
                 onClick={() => setSidebarCollapsed(true)}
@@ -444,6 +455,11 @@ export default function App() {
           ) : showPipeline ? (
             <PipelineView
               onSelectImpl={(slug) => { setShowPipeline(false); handleSelect(slug) }}
+              onSelectProgram={(programSlug) => {
+                setShowPipeline(false)
+                setShowPrograms(true)
+                setSelectedProgramSlug(programSlug)
+              }}
               onClose={() => setShowPipeline(false)}
             />
           ) : (

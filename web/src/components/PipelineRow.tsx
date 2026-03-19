@@ -4,6 +4,7 @@ import { PipelineEntry } from '../types/autonomy'
 interface PipelineRowProps {
   entry: PipelineEntry
   onSelect: (slug: string) => void
+  onSelectProgram?: (programSlug: string) => void
 }
 
 const hoverColors: Record<string, string> = {
@@ -13,7 +14,7 @@ const hoverColors: Record<string, string> = {
   queued: 'hover:bg-muted/50',
 }
 
-export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.Element {
+export default function PipelineRow({ entry, onSelect, onSelectProgram }: PipelineRowProps): JSX.Element {
   const statusIcon = () => {
     switch (entry.status) {
       case 'complete':
@@ -125,6 +126,18 @@ export default function PipelineRow({ entry, onSelect }: PipelineRowProps): JSX.
             <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
               {entry.repo}
             </span>
+          )}
+          {entry.program_slug && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelectProgram?.(entry.program_slug!)
+              }}
+              title={`Part of program: ${entry.program_title || entry.program_slug}`}
+              className="text-xs font-medium text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/40 px-1.5 py-0.5 rounded hover:bg-violet-200 dark:hover:bg-violet-800/60 transition-colors"
+            >
+              ◈ {entry.program_title || entry.program_slug}
+            </button>
           )}
           {statusDetail()}
         </div>

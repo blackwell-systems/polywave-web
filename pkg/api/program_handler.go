@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"sync"
 
+	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 )
 
@@ -193,7 +194,8 @@ func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 		defer activeProgramRuns.Delete(slug)
 		defer s.globalBroker.broadcast("program_list_updated")
 
-		if err := runProgramTier(programPath, slug, tierNum, repoPath, publish); err != nil {
+		globalBroadcastPipeline := func() { s.globalBroker.broadcast("pipeline_updated") }
+		if err := runProgramTier(programPath, slug, tierNum, repoPath, publish, globalBroadcastPipeline); err != nil {
 			log.Printf("runProgramTier(%s, tier=%d) error: %v", slug, tierNum, err)
 			publish("program_tier_failed", map[string]interface{}{
 				"program_slug": slug,
@@ -234,13 +236,60 @@ func (s *Server) handleGetProgramContracts(w http.ResponseWriter, r *http.Reques
 }
 
 // handleReplanProgram handles POST /api/program/{slug}/replan.
-// Placeholder endpoint — returns 501 Not Implemented.
+// Launches the Planner agent to revise the PROGRAM manifest and returns 202 Accepted.
 func (s *Server) handleReplanProgram(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotImplemented)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Planner re-engagement not yet implemented (Phase 4)",
-	})
+	slug := r.PathValue("slug")
+
+	programPath, repoPath, err := s.resolveProgramPath(slug)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	_ = repoPath
+
+	var body struct {
+		Reason     string `json:"reason"`
+		FailedTier int    `json:"failed_tier"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	if body.Reason == "" {
+		body.Reason = "user-initiated replan"
+	}
+
+	plannerModel := ""
+	if cfgData, err := os.ReadFile(filepath.Join(repoPath, "saw.config.json")); err == nil {
+		var sawCfg SAWConfig
+		if json.Unmarshal(cfgData, &sawCfg) == nil {
+			plannerModel = sawCfg.Agent.PlannerModel
+		}
+	}
+
+	publish := s.makeProgramPublisher(slug)
+
+	go func() {
+		result, err := engine.ReplanProgram(engine.ReplanProgramOpts{
+			ProgramManifestPath: programPath,
+			Reason:              body.Reason,
+			FailedTier:          body.FailedTier,
+			PlannerModel:        plannerModel,
+		})
+		if err != nil {
+			log.Printf("ReplanProgram(%s) error: %v", slug, err)
+			publish("program_replan_failed", map[string]string{
+				"program_slug": slug,
+				"error":        err.Error(),
+			})
+			return
+		}
+		publish("program_replan_complete", map[string]interface{}{
+			"program_slug":      slug,
+			"validation_passed": result.ValidationPassed,
+			"changes_summary":   result.ChangesSummary,
+		})
+		s.globalBroker.broadcast("program_list_updated")
+	}()
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 // resolveProgramPath searches all configured repos for PROGRAM-{slug}.yaml.

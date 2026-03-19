@@ -48,6 +48,8 @@ export interface PipelineEntry {
   depends_on?: string[]
   completed_at?: string
   elapsed_seconds?: number
+  program_slug?: string         // parent PROGRAM slug, if this IMPL belongs to a program
+  program_title?: string        // parent PROGRAM title
 }
 
 // Pipeline response from GET /api/pipeline

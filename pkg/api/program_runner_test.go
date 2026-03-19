@@ -46,7 +46,7 @@ completion:
 	publish, _ := capturePublish()
 
 	// Request tier 99 which doesn't exist
-	err := runProgramTier(programPath, "test-program", 99, tmpDir, publish)
+	err := runProgramTier(programPath, "test-program", 99, tmpDir, publish, nil)
 	if err == nil {
 		t.Fatal("expected error for invalid tier number")
 	}
@@ -118,7 +118,7 @@ waves: []
 
 	publish, getEvents := capturePublish()
 
-	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish)
+	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -218,7 +218,7 @@ waves: []
 
 	publish, getEvents := capturePublishWithData()
 
-	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish)
+	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish, nil)
 	if err == nil {
 		t.Fatal("expected error due to gate failure")
 	}
@@ -297,7 +297,7 @@ completion:
 
 	publish, getEvents := capturePublishWithData()
 
-	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish)
+	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish, nil)
 	if err == nil {
 		t.Fatal("expected error when IMPL doc is missing")
 	}
@@ -410,7 +410,7 @@ waves: []
 
 	publish, getEvents := capturePublish()
 
-	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish)
+	err := runProgramTier(programPath, "test-program", 1, tmpDir, publish, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

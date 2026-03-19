@@ -9,6 +9,7 @@ import AutonomySettings from './AutonomySettings'
 
 interface PipelineViewProps {
   onSelectImpl: (slug: string) => void
+  onSelectProgram?: (programSlug: string) => void
   onClose: () => void
 }
 
@@ -19,7 +20,7 @@ interface PipelineViewProps {
  */
 type SideTab = 'queue' | 'daemon' | 'settings'
 
-export default function PipelineView({ onSelectImpl, onClose }: PipelineViewProps): JSX.Element {
+export default function PipelineView({ onSelectImpl, onSelectProgram, onClose }: PipelineViewProps): JSX.Element {
   const { entries, metrics, autonomyLevel, loading, error } = usePipeline()
   const [sideTab, setSideTab] = useState<SideTab>('queue')
 
@@ -81,7 +82,7 @@ export default function PipelineView({ onSelectImpl, onClose }: PipelineViewProp
               </div>
             ) : (
               entries.map((entry) => (
-                <PipelineRow key={entry.slug} entry={entry} onSelect={onSelectImpl} />
+                <PipelineRow key={entry.slug} entry={entry} onSelect={onSelectImpl} onSelectProgram={onSelectProgram} />
               ))
             )}
           </div>

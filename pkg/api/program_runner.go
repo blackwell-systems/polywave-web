@@ -22,6 +22,7 @@ func runProgramTier(
 	tierNumber int,
 	repoPath string,
 	publish func(event string, data interface{}),
+	globalBroadcast func(),
 ) error {
 	// Parse the PROGRAM manifest
 	manifest, err := protocol.ParseProgramManifest(programPath)
@@ -107,6 +108,10 @@ func runProgramTier(
 			"program_slug": programSlug,
 			"impl_slug":    implSlug,
 		})
+		// Notify the pipeline view that program-driven IMPLs have updated
+		if globalBroadcast != nil {
+			globalBroadcast()
+		}
 	}
 
 	// After all IMPLs complete, run tier gates
