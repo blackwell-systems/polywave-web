@@ -3,12 +3,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
 
 	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
@@ -24,6 +24,7 @@ type ProgramStatusResponse struct {
 	ContractStatuses []protocol.ContractStatus    `json:"contract_statuses"`
 	Completion       protocol.ProgramCompletion   `json:"completion"`
 	IsExecuting      bool                         `json:"is_executing"`
+	ValidationErrors []string                     `json:"validation_errors,omitempty"`
 }
 
 // ProgramListResponse is the JSON response for GET /api/programs.
@@ -35,10 +36,6 @@ type ProgramListResponse struct {
 type TierExecuteRequest struct {
 	Auto bool `json:"auto,omitempty"`
 }
-
-// activeProgramRuns tracks in-progress program tier executions.
-// This is added as a field to Server in this file (not server.go).
-var activeProgramRuns sync.Map
 
 // handleListPrograms handles GET /api/programs.
 // Scans all configured repos for PROGRAM-*.yaml files and returns discovery summaries.
@@ -90,8 +87,18 @@ func (s *Server) handleGetProgramStatus(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// U4 — Pre-flight IMPL validation: check each tier's IMPL docs exist on disk.
+	var validationErrors []string
+	for _, tier := range manifest.Tiers {
+		for _, implSlug := range tier.Impls {
+			if _, err := resolveIMPLPathForProgram(implSlug, repoPath); err != nil {
+				validationErrors = append(validationErrors, fmt.Sprintf("tier %d: IMPL %q not found", tier.Number, implSlug))
+			}
+		}
+	}
+
 	// Check if any tier execution is currently running for this program
-	_, isExecuting := activeProgramRuns.Load(slug)
+	_, isExecuting := s.activeProgramRuns.Load(slug)
 
 	resp := ProgramStatusResponse{
 		ProgramSlug:      status.ProgramSlug,
@@ -102,6 +109,7 @@ func (s *Server) handleGetProgramStatus(w http.ResponseWriter, r *http.Request) 
 		ContractStatuses: status.ContractStatuses,
 		Completion:       status.Completion,
 		IsExecuting:      isExecuting,
+		ValidationErrors: validationErrors,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -169,14 +177,20 @@ func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check for concurrent execution
-	if _, loaded := activeProgramRuns.LoadOrStore(slug, struct{}{}); loaded {
+	if _, loaded := s.activeProgramRuns.LoadOrStore(slug, struct{}{}); loaded {
 		http.Error(w, "program tier already executing", http.StatusConflict)
 		return
 	}
+	// B3 — cleanup guard: delete the slug if we return before launching the goroutine.
+	launched := false
+	defer func() {
+		if !launched {
+			s.activeProgramRuns.Delete(slug)
+		}
+	}()
 
 	programPath, repoPath, err := s.resolveProgramPath(slug)
 	if err != nil {
-		activeProgramRuns.Delete(slug)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -190,12 +204,24 @@ func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 	// Notify that execution started
 	s.globalBroker.broadcast("program_list_updated")
 
+	// B4 — pass server shutdown context so goroutine can observe SIGTERM.
+	serverCtx := s.serverCtx
+
 	go func() {
-		defer activeProgramRuns.Delete(slug)
+		defer s.activeProgramRuns.Delete(slug)
 		defer s.globalBroker.broadcast("program_list_updated")
 
 		globalBroadcastPipeline := func() { s.globalBroker.broadcast("pipeline_updated") }
 		if err := runProgramTier(programPath, slug, tierNum, repoPath, publish, globalBroadcastPipeline); err != nil {
+			// Check if shutdown caused the failure.
+			if serverCtx.Err() != nil {
+				publish("program_blocked", map[string]interface{}{
+					"program_slug": slug,
+					"tier":         tierNum,
+					"reason":       "server shutdown",
+				})
+				return
+			}
 			log.Printf("runProgramTier(%s, tier=%d) error: %v", slug, tierNum, err)
 			publish("program_tier_failed", map[string]interface{}{
 				"program_slug": slug,
@@ -204,6 +230,7 @@ func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 			})
 		}
 	}()
+	launched = true
 
 	w.WriteHeader(http.StatusAccepted)
 }
@@ -251,7 +278,10 @@ func (s *Server) handleReplanProgram(w http.ResponseWriter, r *http.Request) {
 		Reason     string `json:"reason"`
 		FailedTier int    `json:"failed_tier"`
 	}
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
+		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
 	if body.Reason == "" {
 		body.Reason = "user-initiated replan"
 	}

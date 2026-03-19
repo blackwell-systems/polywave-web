@@ -29,10 +29,13 @@ type Server struct {
 	broker           *sseBroker      // unexported; used by wave.go handlers
 	globalBroker     *globalBroker   // fans out global SSE events (impl_list_updated, etc.)
 	notificationBus  *NotificationBus // central hub for user-facing notifications
+	serverCtx        context.Context  // cancelled on server shutdown; passed to long-running goroutines
+	serverCancel     context.CancelFunc // cancels serverCtx
 	activeRuns       sync.Map        // slug -> struct{}; tracks in-progress wave runs
 	scoutRuns        sync.Map        // runID -> context.CancelFunc; tracks in-progress scout runs
 	plannerRuns      sync.Map        // runID -> context.CancelFunc; tracks in-progress planner runs
 	reviseCancels    sync.Map        // runID -> context.CancelFunc; tracks in-progress revise runs
+	activeProgramRuns sync.Map       // slug -> struct{}; program tier executions
 	mergingRuns      sync.Map        // slug -> struct{}; tracks in-progress merge operations
 	testingRuns      sync.Map        // slug -> struct{}; tracks in-progress test runs
 	scaffoldRuns     sync.Map        // runID -> context.CancelFunc; tracks in-progress scaffold reruns
@@ -64,6 +67,7 @@ func (s *Server) getConfiguredRepos() []RepoEntry {
 // New creates a Server with the given Config and registers all routes.
 func New(cfg Config) *Server {
 	globalBroker := newGlobalBroker()
+	serverCtx, serverCancel := context.WithCancel(context.Background())
 	s := &Server{
 		cfg: cfg,
 		mux: http.NewServeMux(),
@@ -72,6 +76,8 @@ func New(cfg Config) *Server {
 		},
 		globalBroker:    globalBroker,
 		notificationBus: NewNotificationBus(globalBroker),
+		serverCtx:       serverCtx,
+		serverCancel:    serverCancel,
 		stages:          newStageManager(cfg.IMPLDir),
 		pipelineTracker: newPipelineTracker(cfg.IMPLDir),
 		progressTracker: NewProgressTracker(),
@@ -259,6 +265,7 @@ func (s *Server) StartTLS(ctx context.Context, certFile, keyFile string) error {
 	case err := <-errCh:
 		return fmt.Errorf("saw serve: %w", err)
 	case <-ctx.Done():
+		s.serverCancel() // signal long-running goroutines (e.g. program tier execution)
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		return srv.Shutdown(shutdownCtx)

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -260,6 +261,8 @@ completion:
 		t.Fatal(err)
 	}
 
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
 	server := &Server{
 		cfg: Config{
 			RepoPath: tmpDir,
@@ -267,11 +270,13 @@ completion:
 		},
 		broker:       &sseBroker{clients: make(map[string][]chan SSEEvent)},
 		globalBroker: newGlobalBroker(),
+		serverCtx:    serverCtx,
+		serverCancel: serverCancel,
 	}
 
 	// Mark the program as already executing
-	activeProgramRuns.Store("test-program", struct{}{})
-	defer activeProgramRuns.Delete("test-program")
+	server.activeProgramRuns.Store("test-program", struct{}{})
+	defer server.activeProgramRuns.Delete("test-program")
 
 	req := httptest.NewRequest("POST", "/api/program/test-program/tier/1/execute", nil)
 	req.SetPathValue("slug", "test-program")
@@ -285,26 +290,203 @@ completion:
 	}
 }
 
-// TestHandleReplanProgram_NotImplemented tests that replan returns 501.
-func TestHandleReplanProgram_NotImplemented(t *testing.T) {
-	server := &Server{}
+// TestHandleReplanProgram_NotFound tests that replan returns 404 when the program slug is unknown.
+func TestHandleReplanProgram_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
 
-	req := httptest.NewRequest("POST", "/api/program/test-program/replan", nil)
-	req.SetPathValue("slug", "test-program")
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+	server := &Server{
+		cfg:          Config{RepoPath: tmpDir},
+		serverCtx:    serverCtx,
+		serverCancel: serverCancel,
+	}
+
+	req := httptest.NewRequest("POST", "/api/program/nonexistent/replan", nil)
+	req.SetPathValue("slug", "nonexistent")
 	w := httptest.NewRecorder()
 
 	server.handleReplanProgram(w, req)
 
-	if w.Code != http.StatusNotImplemented {
-		t.Errorf("expected status 501, got %d", w.Code)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", w.Code)
+	}
+}
+
+// TestHandleReplanProgram_BadJSON tests that malformed JSON returns 400.
+func TestHandleReplanProgram_BadJSON(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a valid PROGRAM manifest so resolveProgramPath succeeds.
+	docsDir := filepath.Join(tmpDir, "docs")
+	if err := os.MkdirAll(docsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	yamlContent := `title: Test Program
+program_slug: test-replan
+state: PLANNING
+impls: []
+tiers: []
+completion:
+  tiers_complete: 0
+  tiers_total: 0
+  impls_complete: 0
+  impls_total: 0
+  total_agents: 0
+  total_waves: 0
+`
+	if err := os.WriteFile(filepath.Join(docsDir, "PROGRAM-test-replan.yaml"), []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
 	}
 
-	var resp map[string]string
+	// Write saw.config.json pointing to tmpDir as the repo root.
+	cfg := SAWConfig{Repos: []RepoEntry{{Name: "repo", Path: tmpDir}}}
+	cfgData, _ := json.Marshal(cfg)
+	if err := os.WriteFile(filepath.Join(tmpDir, "saw.config.json"), cfgData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+	server := &Server{
+		cfg:          Config{RepoPath: tmpDir, IMPLDir: docsDir},
+		serverCtx:    serverCtx,
+		serverCancel: serverCancel,
+	}
+
+	req := httptest.NewRequest("POST", "/api/program/test-replan/replan",
+		strings.NewReader("{invalid json}"))
+	req.SetPathValue("slug", "test-replan")
+	w := httptest.NewRecorder()
+
+	server.handleReplanProgram(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected status 400, got %d", w.Code)
+	}
+}
+
+// TestHandleGetProgramStatus_ValidationErrors tests that missing IMPL docs
+// produce validation_errors in the response (U4).
+func TestHandleGetProgramStatus_ValidationErrors(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	repoDir := filepath.Join(tmpDir, "test-repo")
+	docsDir := filepath.Join(repoDir, "docs")
+	if err := os.MkdirAll(docsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// PROGRAM manifest that references a non-existent IMPL slug.
+	yamlContent := `title: Test Program
+program_slug: test-validation
+state: PLANNING
+impls:
+  - slug: missing-impl
+    title: Missing Implementation
+    tier: 1
+    status: pending
+tiers:
+  - number: 1
+    impls:
+      - missing-impl
+    description: First tier
+completion:
+  tiers_complete: 0
+  tiers_total: 1
+  impls_complete: 0
+  impls_total: 1
+  total_agents: 0
+  total_waves: 0
+`
+	programPath := filepath.Join(docsDir, "PROGRAM-test-validation.yaml")
+	if err := os.WriteFile(programPath, []byte(yamlContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	configPath := filepath.Join(tmpDir, "saw.config.json")
+	config := SAWConfig{
+		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
+	}
+	configData, _ := json.Marshal(config)
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+	server := &Server{
+		cfg: Config{
+			RepoPath: tmpDir,
+			IMPLDir:  docsDir,
+		},
+		serverCtx:    serverCtx,
+		serverCancel: serverCancel,
+	}
+
+	req := httptest.NewRequest("GET", "/api/program/test-validation", nil)
+	req.SetPathValue("slug", "test-validation")
+	w := httptest.NewRecorder()
+
+	server.handleGetProgramStatus(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected status 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp ProgramStatusResponse
 	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	if !strings.Contains(resp["message"], "Phase 4") {
-		t.Errorf("expected message to mention Phase 4, got: %s", resp["message"])
+	if len(resp.ValidationErrors) == 0 {
+		t.Error("expected validation_errors to be non-empty for missing IMPL")
+	}
+
+	found := false
+	for _, e := range resp.ValidationErrors {
+		if strings.Contains(e, "missing-impl") {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected validation_errors to mention 'missing-impl', got: %v", resp.ValidationErrors)
+	}
+}
+
+// TestHandleExecuteTier_CleanupOnPathError verifies activeProgramRuns does not
+// retain the slug when handleExecuteTier returns an error before goroutine launch (B3).
+func TestHandleExecuteTier_CleanupOnPathError(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// No PROGRAM manifest — resolveProgramPath will fail.
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+	server := &Server{
+		cfg: Config{
+			RepoPath: tmpDir,
+			IMPLDir:  filepath.Join(tmpDir, "docs"),
+		},
+		broker:       &sseBroker{clients: make(map[string][]chan SSEEvent)},
+		globalBroker: newGlobalBroker(),
+		serverCtx:    serverCtx,
+		serverCancel: serverCancel,
+	}
+
+	req := httptest.NewRequest("POST", "/api/program/no-such-prog/tier/1/execute", nil)
+	req.SetPathValue("slug", "no-such-prog")
+	req.SetPathValue("n", "1")
+	w := httptest.NewRecorder()
+
+	server.handleExecuteTier(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404, got %d", w.Code)
+	}
+
+	// Verify the slug was cleaned up from activeProgramRuns.
+	if _, loaded := server.activeProgramRuns.Load("no-such-prog"); loaded {
+		t.Error("activeProgramRuns should not retain the slug after a path-resolution error")
 	}
 }
