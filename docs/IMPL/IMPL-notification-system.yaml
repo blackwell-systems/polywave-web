@@ -117,7 +117,7 @@ scaffolds:
         ToastNotify   bool                    `json:"toast_notify"`
       }
     import_path: "github.com/blackwell-systems/scout-and-wave-web/pkg/api"
-    status: pending
+    status: committed (4ef1305)
 
 interface_contracts:
   - name: NotificationBus
