@@ -472,17 +472,29 @@ export default function DependencyGraphPanel({ dependencyGraphText, impl, execut
                     className={edgeClassName}
                   />
 
-                  {/* Flowing particle — single subtle dot on active edges */}
-                  {edgeState === 'active' && (
+                  {/* Flowing particles — 3 evenly-spaced dots on active edges */}
+                  {edgeState === 'active' && (<>
                     <circle r="2.5" fill={edge.color} filter="url(#particle-glow)" opacity="0.6">
-                      <animateMotion dur="2.5s" repeatCount="indefinite" path={pathD} />
+                      <animateMotion dur="2.5s" begin="0s" repeatCount="indefinite" path={pathD} />
                     </circle>
-                  )}
-                  {edgeState === 'failed' && (
+                    <circle r="2.5" fill={edge.color} filter="url(#particle-glow)" opacity="0.6">
+                      <animateMotion dur="2.5s" begin="0.833s" repeatCount="indefinite" path={pathD} />
+                    </circle>
+                    <circle r="2.5" fill={edge.color} filter="url(#particle-glow)" opacity="0.6">
+                      <animateMotion dur="2.5s" begin="1.667s" repeatCount="indefinite" path={pathD} />
+                    </circle>
+                  </>)}
+                  {edgeState === 'failed' && (<>
                     <circle r="2" fill="#f85149" filter="url(#particle-glow-red)" opacity="0.5">
-                      <animateMotion dur="4s" repeatCount="indefinite" path={pathD} />
+                      <animateMotion dur="4s" begin="0s" repeatCount="indefinite" path={pathD} />
                     </circle>
-                  )}
+                    <circle r="2" fill="#f85149" filter="url(#particle-glow-red)" opacity="0.5">
+                      <animateMotion dur="4s" begin="1.333s" repeatCount="indefinite" path={pathD} />
+                    </circle>
+                    <circle r="2" fill="#f85149" filter="url(#particle-glow-red)" opacity="0.5">
+                      <animateMotion dur="4s" begin="2.667s" repeatCount="indefinite" path={pathD} />
+                    </circle>
+                  </>)}
                 </g>
               )
             })}

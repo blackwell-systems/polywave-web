@@ -2,7 +2,7 @@
 title: "Program Layer Web App Integration"
 feature_slug: program-layer-web-integration
 verdict: SUITABLE
-test_command: "go test ./... && cd web && npm test"
+test_command: "go test ./... && cd web && npx vitest run"
 lint_command: "go vet ./..."
 state: SCOUT_PENDING
 

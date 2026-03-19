@@ -290,12 +290,12 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-gray-50 dark:bg-gray-950 p-4">
+    <div className="h-full overflow-y-auto bg-background p-4">
       <div className="space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-base font-bold text-gray-800 dark:text-gray-100">Wave Execution — {slug}</h1>
+          <h1 className="text-base font-bold text-foreground">Wave Execution — {slug}</h1>
           {!state.connected && (
             <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full animate-pulse">
               Reconnecting...
@@ -403,7 +403,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                 />
               </div>
             )}
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">Press Escape to close this panel</p>
+            <p className="text-xs text-muted-foreground mt-4">Press Escape to close this panel</p>
           </div>
         )}
         {/* Run failed banner — inline when waves are also showing */}
@@ -443,8 +443,8 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
         {/* AI build fixer output */}
         {state.fixBuildStatus !== 'idle' && (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-blue-50 dark:bg-blue-950">
+          <div className="bg-card border border-border rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-blue-50 dark:bg-blue-950">
               <span className="text-xs font-medium text-blue-800 dark:text-blue-300">
                 {state.fixBuildStatus === 'running' ? '✦ AI fixing build…' :
                  state.fixBuildStatus === 'complete' ? '✦ AI fix complete' :
@@ -460,7 +460,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
               )}
             </div>
             {state.fixBuildOutput && (
-              <pre className="p-3 text-xs font-mono whitespace-pre-wrap max-h-64 overflow-y-auto text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-950">
+              <pre className="p-3 text-xs font-mono whitespace-pre-wrap max-h-64 overflow-y-auto text-foreground bg-background">
                 {state.fixBuildOutput}
               </pre>
             )}
@@ -477,8 +477,8 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
         {/* Empty state — no waves loaded yet */}
         {state.waves.length === 0 && state.scaffoldStatus === 'idle' && !state.runFailed && (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-8 text-center">
-            <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
+          <div className="bg-card border border-border rounded-lg p-8 text-center">
+            <p className="text-muted-foreground text-sm mb-2">
               {state.connected ? 'Waiting for wave execution to start...' : 'Connecting to wave execution stream...'}
             </p>
             {state.staleBranches && (
@@ -508,9 +508,9 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
           const hasGate = state.waveGate?.wave === wave.wave
           return (
             <div key={wave.wave}>
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm space-y-3">
+              <div className="bg-card border border-border rounded-lg p-4 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">Wave {wave.wave}</span>
+                  <span className="font-semibold text-foreground text-sm">Wave {wave.wave}</span>
                   {wave.complete && (wave.merge_status === 'merged' || wave.merge_status === 'success') && (
                     <span className="text-xs text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900 px-2 py-0.5 rounded-full">
                       Merged
@@ -596,19 +596,19 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
                         )}
 
                         {testStatus === 'running' && (
-                          <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-2 text-teal-700 text-sm animate-pulse dark:bg-teal-950 dark:border-teal-800 dark:text-teal-400">
+                          <div className="bg-teal-50 border border-teal-200 rounded-none px-4 py-2 text-teal-700 text-sm animate-pulse dark:bg-teal-950 dark:border-teal-800 dark:text-teal-400">
                             Running tests...
                           </div>
                         )}
 
                         {testStatus === 'pass' && (
-                          <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-2 text-green-800 text-sm dark:bg-green-950 dark:border-green-800 dark:text-green-400">
+                          <div className="bg-green-50 border border-green-200 rounded-none px-4 py-2 text-green-800 text-sm dark:bg-green-950 dark:border-green-800 dark:text-green-400">
                             Tests passed ✓
                           </div>
                         )}
 
                         {testStatus === 'fail' && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-2 dark:bg-red-950 dark:border-red-800">
+                          <div className="bg-red-50 border border-red-200 rounded-none px-4 py-3 space-y-2 dark:bg-red-950 dark:border-red-800">
                             <div className="flex items-center justify-between">
                               <p className="text-red-800 text-sm font-medium dark:text-red-400">Tests failed</p>
                               <div className="flex gap-2">
@@ -773,15 +773,15 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
           if (fileEntries.length === 0) return null
 
           return (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm">
+            <div className="bg-card border border-border rounded-lg p-4 shadow-sm">
               <button
                 onClick={() => setFileActivityExpanded(prev => !prev)}
                 className="flex items-center justify-between w-full text-left mb-3"
               >
-                <span className="font-semibold text-gray-700 dark:text-gray-300 text-sm">
+                <span className="font-semibold text-foreground text-sm">
                   File Activity
                 </span>
-                <span className="text-gray-500 dark:text-gray-400 text-xs">
+                <span className="text-muted-foreground text-xs">
                   {fileActivityExpanded ? '▼' : '▶'}
                 </span>
               </button>
