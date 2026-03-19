@@ -35,21 +35,29 @@ export interface DaemonState {
   blocked_count: number
 }
 
-// Pipeline entry — combined view of completed + executing + queued
-export interface PipelineEntry {
+// Shared base for any IMPL reference in the UI.
+// Extended by PipelineEntry (pipeline view) and ImplTierStatus (program board).
+export interface ImplReference {
   slug: string
   title: string
-  status: 'complete' | 'executing' | 'blocked' | 'queued'
-  repo?: string                 // repo name from saw.config.json
-  wave_progress?: string        // e.g. "Wave 2/3"
-  active_agent?: string         // e.g. "Agent B"
+  status: string
+}
+
+// Pipeline entry — combined view of completed + executing + queued
+export interface PipelineEntry extends ImplReference {
+  // slug, title, status inherited from ImplReference
+  repo?: string                    // repo name from saw.config.json
+  wave_progress?: string           // e.g. "Wave 2/3"
+  active_agent?: string            // e.g. "Agent B"
   blocked_reason?: string
   queue_position?: number
   depends_on?: string[]
   completed_at?: string
   elapsed_seconds?: number
-  program_slug?: string         // parent PROGRAM slug, if this IMPL belongs to a program
-  program_title?: string        // parent PROGRAM title
+  program_slug?: string            // parent PROGRAM slug, if this IMPL belongs to a program
+  program_title?: string           // parent PROGRAM title
+  program_tier?: number            // tier number within parent program (U2)
+  program_tiers_total?: number     // total tiers in parent program (U2)
 }
 
 // Pipeline response from GET /api/pipeline

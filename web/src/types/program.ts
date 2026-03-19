@@ -1,6 +1,8 @@
 // TypeScript types for the program layer API
 // Mirrors Go SDK protocol types from github.com/blackwell-systems/scout-and-wave-go/pkg/protocol
 
+import type { ImplReference } from './autonomy'
+
 export interface ProgramStatus {
   program_slug: string
   title: string
@@ -19,9 +21,9 @@ export interface TierStatus {
   complete: boolean
 }
 
-export interface ImplTierStatus {
-  slug: string
-  status: string
+export interface ImplTierStatus extends ImplReference {
+  // slug, title, status inherited from ImplReference
+  wave_progress?: string  // e.g. "Wave 2/3" emitted via program_impl_wave_progress SSE (U3)
 }
 
 export interface ContractStatus {
