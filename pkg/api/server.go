@@ -169,6 +169,7 @@ func New(cfg Config) *Server {
 	// Agent progress tracking
 	s.mux.HandleFunc("GET /api/wave/{slug}/status", s.handleWaveStatus)
 	s.mux.HandleFunc("GET /api/wave/{slug}/disk-status", s.handleWaveDiskStatus)
+	s.mux.HandleFunc("GET /api/wave/{slug}/review/{wave}", s.handleGetReview)
 
 	// v0.32.0 — Manifest routes (validate, load, wave, completion)
 	s.RegisterManifestRoutes()

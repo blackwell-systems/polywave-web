@@ -242,12 +242,22 @@ type AgentConfig struct {
 	ScaffoldModel    string `json:"scaffold_model"`
 	IntegrationModel string `json:"integration_model"`
 	PlannerModel     string `json:"planner_model"`
+	ReviewModel      string `json:"review_model"`
 }
 
 type QualityConfig struct {
-	RequireTests   bool `json:"require_tests"`
-	RequireLint    bool `json:"require_lint"`
-	BlockOnFailure bool `json:"block_on_failure"`
+	RequireTests   bool          `json:"require_tests"`
+	RequireLint    bool          `json:"require_lint"`
+	BlockOnFailure bool          `json:"block_on_failure"`
+	CodeReview     CodeReviewCfg `json:"code_review"`
+}
+
+// CodeReviewCfg holds settings for the AI code review post-merge gate.
+type CodeReviewCfg struct {
+	Enabled   bool   `json:"enabled"`
+	Blocking  bool   `json:"blocking"`
+	Model     string `json:"model"`
+	Threshold int    `json:"threshold"`
 }
 
 type AppearConfig struct {
