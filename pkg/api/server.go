@@ -144,6 +144,7 @@ func New(cfg Config) *Server {
 
 	// v0.18.0-C — Settings
 	s.mux.HandleFunc("GET /api/sessions/interrupted", s.handleInterruptedSessions)
+	s.mux.HandleFunc("POST /api/wave/{slug}/resume", s.handleResumeExecution)
 
 	s.mux.HandleFunc("GET /api/config", s.handleGetConfig)
 	s.mux.HandleFunc("POST /api/config", s.handleSaveConfig)

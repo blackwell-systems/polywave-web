@@ -3,8 +3,6 @@ package api
 import (
 	"encoding/json"
 	"net/http"
-	"os"
-	"path/filepath"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/resume"
 )
@@ -12,35 +10,31 @@ import (
 // handleInterruptedSessions serves GET /api/sessions/interrupted.
 // Scans all configured repos for interrupted SAW sessions and returns
 // a JSON array of session state objects.
+//
+// Uses resume.DetectWithConfig to scan all repos in a single call,
+// which correctly handles cross-repo worktrees (Issue 1). Falls back
+// to the legacy per-repo Detect loop if DetectWithConfig returns an error.
 func (s *Server) handleInterruptedSessions(w http.ResponseWriter, r *http.Request) {
-	// Read saw.config.json to get the list of repos (same pattern as handleListImpls)
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
-	configData, err := os.ReadFile(configPath)
+	repos := s.getConfiguredRepos()
 
-	var repos []RepoEntry
-	if err == nil {
-		var cfg SAWConfig
-		if json.Unmarshal(configData, &cfg) == nil && len(cfg.Repos) > 0 {
-			repos = cfg.Repos
-		}
-	}
-
-	// Fallback: if no config or no repos, use the startup repo
-	if len(repos) == 0 {
-		repos = []RepoEntry{{
-			Name: filepath.Base(s.cfg.RepoPath),
-			Path: s.cfg.RepoPath,
-		}}
-	}
-
-	var allSessions []resume.SessionState
-
+	// Build the list of repo paths from the configured repo entries.
+	repoPaths := make([]string, 0, len(repos))
 	for _, repo := range repos {
-		sessions, err := resume.Detect(repo.Path)
-		if err != nil {
-			continue // skip repos that fail (e.g. no docs/IMPL/)
+		repoPaths = append(repoPaths, repo.Path)
+	}
+
+	// Prefer DetectWithConfig for cross-repo worktree awareness.
+	allSessions, err := resume.DetectWithConfig(repoPaths)
+	if err != nil {
+		// Fallback: per-repo Detect loop for backward compatibility.
+		allSessions = nil
+		for _, repo := range repos {
+			sessions, ferr := resume.Detect(repo.Path)
+			if ferr != nil {
+				continue
+			}
+			allSessions = append(allSessions, sessions...)
 		}
-		allSessions = append(allSessions, sessions...)
 	}
 
 	if allSessions == nil {
