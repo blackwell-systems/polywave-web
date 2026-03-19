@@ -298,6 +298,23 @@ export interface ToolCallEntry {
 }
 
 // Interrupted session detection (resume)
+
+export interface DirtyWorktree {
+  path: string
+  branch: string
+  agent_id: string
+  wave_num: number
+  has_changes: boolean
+}
+
+export interface AgentSessionInfo {
+  agent_id: string
+  session_id: string
+  wave_num: number
+  worktree_path: string
+  last_active: string
+}
+
 export interface InterruptedSession {
   impl_slug: string
   impl_path: string
@@ -311,6 +328,8 @@ export interface InterruptedSession {
   progress_pct: number
   can_auto_resume: boolean
   resume_command: string
+  dirty_worktrees?: DirtyWorktree[]
+  agent_sessions?: Record<string, AgentSessionInfo>
 }
 
 // Conflict resolution SSE events (v0.20.0-D)

@@ -330,6 +330,23 @@ export async function fetchInterruptedSessions(): Promise<InterruptedSession[]> 
   return r.json() as Promise<InterruptedSession[]>
 }
 
+// Resume execution for an interrupted session.
+// Unlike other api.ts functions, this does NOT throw on failure.
+// It returns { success: false, error: message } so callers can handle
+// errors inline without try/catch in the render tree.
+export async function resumeExecution(slug: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const r = await fetch(`/api/wave/${encodeURIComponent(slug)}/resume`, { method: 'POST' })
+    if (!r.ok) {
+      const text = await r.text().catch(() => `HTTP ${r.status}`)
+      return { success: false, error: text || `HTTP ${r.status}` }
+    }
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
 // File browser API
 import { FileTreeResponse, FileContentResponse, GitStatusResponse } from './types/filebrowser'
 
