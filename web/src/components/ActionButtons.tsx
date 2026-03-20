@@ -1,3 +1,4 @@
+import React from 'react'
 import { Play, Eye, Pencil, X } from 'lucide-react'
 
 interface ActionButtonsProps {
@@ -10,7 +11,7 @@ interface ActionButtonsProps {
 
 const base = "flex items-center justify-center gap-2 text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 hover:scale-[1.02] active:scale-[0.98]"
 
-export default function ActionButtons({ onApprove, onReject, onRequestChanges, onViewWaves, hasWaveWork }: ActionButtonsProps): JSX.Element {
+export default React.memo(function ActionButtons({ onApprove, onReject, onRequestChanges, onViewWaves, hasWaveWork }: ActionButtonsProps): JSX.Element {
   return (
     <div className="flex items-stretch">
       {hasWaveWork && onViewWaves && (
@@ -33,4 +34,4 @@ export default function ActionButtons({ onApprove, onReject, onRequestChanges, o
       </button>
     </div>
   )
-}
+})
