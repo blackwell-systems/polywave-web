@@ -1,7 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useWaveEvents } from '../hooks/useWaveEvents'
-import type { AppWaveState } from '../hooks/useWaveEvents'
-import { WaveTestState } from '../hooks/useWaveEvents'
 import { useFileActivity } from '../hooks/useFileActivity'
 import AgentCard from './AgentCard'
 import ProgressBar from './ProgressBar'

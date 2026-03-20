@@ -1,4 +1,3 @@
-import React from 'react'
 import ImplList from '../ImplList'
 import ProgramList from '../ProgramList'
 import ResumeBanner from '../ResumeBanner'

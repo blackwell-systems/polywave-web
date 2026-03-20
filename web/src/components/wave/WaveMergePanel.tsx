@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import type { AgentStatus, WaveState } from '../../types'
-import type { WaveMergeState, WaveTestState, AppWaveState } from '../../hooks/useWaveEvents'
-import { batchDeleteWorktrees, resolveConflicts, startWave } from '../../api'
+import type { WaveMergeState, WaveTestState } from '../../hooks/useWaveEvents'
+import { batchDeleteWorktrees, resolveConflicts } from '../../api'
 import ConflictResolutionPanel from '../ConflictResolutionPanel'
-import ImplEditor from '../ImplEditor'
 import LiveOutputPanel from '../LiveOutputPanel'
 
 export interface WaveMergePanelProps {
@@ -43,7 +42,7 @@ export function WaveMergePanel({
   onRunTests,
   onRetryFinalize,
   onFixBuild,
-  onProceedGate,
+  onProceedGate: _onProceedGate,
   onStartWave,
   allWaves,
 }: WaveMergePanelProps): JSX.Element {
