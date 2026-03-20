@@ -395,3 +395,14 @@ export interface CriticIssue {
   file?: string;
   symbol?: string;
 }
+
+export interface CriticFixRequest {
+  type: 'add_file_ownership' | 'update_contract' | 'add_integration_connector'
+  agent_id: string
+  wave: number
+  file?: string
+  action?: string
+  contract_name?: string
+  old_symbol?: string
+  new_symbol?: string
+}
