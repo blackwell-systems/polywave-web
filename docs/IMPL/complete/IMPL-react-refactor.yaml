@@ -1,0 +1,1085 @@
+completion_date: "2026-03-19"
+title: React Frontend Refactoring — API Client, Component Decomposition, State Unification, Directory Reorganization
+feature_slug: react-refactor
+verdict: SUITABLE
+suitability_assessment: |
+    1. File decomposition: The work spans 30+ files across 4 waves. Each wave targets
+       disjoint file sets — Wave 1 creates new extraction files, Wave 2 decomposes existing
+       god components into new sub-components, Wave 3 creates new context/hook files, and
+       Wave 4 reorganizes directory structure. No two agents in any wave touch the same file.
+
+    2. Investigation-first items: None. The audit findings are well-defined refactoring
+       tasks with clear before/after states. No unknown root causes.
+
+    3. Interface discoverability: Yes. All cross-agent interfaces can be defined upfront:
+       the SawClient interface for the API client, shared component prop interfaces for
+       extracted components, and context provider shapes for state unification.
+
+    4. Pre-implementation status: All items are TODO. No partial implementations exist
+       for any of the extraction targets (apiClient.ts, useModal hook, AppLayout, etc.).
+
+    5. Parallelization value: High. Wave 1 has 4 independent agents each touching 2-4 files.
+       Wave 2 has 3 independent agents decomposing large components. Build+test cycle is
+       ~15s (tsc + vitest) but agents do substantial code extraction work (3-6 files each).
+       4 waves with 3-4 agents per wave = significant parallelization benefit.
+
+    Estimated times:
+    - Scout phase: ~8 min (dependency mapping, interface contracts, IMPL doc)
+    - Agent execution: ~25 min (13 agents, ~8 min avg, 4 waves with parallelism)
+    - Merge & verification: ~10 min (4 wave merges)
+    Total SAW time: ~43 min
+
+    Sequential baseline: ~104 min (13 agents x 8 min avg)
+    Time savings: ~61 min (59% faster)
+
+    Recommendation: Clear speedup. Proceed.
+test_command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+lint_command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+file_ownership:
+    - file: web/src/lib/apiClient.ts
+      agent: A
+      wave: 1
+      action: new
+    - file: web/src/lib/apiClient.test.ts
+      agent: A
+      wave: 1
+      action: new
+    - file: web/src/components/shared/StatusBadges.tsx
+      agent: B
+      wave: 1
+      action: new
+    - file: web/src/components/shared/StatusBadges.test.tsx
+      agent: B
+      wave: 1
+      action: new
+    - file: web/src/components/shared/StateDisplays.tsx
+      agent: B
+      wave: 1
+      action: new
+    - file: web/src/components/shared/StateDisplays.test.tsx
+      agent: B
+      wave: 1
+      action: new
+    - file: web/src/hooks/useModal.ts
+      agent: C
+      wave: 1
+      action: new
+    - file: web/src/hooks/useModal.test.ts
+      agent: C
+      wave: 1
+      action: new
+    - file: web/src/components/layout/AppLayout.tsx
+      agent: D
+      wave: 2
+      action: new
+    - file: web/src/components/layout/AppHeader.tsx
+      agent: D
+      wave: 2
+      action: new
+    - file: web/src/components/layout/SidebarNav.tsx
+      agent: D
+      wave: 2
+      action: new
+    - file: web/src/App.tsx
+      agent: D
+      wave: 2
+      action: modify
+    - file: web/src/components/review/ReviewLayout.tsx
+      agent: E
+      wave: 2
+      action: new
+    - file: web/src/components/ReviewScreen.tsx
+      agent: E
+      wave: 2
+      action: modify
+    - file: web/src/components/wave/WaveMergePanel.tsx
+      agent: F
+      wave: 2
+      action: new
+    - file: web/src/components/wave/WaveRecoveryPanel.tsx
+      agent: F
+      wave: 2
+      action: new
+    - file: web/src/components/wave/WaveCompletionPanel.tsx
+      agent: F
+      wave: 2
+      action: new
+    - file: web/src/components/wave/ScaffoldCard.tsx
+      agent: F
+      wave: 2
+      action: new
+    - file: web/src/components/WaveBoard.tsx
+      agent: F
+      wave: 2
+      action: modify
+    - file: web/src/hooks/useExecutionState.ts
+      agent: G
+      wave: 3
+      action: new
+    - file: web/src/hooks/useExecutionState.test.ts
+      agent: G
+      wave: 3
+      action: new
+    - file: web/src/contexts/AppContext.tsx
+      agent: H
+      wave: 3
+      action: new
+    - file: web/src/contexts/AppContext.test.tsx
+      agent: H
+      wave: 3
+      action: new
+    - file: web/src/contexts/ReviewContext.tsx
+      agent: H
+      wave: 3
+      action: new
+    - file: web/src/contexts/ReviewContext.test.tsx
+      agent: H
+      wave: 3
+      action: new
+    - file: web/src/api.ts
+      agent: I
+      wave: 4
+      action: modify
+    - file: web/src/autonomyApi.ts
+      agent: I
+      wave: 4
+      action: modify
+    - file: web/src/programApi.ts
+      agent: I
+      wave: 4
+      action: modify
+    - file: web/src/main.tsx
+      agent: I
+      wave: 4
+      action: modify
+interface_contracts:
+    - name: SawClient
+      description: |
+        Typed API client interface that abstracts all fetch() calls behind a
+        structured namespace. Enables future Wails native app migration by
+        swapping the transport layer.
+      definition: |
+        export interface SawClient {
+          impl: {
+            list(): Promise<IMPLListEntry[]>
+            get(slug: string): Promise<IMPLDocResponse>
+            getRaw(slug: string): Promise<string>
+            saveRaw(slug: string, content: string): Promise<void>
+            approve(slug: string): Promise<void>
+            reject(slug: string): Promise<void>
+            delete(slug: string): Promise<void>
+            revise(slug: string, feedback: string): Promise<{ runId: string }>
+            subscribeReviseEvents(slug: string, runId: string): EventSource
+            chat(slug: string, message: string, history: ChatMessage[]): Promise<{ runId: string }>
+            subscribeChatEvents(slug: string, runId: string): EventSource
+            criticReview(slug: string): Promise<CriticResult | null>
+            runCritic(slug: string): Promise<void>
+            fetchAgentContext(slug: string, agent: string): Promise<AgentContextResponse>
+            worktrees: {
+              list(slug: string): Promise<WorktreeListResponse>
+              delete(slug: string, branch: string): Promise<void>
+              batchDelete(slug: string, req: WorktreeBatchDeleteRequest): Promise<WorktreeBatchDeleteResponse>
+            }
+            diff(slug: string, agent: string, wave: number, file: string): Promise<FileDiffResponse>
+          }
+          wave: {
+            start(slug: string): Promise<void>
+            mergeWave(slug: string, wave: number): Promise<void>
+            mergeAbort(slug: string): Promise<void>
+            runTests(slug: string, wave: number): Promise<void>
+            resolveConflicts(slug: string, wave: number): Promise<void>
+            rerunAgent(slug: string, wave: number, agent: string, opts?: { scopeHint?: string }): Promise<void>
+            retryFinalize(slug: string, wave: number): Promise<void>
+            fixBuild(slug: string, wave: number, errorLog: string, gateType: string): Promise<void>
+            proceedGate(slug: string): Promise<void>
+            diskStatus(slug: string): Promise<DiskWaveStatus>
+            subscribeEvents(slug: string): EventSource
+            retryStep(slug: string, step: string, wave: number): Promise<void>
+            skipStep(slug: string, step: string, wave: number, reason: string): Promise<void>
+            forceMarkComplete(slug: string): Promise<void>
+            resumeExecution(slug: string): Promise<{ success: boolean; error?: string }>
+            interruptedSessions(): Promise<InterruptedSession[]>
+          }
+          scout: {
+            run(feature: string, repo?: string, context?: ScoutContext): Promise<{ runId: string }>
+            subscribeEvents(runId: string): EventSource
+            cancel(runId: string): Promise<void>
+            rerunScaffold(slug: string): Promise<void>
+          }
+          config: {
+            get(): Promise<SAWConfig>
+            save(config: SAWConfig): Promise<void>
+            browse(path?: string): Promise<BrowseResult>
+            browseNative(prompt?: string): Promise<string | null>
+            context: {
+              get(): Promise<string>
+              put(content: string): Promise<void>
+            }
+          }
+          autonomy: {
+            fetchPipeline(): Promise<PipelineResponse>
+            fetchQueue(): Promise<QueueItem[]>
+            addQueueItem(req: AddQueueItemRequest): Promise<QueueItem>
+            deleteQueueItem(slug: string): Promise<void>
+            updateQueuePriority(slug: string, priority: number): Promise<void>
+            fetchConfig(): Promise<AutonomyConfig>
+            saveConfig(config: AutonomyConfig): Promise<void>
+            startDaemon(): Promise<DaemonState>
+            stopDaemon(): Promise<void>
+            fetchDaemonStatus(): Promise<DaemonState>
+            subscribeDaemonEvents(): EventSource
+          }
+          program: {
+            list(): Promise<ProgramDiscovery[]>
+            status(slug: string): Promise<ProgramStatus>
+            tierStatus(slug: string, tier: number): Promise<TierStatus>
+            executeTier(slug: string, tier: number, auto?: boolean): Promise<void>
+            contracts(slug: string): Promise<ContractStatus[]>
+            replan(slug: string): Promise<void>
+            runPlanner(description: string, repo?: string): Promise<{ runId: string }>
+            subscribePlannerEvents(runId: string): EventSource
+            cancelPlanner(runId: string): Promise<void>
+          }
+          files: {
+            tree(repo: string, path?: string): Promise<FileTreeResponse>
+            read(repo: string, path: string): Promise<FileContentResponse>
+            diff(repo: string, path: string): Promise<{ repo: string; path: string; diff: string }>
+            gitStatus(repo: string): Promise<GitStatusResponse>
+          }
+        }
+
+        export function createHttpClient(): SawClient
+      location: web/src/lib/apiClient.ts
+    - name: StatusBadge
+      description: |
+        Shared status badge components that replace duplicated color/label logic
+        across WaveBoard, ProgramBoard, and ImplList.
+      definition: |
+        export interface StatusBadgeProps {
+          status: string
+          size?: 'sm' | 'md'
+          className?: string
+        }
+        export function AgentStatusBadge(props: StatusBadgeProps): JSX.Element
+        export function WaveStatusBadge(props: StatusBadgeProps): JSX.Element
+        export function ImplStatusBadge(props: StatusBadgeProps): JSX.Element
+      location: web/src/components/shared/StatusBadges.tsx
+    - name: LoadingErrorEmpty
+      description: |
+        Shared loading spinner, error display, and empty state components.
+      definition: |
+        export function LoadingSpinner(props: { className?: string }): JSX.Element
+        export function LoadingSkeleton(props: { lines?: number; className?: string }): JSX.Element
+        export function ErrorDisplay(props: { message: string; onRetry?: () => void }): JSX.Element
+        export function EmptyState(props: { icon?: React.ReactNode; title: string; description?: string; action?: React.ReactNode }): JSX.Element
+      location: web/src/components/shared/StateDisplays.tsx
+    - name: useModal
+      description: |
+        Hook to manage modal open/close state, backdrop clicks, and Escape key dismissal.
+        Replaces scattered createPortal + useState patterns.
+      definition: |
+        export interface UseModalReturn {
+          isOpen: boolean
+          open: () => void
+          close: () => void
+          toggle: () => void
+          portalProps: {
+            onBackdropClick: () => void
+            onEscape: () => void
+          }
+        }
+        export function useModal(id?: string): UseModalReturn
+      location: web/src/hooks/useModal.ts
+    - name: AppLayout
+      description: |
+        Layout shell extracted from App.tsx. Manages sidebar, header, and main content areas.
+      definition: |
+        export interface AppLayoutProps {
+          sidebar: React.ReactNode
+          header: React.ReactNode
+          main: React.ReactNode
+          rightPanel?: React.ReactNode
+          rightPanelWidth?: number
+          onRightPanelResize?: (width: number) => void
+          sidebarCollapsed?: boolean
+          onToggleSidebar?: () => void
+          sidebarWidth?: number
+          sidebarDividerProps?: Record<string, any>
+        }
+        export function AppLayout(props: AppLayoutProps): JSX.Element
+      location: web/src/components/layout/AppLayout.tsx
+    - name: AppHeader
+      description: |
+        Header bar extracted from App.tsx containing nav buttons, model picker, theme controls.
+      definition: |
+        export interface AppHeaderProps {
+          onPipelineClick: () => void
+          onNewPlanClick: () => void
+          onProgramsClick: () => void
+          onNewProgramClick: () => void
+          onSearchClick: () => void
+          onSettingsClick: () => void
+          onModelsClick: () => void
+          showPipeline: boolean
+          showPrograms: boolean
+          sseConnected: boolean
+          modelPickerOpen: boolean
+          modelPickerContent: React.ReactNode
+        }
+        export function AppHeader(props: AppHeaderProps): JSX.Element
+      location: web/src/components/layout/AppHeader.tsx
+    - name: SidebarNav
+      description: |
+        Sidebar content extracted from App.tsx — renders ImplList or ProgramList
+        with ResumeBanner.
+      definition: |
+        export interface SidebarNavProps {
+          showPrograms: boolean
+          programs: ProgramDiscovery[]
+          selectedProgramSlug: string | null
+          onSelectProgram: (slug: string) => void
+          interruptedSessions: InterruptedSession[]
+          entries: IMPLListEntry[]
+          selectedSlug: string | null
+          onSelect: (slug: string) => void
+          onDelete: (slug: string) => void
+          loading: boolean
+          repos: RepoEntry[]
+          onManageRepos: () => void
+          onRemoveRepo: (name: string) => void
+          onNewPlan: () => void
+        }
+        export function SidebarNav(props: SidebarNavProps): JSX.Element
+      location: web/src/components/layout/SidebarNav.tsx
+    - name: WaveMergePanel
+      description: |
+        Merge controls and status display extracted from WaveBoard.tsx.
+      definition: |
+        export interface WaveMergePanelProps {
+          slug: string
+          wave: WaveState
+          waveAgents: AgentStatus[]
+          mergeState?: WaveMergeState
+          testState?: WaveTestState
+          hasGate: boolean
+          waveGate?: { wave: number; nextWave: number } | null
+          fixBuildStatus: string
+          fixBuildOutput: string
+          fixBuildError?: string
+          onMerge: (wave: number) => void
+          onRunTests: (wave: number) => void
+          onRetryFinalize: (wave?: number) => void
+          onFixBuild: (wave?: number, errorLog?: string, gateType?: string) => void
+          onProceedGate: (nextWave: number) => void
+          onStartWave: () => void
+        }
+        export function WaveMergePanel(props: WaveMergePanelProps): JSX.Element
+      location: web/src/components/wave/WaveMergePanel.tsx
+    - name: WaveRecoveryPanel
+      description: |
+        Recovery controls and failure display extracted from WaveBoard.tsx.
+      definition: |
+        export interface WaveRecoveryPanelProps {
+          slug: string
+          state: AppWaveState
+          onRetryFinalize: () => void
+          onFixBuild: () => void
+          onRescout?: () => void
+        }
+        export function WaveRecoveryPanel(props: WaveRecoveryPanelProps): JSX.Element
+      location: web/src/components/wave/WaveRecoveryPanel.tsx
+    - name: WaveCompletionPanel
+      description: |
+        Run complete/failed banners extracted from WaveBoard.tsx.
+      definition: |
+        export interface WaveCompletionPanelProps {
+          state: AppWaveState
+          totalAgents: number
+          onRescout?: () => void
+        }
+        export function WaveCompletionPanel(props: WaveCompletionPanelProps): JSX.Element
+      location: web/src/components/wave/WaveCompletionPanel.tsx
+    - name: ReviewLayout
+      description: |
+        Panel grid/layout logic extracted from ReviewScreen.tsx.
+      definition: |
+        export interface ReviewLayoutProps {
+          activePanels: PanelKey[]
+          impl: IMPLDocResponse
+          slug: string
+          executionState?: ExecutionSyncState | null
+          repos?: RepoEntry[]
+          onFileClick?: (agent: string, wave: number, file: string) => void
+        }
+        export function ReviewLayout(props: ReviewLayoutProps): JSX.Element
+      location: web/src/components/review/ReviewLayout.tsx
+    - name: useExecutionState
+      description: |
+        Unified execution state hook that consolidates useWaveEvents +
+        useExecutionSync + ReviewScreen.effectiveExecutionState + WaveBoard.statusOverrides.
+      definition: |
+        export interface UnifiedExecutionState {
+          waveState: AppWaveState
+          syncState: ExecutionSyncState
+          effectiveState: ExecutionSyncState | null
+          statusOverrides: Map<string, string>
+          applyOverride: (agent: string, wave: number, status: string) => void
+          clearOverride: (agent: string, wave: number) => void
+        }
+        export function useExecutionState(slug: string): UnifiedExecutionState
+      location: web/src/hooks/useExecutionState.ts
+    - name: AppContext
+      description: |
+        React Context providing app-level state: repos, activeRepo, IMPL list,
+        models, SSE connection status.
+      definition: |
+        export interface AppContextValue {
+          repos: RepoEntry[]
+          activeRepo: RepoEntry | null
+          activeRepoIndex: number
+          setActiveRepoIndex: (index: number) => void
+          setRepos: (repos: RepoEntry[]) => void
+          entries: IMPLListEntry[]
+          refreshEntries: () => Promise<void>
+          models: {
+            scout: string; scaffold: string; wave: string
+            integration: string; chat: string; planner: string
+          }
+          saveModel: (field: string, value: string) => Promise<void>
+          sseConnected: boolean
+          programs: ProgramDiscovery[]
+          refreshPrograms: () => Promise<void>
+        }
+        export const AppContext: React.Context<AppContextValue>
+        export function AppProvider(props: { children: React.ReactNode }): JSX.Element
+      location: web/src/contexts/AppContext.tsx
+    - name: ReviewContext
+      description: |
+        React Context for current review state: active panels, diff target, chat state.
+      definition: |
+        export interface ReviewContextValue {
+          activePanels: PanelKey[]
+          togglePanel: (key: PanelKey) => void
+          showChat: boolean
+          setShowChat: (show: boolean) => void
+          diffTarget: { agent: string; wave: number; file: string } | null
+          setDiffTarget: (target: { agent: string; wave: number; file: string } | null) => void
+          showRevise: boolean
+          setShowRevise: (show: boolean) => void
+        }
+        export const ReviewContext: React.Context<ReviewContextValue>
+        export function ReviewProvider(props: { children: React.ReactNode }): JSX.Element
+      location: web/src/contexts/ReviewContext.tsx
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |
+            ## Agent A — Extract API Client Layer
+
+            **What to implement:**
+            Create `web/src/lib/apiClient.ts` with the `SawClient` interface and `createHttpClient()` factory.
+
+            **Detailed instructions:**
+            1. Define the `SawClient` interface with namespaced methods as specified in the interface contract.
+            2. Implement `createHttpClient()` that creates an HTTP-based implementation wrapping all existing
+               fetch() calls from `api.ts`, `autonomyApi.ts`, and `programApi.ts`.
+            3. Each method should follow the existing error pattern: `if (!r.ok) throw new Error(...)`.
+            4. Import types from `../types.ts`, `../types/autonomy.ts`, `../types/program.ts`, `../types/filebrowser.ts`.
+            5. Export both the interface and the factory function as the default client instance:
+               `export const sawClient = createHttpClient()`.
+            6. Also re-export all types that `api.ts` currently exports (DiskAgentStatus, DiskWaveStatus, BrowseResult).
+            7. Write tests in `apiClient.test.ts` — test that the client object has the correct shape
+               and that methods call fetch with correct URLs (mock fetch).
+
+            **Constraints:**
+            - Do NOT modify api.ts, autonomyApi.ts, or programApi.ts yet — they remain as-is for backward
+              compatibility. Migration of consumers happens in Wave 4.
+            - Do NOT add new dependencies.
+            - Preserve all existing type exports so nothing breaks.
+
+            **Tests to write or update:**
+            - `web/src/lib/apiClient.test.ts` — shape tests, fetch URL tests for 3-4 representative methods.
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/lib/apiClient.ts
+            - web/src/lib/apiClient.test.ts
+        - id: B
+          task: |
+            ## Agent B — Extract Shared UI Components
+
+            **What to implement:**
+            Create `web/src/components/shared/StatusBadges.tsx` and `web/src/components/shared/StateDisplays.tsx`.
+
+            **Detailed instructions:**
+
+            StatusBadges.tsx:
+            1. Create `AgentStatusBadge` — renders colored pill for agent status (pending/running/complete/failed).
+               Use the color patterns from AgentCard.tsx and WaveBoard.tsx.
+            2. Create `WaveStatusBadge` — renders wave status (pending/complete/partial/merged).
+               Extract the pattern from WaveBoard.tsx wave header badges.
+            3. Create `ImplStatusBadge` — renders IMPL doc status badge.
+               Extract from ImplList.tsx status display.
+            4. All badges use Tailwind classes with dark mode support.
+            5. Accept `size` prop ('sm' | 'md') and optional `className` for customization.
+
+            StateDisplays.tsx:
+            1. `LoadingSpinner` — simple spinning indicator.
+            2. `LoadingSkeleton` — the pulse animation pattern from App.tsx lines 503-511.
+            3. `ErrorDisplay` — red error text with optional retry button (pattern from App.tsx line 501).
+            4. `EmptyState` — centered icon + title + description + action pattern
+               (from App.tsx lines 521-531 "No plan selected" and line 484 "No programs yet").
+
+            **Tests:** Write render tests for each component with different prop combinations.
+
+            **Constraints:**
+            - Do NOT modify any existing components yet — these are new standalone files.
+            - Use existing Tailwind classes and dark mode patterns from the codebase.
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/components/shared/StatusBadges.tsx
+            - web/src/components/shared/StatusBadges.test.tsx
+            - web/src/components/shared/StateDisplays.tsx
+            - web/src/components/shared/StateDisplays.test.tsx
+        - id: C
+          task: |
+            ## Agent C — Extract useModal Hook
+
+            **What to implement:**
+            Create `web/src/hooks/useModal.ts` — a reusable hook for modal state management.
+
+            **Detailed instructions:**
+            1. Implement `useModal(id?: string)` that returns `{ isOpen, open, close, toggle, portalProps }`.
+            2. `portalProps` includes `onBackdropClick` (calls close) and `onEscape` handler.
+            3. Register a `keydown` listener for Escape when modal is open, clean up on close/unmount.
+            4. Optional `id` parameter for tracking which modal is open when multiple exist.
+            5. Follow the pattern from App.tsx lines 98-105 (Escape key handling) and
+               ReviewScreen.tsx lines 561-598 (backdrop click handling).
+
+            **Tests:** Test open/close/toggle, Escape key dismissal, backdrop click behavior.
+
+            **Constraints:**
+            - Do NOT modify App.tsx or ReviewScreen.tsx — this is a new standalone hook.
+            - No new dependencies.
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/hooks/useModal.ts
+            - web/src/hooks/useModal.test.ts
+      base_commit: 591da67048c2abd1578044b441564060ae58af15
+    - number: 2
+      agents:
+        - id: D
+          task: |
+            ## Agent D — Decompose App.tsx into Layout Components
+
+            **What to implement:**
+            Extract App.tsx layout into `AppLayout`, `AppHeader`, and `SidebarNav` components.
+            Reduce App.tsx from 608 LOC to ~200 LOC.
+
+            **Detailed instructions:**
+
+            1. Create `web/src/components/layout/AppLayout.tsx`:
+               - Extract the outer shell: `h-screen flex flex-col`, header slot, sidebar + divider +
+                 main content + right panel layout.
+               - Accept props for sidebar, header, main content, and optional right panel.
+               - Include sidebar collapse/expand logic with the chevron buttons.
+               - Include right panel divider resize logic (lines 129-140).
+
+            2. Create `web/src/components/layout/AppHeader.tsx`:
+               - Extract the entire `<header>` element (lines 337-421).
+               - Accept callbacks for Pipeline, New Plan, Programs, New Program, Search, Settings clicks.
+               - Accept `sseConnected` boolean for the status indicator.
+               - Accept `modelPickerContent` as React.ReactNode for the dropdown content.
+
+            3. Create `web/src/components/layout/SidebarNav.tsx`:
+               - Extract sidebar content: conditional ProgramList vs (ResumeBanner + ImplList).
+               - Accept all the props currently passed to ImplList and ProgramList.
+
+            4. Modify `App.tsx`:
+               - Import and use AppLayout, AppHeader, SidebarNav.
+               - Keep all state declarations and handler functions in App.tsx for now.
+               - Keep the settings drawer (createPortal), CommandPalette, and ToastContainer in App.tsx.
+               - The goal is to move JSX layout into extracted components while keeping state in App.tsx.
+               - Use the `useModal` hook from Wave 1 Agent C for the settings drawer.
+
+            **Constraints:**
+            - No behavior changes — the UI must look and function identically.
+            - Do NOT move state out of App.tsx yet (that is Wave 3).
+            - Import `useModal` from `../hooks/useModal` (created in Wave 1).
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/components/layout/AppLayout.tsx
+            - web/src/components/layout/AppHeader.tsx
+            - web/src/components/layout/SidebarNav.tsx
+            - web/src/App.tsx
+          dependencies:
+            - C
+        - id: E
+          task: |
+            ## Agent E — Extract ReviewScreen Layout
+
+            **What to implement:**
+            Extract the panel grid/layout logic from ReviewScreen.tsx into a `ReviewLayout` component.
+            Reduce ReviewScreen from 651 to ~450 LOC.
+
+            **Detailed instructions:**
+
+            1. Create `web/src/components/review/ReviewLayout.tsx`:
+               - Extract the panel rendering logic (lines 408-491) — the `<div className="space-y-6">`
+                 block that conditionally renders all panels based on `activePanels`.
+               - Accept `activePanels`, `impl`, `slug`, `executionState`, `repos`, `onFileClick` props.
+               - Include the grid layout logic (wave-structure + dependency-graph pair, etc.).
+
+            2. Modify `ReviewScreen.tsx`:
+               - Import and use ReviewLayout in place of the inline panel rendering.
+               - Keep all state, effects, and the sticky footer in ReviewScreen.
+               - Keep the toggle buttons section in ReviewScreen.
+               - Use shared StateDisplays components where applicable (LoadingSkeleton, EmptyState).
+
+            **Constraints:**
+            - No behavior changes.
+            - Import `StateDisplays` components from Wave 1 Agent B if useful, but do not require them.
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/components/review/ReviewLayout.tsx
+            - web/src/components/ReviewScreen.tsx
+          dependencies:
+            - B
+        - id: F
+          task: |
+            ## Agent F — Decompose WaveBoard.tsx
+
+            **What to implement:**
+            Extract WaveBoard.tsx (883 LOC) into smaller sub-components. Target: WaveBoard drops to ~350 LOC.
+
+            **Detailed instructions:**
+
+            1. Create `web/src/components/wave/WaveMergePanel.tsx`:
+               - Extract merge controls, test controls, and live output panels (lines 554-809).
+               - This is the entire IIFE block `{(() => { const mergeState = ...` inside the wave map.
+               - Accept props for slug, wave state, merge/test states, and all action callbacks.
+
+            2. Create `web/src/components/wave/WaveRecoveryPanel.tsx`:
+               - Extract the run-failed displays (lines 407-481) — both the prominent display
+                 (when no waves) and the inline banner (when waves exist).
+               - Include RecoveryControlsPanel wiring.
+
+            3. Create `web/src/components/wave/WaveCompletionPanel.tsx`:
+               - Extract the run-complete banner (lines 378-405).
+               - Accept state, totalAgents, onRescout props.
+
+            4. Create `web/src/components/wave/ScaffoldCard.tsx`:
+               - Extract the ScaffoldCard function component (lines 56-108) from WaveBoard.tsx.
+               - It is currently a local function — make it a proper exported component.
+
+            5. Modify `WaveBoard.tsx`:
+               - Import and use WaveMergePanel, WaveRecoveryPanel, WaveCompletionPanel, ScaffoldCard.
+               - Keep the agent card rendering loop and status override logic in WaveBoard.
+               - Keep the failure action button renderer in WaveBoard (it is tightly coupled to handlers).
+               - Use shared StatusBadges from Wave 1 Agent B for wave status display where applicable.
+
+            **Constraints:**
+            - No behavior changes. Same UI, same interactions.
+            - Do NOT refactor useWaveEvents or state management (that is Wave 3).
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/components/wave/WaveMergePanel.tsx
+            - web/src/components/wave/WaveRecoveryPanel.tsx
+            - web/src/components/wave/WaveCompletionPanel.tsx
+            - web/src/components/wave/ScaffoldCard.tsx
+            - web/src/components/WaveBoard.tsx
+          dependencies:
+            - B
+      base_commit: a8a663ec5556a025de4b7f26738042ed7d497d69
+    - number: 3
+      agents:
+        - id: G
+          task: |
+            ## Agent G — Unified Execution State Hook
+
+            **What to implement:**
+            Create `web/src/hooks/useExecutionState.ts` that consolidates execution state
+            from useWaveEvents + useExecutionSync + the effectiveExecutionState logic
+            currently duplicated in ReviewScreen.
+
+            **Detailed instructions:**
+
+            1. Create the `useExecutionState(slug: string)` hook that returns `UnifiedExecutionState`.
+            2. Internally, call `useWaveEvents(slug)` to get `waveState`.
+            3. Internally, derive `syncState` (same logic as current `useExecutionSync`).
+            4. Internally, compute `effectiveState` — the merged disk + live state logic
+               currently in ReviewScreen lines 145-166.
+            5. Include `statusOverrides` map and `applyOverride`/`clearOverride` methods
+               (currently in WaveBoard lines 112, 134-139, 146-161).
+            6. This hook becomes the single source of truth for execution state.
+            7. Do NOT modify useWaveEvents.ts or useExecutionSync.ts — they continue to work
+               for backward compatibility. The new hook composes them.
+
+            **Tests:**
+            - Test that effectiveState prefers live SSE data when available.
+            - Test that disk status is used as fallback.
+            - Test override apply/clear behavior.
+
+            **Constraints:**
+            - Do NOT modify existing hooks — create new hook that composes them.
+            - Must work with the decomposed WaveBoard from Wave 2.
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/hooks/useExecutionState.ts
+            - web/src/hooks/useExecutionState.test.ts
+          dependencies:
+            - F
+        - id: H
+          task: |
+            ## Agent H — Create React Contexts
+
+            **What to implement:**
+            Create AppContext and ReviewContext to eliminate prop drilling.
+
+            **Detailed instructions:**
+
+            AppContext (`web/src/contexts/AppContext.tsx`):
+            1. Create context with value matching the `AppContextValue` interface contract.
+            2. Create `AppProvider` that encapsulates:
+               - `repos` / `activeRepo` / `activeRepoIndex` state (from App.tsx lines 75-77)
+               - `entries` state with `refreshEntries` (from App.tsx line 68)
+               - Model state: scout, scaffold, wave, integration, chat, planner (lines 79-84)
+               - `saveModel` function (lines 275-300)
+               - `sseConnected` state (line 89)
+               - `programs` state with `refreshPrograms` (line 94)
+            3. Include the initial data fetching from `useEffect` (App.tsx lines 155-175).
+            4. Include the SSE event subscription for `impl_list_updated` (lines 147-153).
+            5. Export `useAppContext()` convenience hook.
+
+            ReviewContext (`web/src/contexts/ReviewContext.tsx`):
+            1. Create context for review-specific state.
+            2. Move `activePanels` + `togglePanel` into the context.
+            3. Move `showChat` / `setShowChat` into the context.
+            4. Move `diffTarget` / `setDiffTarget` into the context.
+            5. Move `showRevise` / `setShowRevise` into the context.
+            6. Export `useReviewContext()` convenience hook.
+
+            **Tests:**
+            - Test AppProvider provides correct initial values.
+            - Test ReviewProvider togglePanel behavior.
+
+            **Constraints:**
+            - Do NOT modify App.tsx or ReviewScreen.tsx to use these contexts yet.
+              That integration is Wave 4 work. These are standalone context definitions.
+            - No new dependencies (use React.createContext, not Zustand or Redux).
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/contexts/AppContext.tsx
+            - web/src/contexts/AppContext.test.tsx
+            - web/src/contexts/ReviewContext.tsx
+            - web/src/contexts/ReviewContext.test.tsx
+          dependencies:
+            - D
+      base_commit: 7b47c7cbc554213552f95f92fed6a7d5f482eda2
+    - number: 4
+      type: integration
+      agents:
+        - id: I
+          task: |
+            ## Agent I — Wire Contexts and API Client into Consumers
+
+            **What to implement:**
+            Update existing files to use the new API client, contexts, and shared components.
+            This is the integration wave that connects all prior wave outputs.
+
+            **Detailed instructions:**
+
+            1. Update `web/src/api.ts`:
+               - Add a deprecation comment at the top: "// @deprecated — Use sawClient from lib/apiClient.ts instead"
+               - Re-export all functions from `lib/apiClient.ts` as thin wrappers so existing
+                 imports continue to work without breaking anything.
+               - Example: `export async function listImpls() { return sawClient.impl.list() }`
+
+            2. Update `web/src/autonomyApi.ts`:
+               - Same pattern: deprecation comment + re-export via sawClient.autonomy namespace.
+
+            3. Update `web/src/programApi.ts`:
+               - Same pattern: deprecation comment + re-export via sawClient.program namespace.
+
+            4. Update `web/src/main.tsx`:
+               - Wrap `<App />` with `<AppProvider>` from contexts/AppContext.tsx.
+
+            **Constraints:**
+            - All existing imports from api.ts/autonomyApi.ts/programApi.ts must continue to work.
+            - This is a wiring-only wave — no new features, no behavior changes.
+            - TypeScript must compile. All existing tests must pass.
+            - Do NOT reorganize directory structure (that is future work, descoped from this IMPL).
+
+            **Verification gate:**
+            ```
+            cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+          files:
+            - web/src/api.ts
+            - web/src/autonomyApi.ts
+            - web/src/programApi.ts
+            - web/src/main.tsx
+          dependencies:
+            - G
+            - H
+quality_gates:
+    level: standard
+    gates:
+        - type: typecheck
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+          required: true
+        - type: test
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+          required: true
+post_merge_checklist:
+    groups:
+        - title: Build Verification
+          items:
+            - description: Run full test suite
+              command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+            - description: Run TypeScript check
+              command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+            - description: Rebuild Go binary with embedded assets
+              command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go build -o saw ./cmd/saw
+        - title: Smoke Testing
+          items:
+            - description: Verify dev server starts with no console errors
+              command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npm run dev
+            - description: Open browser, verify IMPL list loads, select a plan, approve flow works
+completion_reports:
+    A:
+        status: complete
+        branch: saw/react-refactor/wave1-agent-A
+        commit: 0b65345
+        files_changed:
+            - web/src/lib/apiClient.ts
+            - web/src/lib/apiClient.test.ts
+        files_created:
+            - web/src/lib/apiClient.ts
+            - web/src/lib/apiClient.test.ts
+        tests_added:
+            - SawClient shape tests
+            - fetch URL tests
+            - error handling tests
+        verification: 'PASS: tsc --noEmit clean, 249/249 tests pass'
+    B:
+        status: complete
+        branch: saw/react-refactor/wave1-agent-B
+        commit: f419a72
+        files_changed:
+            - web/src/components/shared/StatusBadges.tsx
+            - web/src/components/shared/StatusBadges.test.tsx
+            - web/src/components/shared/StateDisplays.tsx
+            - web/src/components/shared/StateDisplays.test.tsx
+        files_created:
+            - web/src/components/shared/StatusBadges.tsx
+            - web/src/components/shared/StatusBadges.test.tsx
+            - web/src/components/shared/StateDisplays.tsx
+            - web/src/components/shared/StateDisplays.test.tsx
+        tests_added:
+            - AgentStatusBadge-statuses
+            - WaveStatusBadge-statuses
+            - ImplStatusBadge-statuses
+            - LoadingSpinner
+            - LoadingSkeleton
+            - ErrorDisplay
+            - EmptyState
+        verification: PASS
+    C:
+        status: complete
+        branch: saw/react-refactor/wave1-agent-C
+        commit: afacd85
+        files_changed:
+            - web/src/hooks/useModal.ts
+            - web/src/hooks/useModal.test.ts
+        files_created:
+            - web/src/hooks/useModal.ts
+            - web/src/hooks/useModal.test.ts
+        tests_added:
+            - starts closed
+            - opens when open() is called
+            - closes when close() is called
+            - toggles state
+            - closes on Escape key when open
+            - does not react to Escape key when closed
+            - does not react to non-Escape keys
+            - closes on backdrop click via portalProps
+            - closes on escape via portalProps.onEscape
+            - accepts an optional id parameter
+            - cleans up Escape listener on unmount
+            - cleans up Escape listener when modal closes
+        verification: PASS
+    D:
+        status: complete
+        branch: saw/react-refactor/wave2-agent-D
+        commit: 7add2c7
+        files_changed:
+            - web/src/App.tsx
+            - web/src/components/layout/AppLayout.tsx
+            - web/src/components/layout/AppHeader.tsx
+            - web/src/components/layout/SidebarNav.tsx
+        files_created:
+            - web/src/components/layout/AppLayout.tsx
+            - web/src/components/layout/AppHeader.tsx
+            - web/src/components/layout/SidebarNav.tsx
+        verification: PASS
+    E:
+        status: complete
+        branch: saw/react-refactor/wave2-agent-E
+        commit: 1f16215
+        files_changed:
+            - web/src/components/ReviewScreen.tsx
+        files_created:
+            - web/src/components/review/ReviewLayout.tsx
+        verification: PASS
+    F:
+        status: complete
+        branch: saw/react-refactor/wave2-agent-F
+        commit: 4d6103c
+        files_changed:
+            - web/src/components/WaveBoard.tsx
+        files_created:
+            - web/src/components/wave/ScaffoldCard.tsx
+            - web/src/components/wave/WaveCompletionPanel.tsx
+            - web/src/components/wave/WaveRecoveryPanel.tsx
+            - web/src/components/wave/WaveMergePanel.tsx
+        verification: PASS — tsc clean, 310/310 tests pass. WaveBoard 883->480 LOC.
+    G:
+        status: complete
+        branch: saw/react-refactor/wave3-agent-G
+        commit: 2c817e0
+        files_changed:
+            - web/src/hooks/useExecutionState.ts
+            - web/src/hooks/useExecutionState.test.ts
+        files_created:
+            - web/src/hooks/useExecutionState.ts
+            - web/src/hooks/useExecutionState.test.ts
+        tests_added:
+            - effectiveState prefers live SSE data
+            - disk status fallback
+            - override apply/clear
+            - null effectiveState when no data
+            - waveState returned from useWaveEvents
+        verification: PASS
+    H:
+        status: complete
+        branch: saw/react-refactor/wave3-agent-H
+        commit: 1819d6d
+        files_changed:
+            - web/src/contexts/AppContext.tsx
+            - web/src/contexts/AppContext.test.tsx
+            - web/src/contexts/ReviewContext.tsx
+            - web/src/contexts/ReviewContext.test.tsx
+        files_created:
+            - web/src/contexts/AppContext.tsx
+            - web/src/contexts/AppContext.test.tsx
+            - web/src/contexts/ReviewContext.tsx
+            - web/src/contexts/ReviewContext.test.tsx
+        tests_added:
+            - provides correct initial default values
+            - loads repos from config on mount
+            - useAppContext outside provider
+            - provides default active panels
+            - togglePanel adds a panel
+            - togglePanel removes active panel
+            - togglePanel persists localStorage
+            - showChat state toggles
+            - diffTarget state changes
+            - showRevise state changes
+        verification: PASS
+pre_mortem:
+    overall_risk: medium
+    rows:
+        - scenario: Wave 2 agents modifying App.tsx/WaveBoard.tsx/ReviewScreen.tsx may conflict with recent feature additions
+          likelihood: medium
+          impact: medium
+          mitigation: Each agent owns exactly one god component. Merge conflicts are limited to import statements which are easy to resolve.
+        - scenario: API client wrapper breaks subtle behavior in fetch error handling
+          likelihood: low
+          impact: high
+          mitigation: Wave 4 uses thin re-export wrappers that delegate to sawClient methods. Original functions preserved. Tests catch regressions.
+        - scenario: Context providers cause unnecessary re-renders in deeply nested components
+          likelihood: medium
+          impact: low
+          mitigation: Use useMemo for context values. AppContext changes infrequently (config loads). ReviewContext is scoped to review screen.
+        - scenario: TypeScript compilation fails at wave boundary due to missing imports from extracted components
+          likelihood: medium
+          impact: medium
+          mitigation: Each wave creates new files first, then modifies existing files. Typecheck gate runs at every wave boundary.
+        - scenario: Directory reorganization (Wave 4 originally) descoped — leaves flat directory structure
+          likelihood: high
+          impact: low
+          mitigation: Descoped to keep IMPL manageable. Directory reorg can be a follow-up IMPL after contexts are wired in.
+known_issues:
+    - description: Directory reorganization (original Wave 4) descoped from this IMPL
+      status: deferred
+      workaround: Plan as a separate follow-up IMPL after context integration is stable
+    - description: api.ts exports some interfaces (DiskAgentStatus, DiskWaveStatus, BrowseResult) that should be in types.ts
+      status: pre-existing
+      workaround: apiClient.ts re-exports these types; migration to types.ts is future cleanup
+critic_report:
+    verdict: PASS
+    agent_reviews:
+        A:
+            agent_id: A
+            verdict: PASS
+        B:
+            agent_id: B
+            verdict: PASS
+        C:
+            agent_id: C
+            verdict: PASS
+        D:
+            agent_id: D
+            verdict: PASS
+        E:
+            agent_id: E
+            verdict: PASS
+        F:
+            agent_id: F
+            verdict: PASS
+        G:
+            agent_id: G
+            verdict: PASS
+        H:
+            agent_id: H
+            verdict: PASS
+        I:
+            agent_id: I
+            verdict: PASS
+    summary: 'All 9 agent briefs verified against the codebase. File existence checks pass: all 21 new files do not exist yet, all 7 modify-target files exist. Line number references in briefs for App.tsx (608 LOC), ReviewScreen.tsx (651 LOC), and WaveBoard.tsx (883 LOC) are accurate. All types referenced in the SawClient interface contract exist across types.ts, types/autonomy.ts, types/program.ts, types/filebrowser.ts, api.ts, hooks/waveEventsReducer.ts, hooks/useExecutionSync.ts, and hooks/useChatWithClaude.ts. All hooks (useWaveEvents, useExecutionSync, useFileActivity, useGlobalEvents) and components (AgentCard, ImplList, ProgramList, ResumeBanner, RecoveryControlsPanel) referenced in briefs exist. Four directories (components/shared/, components/layout/, components/wave/, contexts/) do not yet exist and will need to be created by agents, which is standard practice. No symbol conflicts or pattern mismatches found.'
+    reviewed_at: "2026-03-20T04:12:23Z"
+    issue_count: 0
+state: "WAVE_PENDING"
