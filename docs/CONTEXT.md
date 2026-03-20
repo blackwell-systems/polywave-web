@@ -49,3 +49,5 @@ lint_command: go vet ./...
   - IMPL doc: docs/IMPL/complete/IMPL-living-impl-docs.yaml
 - **sse-improvements**: completed 2026-03-19, 1 waves, 5 agents
   - IMPL doc: docs/IMPL/complete/IMPL-sse-improvements.yaml
+- **critic-agent**: completed 2026-03-19, 3 waves, 7 agents
+  - IMPL doc: ../scout-and-wave/docs/IMPL/complete/IMPL-critic-agent.yaml

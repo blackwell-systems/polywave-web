@@ -112,8 +112,9 @@ describe('ReviewScreen', () => {
     )
     // ReviewScreen no longer creates its own EventSource.
     // useExecutionSync (via useWaveEvents) creates one for /api/wave/:slug/events.
+    // useGlobalEvents creates an additional one for /api/events.
     expect(MockEventSource.instances.length).toBeGreaterThanOrEqual(1)
-    expect(MockEventSource.instances.every(es => es.url === '/api/wave/my-slug/events')).toBe(true)
+    expect(MockEventSource.instances.some(es => es.url === '/api/wave/my-slug/events')).toBe(true)
   })
 
   it('calls onRefreshImpl when waves_merged count increases in disk status', async () => {
