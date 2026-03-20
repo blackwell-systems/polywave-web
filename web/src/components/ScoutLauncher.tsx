@@ -44,6 +44,7 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
   const [displayed, setDisplayed] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [completedSlug, setCompletedSlug] = useState<string | null>(null)
+  const [summaryData, setSummaryData] = useState<{ agents: number; waves: number; verdict: string } | null>(null)
   const [msgIdx, setMsgIdx] = useState(0)
   const runIdRef = useRef<string | null>(null)
 
@@ -98,6 +99,7 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
     setOutput('')
     setDisplayed('')
     setError(null)
+    setSummaryData(null)
 
     let runId: string
     try {
@@ -137,6 +139,17 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
         const slug = payload.slug ?? payload.impl_path ?? ''
         setCompletedSlug(slug)
         onScoutReady?.()
+        if (slug) {
+          fetch(`/api/impl/${encodeURIComponent(slug)}`)
+            .then(r => r.json())
+            .then((data: any) => {
+              const agents = data.waves?.reduce((s: number, w: any) => s + (w.agents?.length ?? 0), 0) ?? 0
+              const waves = data.waves?.length ?? 0
+              const verdict = data.suitability?.verdict ?? ''
+              setSummaryData({ agents, waves, verdict })
+            })
+            .catch(() => {})
+        }
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification('Scout complete', { body: slug ? `Plan ready: ${slug}` : 'Plan ready for review' })
         }
@@ -229,16 +242,26 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
               New project
             </button>
           </div>
+          <p className="text-xs text-muted-foreground -mt-1">
+            {mode === 'existing'
+              ? 'Scout will analyze your codebase and plan a feature addition.'
+              : 'Scout will design and scaffold a new project from scratch.'}
+          </p>
           <textarea
             className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none min-h-[80px] disabled:opacity-50"
             placeholder={mode === 'new'
-              ? "Describe the project to build from scratch..."
-              : "Describe the feature to build..."}
+              ? "e.g. 'A React app that tracks reading goals and shows weekly progress charts.'"
+              : "e.g. 'Add a dark mode toggle to the settings screen that persists across sessions.'"}
             value={feature}
             onChange={e => setFeature(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={running}
           />
+          {feature.trim().length > 0 && feature.trim().length < 15 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              Be specific — describe what, where, and any constraints ({feature.trim().length}/15 min)
+            </p>
+          )}
 
           {/* Repo path — dropdown when registry is non-empty, freeform toggle otherwise */}
           <div>
@@ -394,6 +417,11 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
             </button>
           </div>
         </div>
+        {!running && feature.trim().length > 0 && feature.trim().length < 15 && (
+          <p className="text-xs text-muted-foreground text-right -mt-2">
+            Describe in at least 15 characters to run Scout
+          </p>
+        )}
 
         {/* Error banner */}
         {error && (
@@ -405,7 +433,14 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
         {/* Completion banner */}
         {completedSlug !== null && (
           <div className="flex items-center justify-between bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg px-4 py-3">
-            <span className="text-sm font-medium text-green-800 dark:text-green-400">Plan ready</span>
+            <div>
+              <span className="text-sm font-medium text-green-800 dark:text-green-400">Plan ready</span>
+              {summaryData && (
+                <p className="text-xs text-green-700 dark:text-green-500 mt-0.5">
+                  {summaryData.agents} agent{summaryData.agents !== 1 ? 's' : ''}, {summaryData.waves} wave{summaryData.waves !== 1 ? 's' : ''}{summaryData.verdict ? ` — ${summaryData.verdict}` : ''}
+                </p>
+              )}
+            </div>
             <button
               onClick={() => onComplete(completedSlug)}
               className="text-sm font-medium px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors"
