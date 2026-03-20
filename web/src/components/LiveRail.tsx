@@ -20,9 +20,12 @@ export interface LiveRailProps {
   repos?: import('../types').RepoEntry[]
   activeRepo?: import('../types').RepoEntry | null
   onRepoSwitch?: (index: number) => void
+  /** Optional callback to start a new scout after wave completion.
+   *  App.tsx should wire this as: onRescout={() => setLiveView('scout')} */
+  onRescout?: () => void
 }
 
-export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady, onPlannerComplete, onClose, repos, activeRepo }: LiveRailProps): JSX.Element {
+export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady, onPlannerComplete, onClose, repos, activeRepo, onRescout }: LiveRailProps): JSX.Element {
 
   // Escape key handler to close the rail
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function LiveRail({ slug, liveView, onScoutComplete, onScoutReady
       {/* Wave view */}
       {liveView === 'wave' && slug && (
         <div className="flex-1 overflow-y-auto min-h-0">
-          <WaveBoard slug={slug} compact={true} repos={repos} />
+          <WaveBoard slug={slug} compact={true} repos={repos} onRescout={onRescout} />
         </div>
       )}
 

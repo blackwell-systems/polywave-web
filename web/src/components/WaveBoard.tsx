@@ -111,6 +111,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
   // Optimistic status overrides — keyed by "wave:agent"
   const [statusOverrides, setStatusOverrides] = useState<Map<string, 'pending'>>(new Map())
   const [staleDismissed, setStaleDismissed] = useState(false)
+  const [bannerDismissed, setBannerDismissed] = useState(false)
   const [fileActivityExpanded, setFileActivityExpanded] = useState(false)
   const [testOutputOpen, setTestOutputOpen] = useState<number | null>(null)
   const [fixBuildWave, setFixBuildWave] = useState<number | null>(null)
@@ -350,6 +351,25 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
         {/* Stage timeline — shows pipeline progress */}
         <StageTimeline entries={state.stageEntries} />
 
+        {/* Post-approval explanatory banner — shown when agents are running but none complete yet */}
+        {!bannerDismissed && totalAgents > 0 && completeAgents === 0 && !state.runComplete && !state.runFailed && (
+          <div className="mx-4 mb-3 flex items-start gap-3 bg-blue-950/40 border border-blue-800/60 rounded-lg px-4 py-3">
+            <span className="text-blue-400 mt-0.5 shrink-0 text-sm">&#x2139;</span>
+            <div className="flex-1 text-xs text-blue-300">
+              {totalAgents} agent{totalAgents !== 1 ? 's' : ''} are running in parallel git
+              worktrees. Each implements its assigned files independently. When all complete,
+              the results are merged into your branch.
+            </div>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-blue-400/60 hover:text-blue-300 text-sm leading-none shrink-0"
+              aria-label="Dismiss"
+            >
+              &times;
+            </button>
+          </div>
+        )}
+
         {/* Overall progress bar */}
         {totalAgents > 0 && (
           <ProgressBar complete={completeAgents} total={totalAgents} label="Overall progress" />
@@ -359,7 +379,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
         {state.runComplete && (
           <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
             <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center mb-4">
-              <span className="text-green-600 dark:text-green-400 text-2xl">✓</span>
+              <span className="text-green-600 dark:text-green-400 text-2xl">&#x2713;</span>
             </div>
             <h2 className="text-base font-semibold text-green-800 dark:text-green-300 mb-1">
               IMPL Complete
@@ -367,11 +387,10 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
             <p className="text-sm text-muted-foreground mb-4">
               {state.waves.length} {state.waves.length === 1 ? 'wave' : 'waves'}, {totalAgents} {totalAgents === 1 ? 'agent' : 'agents'} — all merged and verified
             </p>
-            {!onRescout && (
-              <p className="text-sm text-muted-foreground mb-2">
-                All waves merged and verified. Your changes are ready to review.
-              </p>
-            )}
+            <p className="text-xs text-muted-foreground mb-4 max-w-xs">
+              Your changes are on the current branch. Review the diff, run your test
+              suite, and open the Post-Merge Checklist in the plan review for next steps.
+            </p>
             <div className="flex gap-2">
               {onRescout && (
                 <button
