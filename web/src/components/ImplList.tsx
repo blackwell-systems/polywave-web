@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { IMPLListEntry, RepoEntry, IMPLDocResponse } from '../types'
 import { fetchImpl } from '../api'
 import { Button } from './ui/button'
@@ -183,7 +183,7 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
   )
 }
 
-export default function ImplList(props: ImplListProps): JSX.Element {
+export default React.memo(function ImplList(props: ImplListProps): JSX.Element {
   const { entries, selectedSlug, onSelect, onDelete, loading, repos, onManageRepos, onRemoveRepo, onNewPlan } = props
   const [pendingDelete, setPendingDelete] = useState<string | null>(null)
   const [pendingRemoveRepo, setPendingRemoveRepo] = useState<string | null>(null)
@@ -418,4 +418,4 @@ export default function ImplList(props: ImplListProps): JSX.Element {
       </div>
     </>
   )
-}
+})

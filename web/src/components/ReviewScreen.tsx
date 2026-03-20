@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { IMPLDocResponse, CriticResult } from '../types'
 import { listWorktrees, batchDeleteWorktrees, fetchDiskWaveStatus, DiskWaveStatus } from '../api'
+import { sawClient } from '../lib/apiClient'
 import { useExecutionSync, ExecutionSyncState, AgentExecStatus } from '../hooks/useExecutionSync'
 import { useGlobalEvents } from '../hooks/useGlobalEvents'
 import ActionButtons from './ActionButtons'
@@ -53,21 +54,24 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const executionState = useExecutionSync(slug)
 
   // Extract involved repos from file ownership (filter out "system" placeholder)
-  const involvedRepos = Array.from(new Set(
-    impl.file_ownership
-      .map(fo => fo.repo)
-      .filter(repo => repo && repo !== 'system')
-  )).sort() as string[]
+  const involvedRepos = useMemo(() =>
+    Array.from(new Set(
+      impl.file_ownership
+        .map(fo => fo.repo)
+        .filter(repo => repo && repo !== 'system')
+    )).sort() as string[],
+    [impl.file_ownership]
+  )
 
   // Format chat button label based on model
-  const getChatButtonLabel = () => {
+  const getChatButtonLabel = useMemo(() => {
     const model = chatModel.toLowerCase()
     if (model.includes('claude')) return 'Ask Claude'
     if (model.includes('gpt') || model.includes('openai')) return 'Ask GPT'
     if (model.includes('gemini')) return 'Ask Gemini'
     if (model.includes('llama')) return 'Ask Llama'
     return `Ask ${chatModel.split('-')[0]}`
-  }
+  }, [chatModel])
 
   const [showRevise, setShowRevise] = useState(false)
   const [showApproveConfirm, setShowApproveConfirm] = useState(false)
@@ -75,7 +79,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const [diffTarget, setDiffTarget] = useState<{ agent: string; wave: number; file: string } | null>(null)
   const [chatWidthPx, setChatWidthPx] = useState(420)
 
-  const chatDividerMouseDown = (e: React.MouseEvent) => {
+  const chatDividerMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     const onMove = (mv: MouseEvent) => {
       setChatWidthPx(Math.max(280, Math.min(window.innerWidth - mv.clientX, window.innerWidth * 0.55)))
@@ -86,7 +90,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
-  }
+  }, [])
 
   const [activePanels, setActivePanels] = useState<PanelKey[]>(() => {
     return ['wave-structure', 'file-ownership', 'interface-contracts']
@@ -156,11 +160,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   const [criticRunning, setCriticRunning] = useState(false)
 
   const fetchCriticReport = useCallback(() => {
-    fetch(`/api/impl/${encodeURIComponent(slug)}/critic-review`)
-      .then(res => {
-        if (res.ok) return res.json() as Promise<CriticResult>
-        return null
-      })
+    sawClient.impl.criticReview(slug)
       .then(data => setCriticReport(data))
       .catch(() => setCriticReport(null))
   }, [slug])
@@ -171,7 +171,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
 
   const runCriticReview = useCallback(() => {
     setCriticRunning(true)
-    fetch(`/api/impl/${encodeURIComponent(slug)}/run-critic`, { method: 'POST' })
+    sawClient.impl.runCritic(slug)
       .catch(() => setCriticRunning(false))
     // criticRunning resets to false when critic_review_complete SSE fires
   }, [slug])
@@ -449,7 +449,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 : 'border-t-violet-500/40 text-violet-600 dark:text-violet-400 bg-violet-500/5 hover:bg-violet-500/10 hover:text-violet-700 dark:hover:text-violet-300'
             }`}
           >
-            {getChatButtonLabel()}
+            {getChatButtonLabel}
           </button>
         </div>
       )}
