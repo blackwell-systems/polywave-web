@@ -1,30 +1,11 @@
-import { useState } from 'react'
-
-// Local type definitions — canonical types are in types.ts (Agent G)
-interface CriticIssueType {
-  check: string
-  severity: 'error' | 'warning'
-  description: string
-  file?: string
-  symbol?: string
-}
-
-interface AgentCriticReviewType {
-  agent_id: string
-  verdict: 'PASS' | 'ISSUES'
-  issues?: CriticIssueType[]
-}
-
-interface CriticResultType {
-  verdict: 'PASS' | 'ISSUES'
-  agent_reviews: Record<string, AgentCriticReviewType>
-  summary: string
-  reviewed_at: string
-  issue_count: number
-}
+import { useState, useCallback } from 'react'
+import type { CriticResult, CriticIssue, CriticFixRequest } from '../types'
 
 interface CriticReviewPanelProps {
-  result: CriticResultType
+  result: CriticResult
+  onApplyFix?: (fix: CriticFixRequest) => Promise<void>
+  onRerunCritic?: () => void
+  criticRunning?: boolean
 }
 
 function formatReviewedAt(iso: string): string {
@@ -42,7 +23,140 @@ function formatReviewedAt(iso: string): string {
   }
 }
 
-export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Element {
+/** Compute a suggested fix for an issue, or null if no auto-fix is available. */
+function getSuggestedFix(issue: CriticIssue, agentId: string, wave: number): { label: string; fix: CriticFixRequest } | null {
+  if (
+    (issue.check === 'file_existence' || issue.check === 'side_effect_completeness') &&
+    issue.severity === 'error' &&
+    issue.file
+  ) {
+    return {
+      label: `Add ${issue.file} to Agent ${agentId}'s file_ownership (wave ${wave})`,
+      fix: {
+        type: 'add_file_ownership',
+        agent_id: agentId,
+        wave,
+        file: issue.file,
+        action: 'modify',
+      },
+    }
+  }
+
+  if (issue.check === 'symbol_accuracy' && issue.severity === 'warning') {
+    // Check for "expected X, found Y" pattern
+    const match = issue.description.match(/expected\s+(\S+),\s+found\s+(\S+)/)
+    if (match) {
+      return {
+        label: `Update contract: ${match[1]} -> ${match[2]}`,
+        fix: {
+          type: 'update_contract',
+          agent_id: agentId,
+          wave,
+          old_symbol: match[1],
+          new_symbol: match[2],
+        },
+      }
+    }
+    // No auto-fix for symbol_accuracy without the pattern
+    return null
+  }
+
+  // import_chains: informational only, no auto-fix
+  // All other check types: no auto-fix
+  return null
+}
+
+/** Get informational text for an issue (shown even when no auto-fix). */
+function getInfoText(issue: CriticIssue): string | null {
+  if (issue.check === 'symbol_accuracy' && issue.severity === 'warning') {
+    return `Contract says ${issue.symbol ?? 'unknown'}, codebase may differ`
+  }
+  if (issue.check === 'import_chains') {
+    return 'Package not in go.mod -- manual fix required'
+  }
+  return null
+}
+
+type IssueFixState = 'idle' | 'loading' | 'success' | 'error'
+
+interface IssueFixStatus {
+  state: IssueFixState
+  error?: string
+}
+
+function IssueFixer({
+  issue,
+  agentId,
+  wave,
+  onApplyFix,
+}: {
+  issue: CriticIssue
+  agentId: string
+  wave: number
+  onApplyFix?: (fix: CriticFixRequest) => Promise<void>
+}): JSX.Element | null {
+  const [fixStatus, setFixStatus] = useState<IssueFixStatus>({ state: 'idle' })
+
+  const suggested = getSuggestedFix(issue, agentId, wave)
+  const infoText = getInfoText(issue)
+
+  const handleApply = useCallback(async () => {
+    if (!suggested || !onApplyFix) return
+    setFixStatus({ state: 'loading' })
+    try {
+      await onApplyFix(suggested.fix)
+      setFixStatus({ state: 'success' })
+    } catch (err) {
+      setFixStatus({ state: 'error', error: err instanceof Error ? err.message : String(err) })
+    }
+  }, [suggested, onApplyFix])
+
+  if (!suggested && !infoText) return null
+
+  return (
+    <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+      {infoText && (
+        <span className="text-[11px] text-muted-foreground italic">{infoText}</span>
+      )}
+      {suggested && onApplyFix && fixStatus.state === 'idle' && (
+        <button
+          onClick={handleApply}
+          className="text-[11px] font-medium px-2 py-0.5 rounded border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+        >
+          Apply Fix
+        </button>
+      )}
+      {suggested && fixStatus.state === 'idle' && (
+        <span className="text-[11px] text-muted-foreground">{suggested.label}</span>
+      )}
+      {fixStatus.state === 'loading' && (
+        <span className="text-[11px] text-muted-foreground animate-pulse">Applying fix...</span>
+      )}
+      {fixStatus.state === 'success' && (
+        <span className="text-[11px] text-green-600 dark:text-green-400 font-medium">
+          &#10003; Fixed
+        </span>
+      )}
+      {fixStatus.state === 'error' && (
+        <span className="text-[11px] text-red-600 dark:text-red-400">{fixStatus.error}</span>
+      )}
+    </div>
+  )
+}
+
+function countIssueBySeverity(result: CriticResult): { errors: number; warnings: number } {
+  let errors = 0
+  let warnings = 0
+  for (const review of Object.values(result.agent_reviews)) {
+    for (const issue of review.issues ?? []) {
+      if (issue.severity === 'error') errors++
+      else warnings++
+    }
+  }
+  return { errors, warnings }
+}
+
+export function CriticReviewPanel({ result, onApplyFix, onRerunCritic, criticRunning }: CriticReviewPanelProps): JSX.Element {
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set())
 
   const toggleAgent = (agentId: string) => {
@@ -59,6 +173,14 @@ export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Eleme
 
   const isPass = result.verdict === 'PASS'
   const agentEntries = Object.entries(result.agent_reviews).sort(([a], [b]) => a.localeCompare(b))
+  const { errors, warnings } = countIssueBySeverity(result)
+
+  // Derive wave number from agent reviews (best effort: take first agent's wave or default to 1)
+  const getWaveForAgent = (_agentId: string): number => {
+    // The CriticResult doesn't carry wave info per-agent. Default to 1 since critic
+    // reviews are typically run for wave-1 briefs.
+    return 1
+  }
 
   return (
     <div className="rounded-lg border border-border bg-card flex flex-col gap-4 overflow-hidden">
@@ -78,7 +200,7 @@ export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Eleme
           }`}
           aria-hidden="true"
         >
-          {isPass ? '✓' : '!'}
+          {isPass ? '\u2713' : '!'}
         </span>
         <div className="flex flex-col">
           <span
@@ -89,9 +211,20 @@ export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Eleme
             }`}
           >
             {isPass
-              ? 'All briefs verified — wave execution may proceed'
-              : `Brief verification found ${result.issue_count} issue${result.issue_count !== 1 ? 's' : ''} — review before executing`}
+              ? 'All briefs verified -- wave execution may proceed'
+              : `Brief verification found ${result.issue_count} issue${result.issue_count !== 1 ? 's' : ''} -- review before executing`}
           </span>
+          {/* Issue count summary */}
+          {!isPass && (
+            <span className="text-xs text-muted-foreground mt-0.5">
+              {errors > 0 && `${errors} error${errors !== 1 ? 's' : ''}`}
+              {errors > 0 && warnings > 0 && ', '}
+              {warnings > 0 && `${warnings} warning${warnings !== 1 ? 's' : ''}`}
+            </span>
+          )}
+          {isPass && (
+            <span className="text-xs text-green-700 dark:text-green-300 mt-0.5">All issues resolved</span>
+          )}
         </div>
         <span
           className={`ml-auto text-xs font-bold px-2 py-0.5 rounded ${
@@ -116,6 +249,7 @@ export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Eleme
             const isExpanded = expandedAgents.has(key)
             const agentIsPass = review.verdict === 'PASS'
             const issueCount = review.issues?.length ?? 0
+            const agentWave = getWaveForAgent(review.agent_id)
 
             return (
               <div
@@ -130,7 +264,7 @@ export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Eleme
                 >
                   {/* Expand/collapse indicator */}
                   <span className="text-muted-foreground text-xs w-3 flex-shrink-0">
-                    {isExpanded ? '▼' : '▶'}
+                    {isExpanded ? '\u25BC' : '\u25B6'}
                   </span>
 
                   {/* Agent ID */}
@@ -202,6 +336,14 @@ export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Eleme
                                 )}
                               </div>
                             )}
+
+                            {/* Auto-fix suggestion */}
+                            <IssueFixer
+                              issue={issue}
+                              agentId={review.agent_id}
+                              wave={agentWave}
+                              onApplyFix={onApplyFix}
+                            />
                           </li>
                         ))}
                       </ul>
@@ -214,10 +356,24 @@ export function CriticReviewPanel({ result }: CriticReviewPanelProps): JSX.Eleme
         </div>
       )}
 
-      {/* Reviewed at timestamp */}
-      <p className="px-4 pb-4 text-xs text-muted-foreground">
-        Reviewed at: {formatReviewedAt(result.reviewed_at)}
-      </p>
+      {/* Footer: reviewed at + re-run button */}
+      <div className="px-4 pb-4 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Reviewed at: {formatReviewedAt(result.reviewed_at)}
+        </p>
+        {onRerunCritic && (
+          <button
+            onClick={onRerunCritic}
+            disabled={criticRunning}
+            className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded border border-border bg-background text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {criticRunning && (
+              <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            )}
+            {criticRunning ? 'Running...' : 'Re-run Critic'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { IMPLDocResponse, CriticResult } from '../types'
+import { IMPLDocResponse, CriticResult, CriticFixRequest } from '../types'
 import { listWorktrees, batchDeleteWorktrees, fetchDiskWaveStatus, DiskWaveStatus } from '../api'
 import { sawClient } from '../lib/apiClient'
 import { useExecutionSync, ExecutionSyncState, AgentExecStatus } from '../hooks/useExecutionSync'
@@ -176,6 +176,11 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     // criticRunning resets to false when critic_review_complete SSE fires
   }, [slug])
 
+  const applyCriticFix = useCallback(async (fix: CriticFixRequest) => {
+    const updated = await sawClient.impl.applyCriticFix(slug, fix)
+    setCriticReport(updated)
+  }, [slug])
+
   // Listen for critic_review_complete SSE event and refresh
   const handleCriticReviewComplete = useCallback((e: MessageEvent) => {
     try {
@@ -189,7 +194,14 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     }
   }, [slug, fetchCriticReport])
 
-  useGlobalEvents({ critic_review_complete: handleCriticReviewComplete })
+  const handleImplUpdated = useCallback((e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data)
+      if (data?.slug === slug) onRefreshImpl?.(slug)
+    } catch { /* ignore malformed events */ }
+  }, [slug, onRefreshImpl])
+
+  useGlobalEvents({ critic_review_complete: handleCriticReviewComplete, impl_updated: handleImplUpdated })
 
   // Worktree presence detection
   const [worktreeCount, setWorktreeCount] = useState(0)
@@ -206,7 +218,37 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     refreshWorktreeCount()
   }, [refreshWorktreeCount, refreshTick])
 
+  // Critic error blocking: true when critic found errors (not just warnings)
+  const hasCriticErrors = useMemo(() => {
+    if (!criticReport || criticReport.verdict !== 'ISSUES') return false
+    return Object.values(criticReport.agent_reviews).some(
+      review => review.issues?.some(i => i.severity === 'error')
+    )
+  }, [criticReport])
+
+  // Auto-trigger critic: recommend when wave 1 has 3+ agents or 2+ repos
+  const wave1AgentCount = useMemo(() =>
+    impl.waves.find(w => w.number === 1)?.agents.length ?? 0,
+    [impl.waves]
+  )
+  const repoCount = useMemo(() =>
+    new Set(impl.file_ownership.map(fo => fo.repo).filter(Boolean)).size,
+    [impl.file_ownership]
+  )
+  const shouldAutoRunCritic = wave1AgentCount >= 3 || repoCount >= 2
+
+  // Auto-run critic on mount when threshold is met and no report yet
+  const autoRunTriggered = useRef(false)
+  useEffect(() => {
+    if (shouldAutoRunCritic && !criticReport && !criticRunning && !autoRunTriggered.current) {
+      autoRunTriggered.current = true
+      runCriticReview()
+    }
+  }, [shouldAutoRunCritic, criticReport, criticRunning, runCriticReview])
+
   function handleApproveClick() {
+    // Critic errors block approval (warnings do not)
+    if (hasCriticErrors) return
     if (worktreeCount > 0) {
       setWorktreeWarning(true)
     } else {
@@ -306,22 +348,43 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
         {!isNotSuitable && (
           <div className="mb-6">
             {criticReport ? (
-              <CriticReviewPanel result={criticReport} />
+              <>
+                <CriticReviewPanel
+                  result={criticReport}
+                  onApplyFix={applyCriticFix}
+                  onRerunCritic={runCriticReview}
+                  criticRunning={criticRunning}
+                />
+                {hasCriticErrors && (
+                  <div className="mt-2 flex items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md px-3 py-2">
+                    <span className="font-bold">!</span>
+                    <span>Resolve critic errors before approving.</span>
+                  </div>
+                )}
+              </>
             ) : (
-              <div className="flex items-center gap-3">
-                <button
-                  className="flex items-center gap-2 text-sm font-medium px-4 h-9 border border-border bg-background text-foreground hover:bg-muted transition-colors rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                  onClick={runCriticReview}
-                  disabled={criticRunning}
-                  title="Verify all agent briefs against the actual codebase before execution."
-                >
-                  {criticRunning ? 'Running…' : 'Run Critic Review'}
-                </button>
-                <span className="text-xs text-muted-foreground">
-                  {criticRunning
-                    ? 'Checking agent briefs against codebase — panel will update when complete.'
-                    : 'No critic review yet. Verify agent briefs before approving wave execution.'}
-                </span>
+              <div className="flex flex-col gap-3">
+                {shouldAutoRunCritic && !criticRunning && (
+                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
+                    <span className="font-bold">!</span>
+                    <span>This IMPL has {wave1AgentCount} wave-1 agent{wave1AgentCount !== 1 ? 's' : ''} -- critic review recommended</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    className="flex items-center gap-2 text-sm font-medium px-4 h-9 border border-border bg-background text-foreground hover:bg-muted transition-colors rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={runCriticReview}
+                    disabled={criticRunning}
+                    title="Verify all agent briefs against the actual codebase before execution."
+                  >
+                    {criticRunning ? 'Running...' : 'Run Critic Review'}
+                  </button>
+                  <span className="text-xs text-muted-foreground">
+                    {criticRunning
+                      ? 'Checking agent briefs against codebase -- panel will update when complete.'
+                      : 'No critic review yet. Verify agent briefs before approving wave execution.'}
+                  </span>
+                </div>
               </div>
             )}
           </div>
