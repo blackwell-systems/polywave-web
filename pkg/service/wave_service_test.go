@@ -35,8 +35,8 @@ func TestStartWave_AlreadyRunning(t *testing.T) {
 	slug := "test-already-running"
 
 	// Simulate an already-active wave by pre-storing the slug.
-	activeWaves.Store(slug, struct{}{})
-	defer activeWaves.Delete(slug)
+	ActiveWaves.Store(slug, struct{}{})
+	defer ActiveWaves.Delete(slug)
 
 	pub := &waveTestPublisher{}
 	deps := Deps{
