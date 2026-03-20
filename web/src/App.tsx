@@ -550,7 +550,7 @@ export default function App() {
               widthPx={rightWidthPx}
               onScoutComplete={handleScoutComplete}
               onScoutReady={handleScoutReady}
-              // TODO(integration): wire onRescout={() => setLiveView('scout')} after Agent E adds prop to LiveRailProps
+              onRescout={() => setLiveView('scout')}
               onPlannerComplete={(slug) => {
                 setLiveView(null)
                 listPrograms().then(p => { setPrograms(p); if (slug) setSelectedProgramSlug(slug) }).catch(() => {})
