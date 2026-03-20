@@ -4,13 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/blackwell-systems/scout-and-wave-web/build"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -46,6 +47,7 @@ type Server struct {
 	filesOwnedCache  sync.Map        // "slug/wave/agent" -> []string; caches files owned per agent
 	agentSnapshots   sync.Map        // slug -> *agentSnapshot; latest agent lifecycle event per agent for SSE replay
 	implListCache    *implCache       // in-memory cache for handleListImpls metadata
+	svcDeps          service.Deps     // shared dependencies for service-layer functions
 }
 
 // getConfiguredRepos reads saw.config.json and returns the list of configured
@@ -83,6 +85,17 @@ func New(cfg Config) *Server {
 		pipelineTracker: newPipelineTracker(cfg.IMPLDir),
 		progressTracker: NewProgressTracker(),
 		implListCache:   &implCache{entries: make(map[string]cachedImplEntry)},
+	}
+
+	// Construct service-layer dependencies.
+	ssePublisher := NewSSEPublisher(s.broker, s.globalBroker)
+	s.svcDeps = service.Deps{
+		RepoPath:  cfg.RepoPath,
+		IMPLDir:   cfg.IMPLDir,
+		Publisher: ssePublisher,
+		ConfigPath: func(repoPath string) string {
+			return filepath.Join(repoPath, "saw.config.json")
+		},
 	}
 
 	// Populate fallback config so runWaveLoop can use it for cross-repo IMPLs
@@ -222,11 +235,13 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("GET /api/daemon/status", s.handleDaemonStatus)
 	s.mux.HandleFunc("GET /api/daemon/events", s.handleDaemonEvents)
 
-	sub, err := fs.Sub(staticFiles, "dist")
+	sub, err := build.StaticFS()
 	if err != nil {
-		panic("saw: failed to sub embed.FS: " + err.Error())
+		panic("saw: failed to get static FS: " + err.Error())
 	}
-	s.mux.Handle("/", http.FileServer(http.FS(sub)))
+	if sub != nil {
+		s.mux.Handle("/", http.FileServer(http.FS(sub)))
+	}
 
 	return s
 }
