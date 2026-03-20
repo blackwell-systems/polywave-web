@@ -22,6 +22,7 @@ import type {
   ScoutContext,
   InterruptedSession,
   CriticResult,
+  CriticFixRequest,
 } from '../types'
 
 import type {
@@ -67,6 +68,7 @@ export interface SawClient {
     subscribeChatEvents(slug: string, runId: string): EventSource
     criticReview(slug: string): Promise<CriticResult | null>
     runCritic(slug: string): Promise<void>
+    applyCriticFix(slug: string, fix: CriticFixRequest): Promise<CriticResult>
     fetchAgentContext(slug: string, agent: string): Promise<AgentContextResponse>
     worktrees: {
       list(slug: string): Promise<WorktreeListResponse>
@@ -285,6 +287,16 @@ export function createHttpClient(): SawClient {
       async runCritic(slug: string): Promise<void> {
         const r = await fetch(`/api/impl/${enc(slug)}/run-critic`, { method: 'POST' })
         await check(r)
+      },
+
+      async applyCriticFix(slug: string, fix: CriticFixRequest): Promise<CriticResult> {
+        const r = await fetch(`/api/impl/${enc(slug)}/fix-critic`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(fix),
+        })
+        await check(r)
+        return r.json() as Promise<CriticResult>
       },
 
       async fetchAgentContext(slug: string, agent: string): Promise<AgentContextResponse> {
