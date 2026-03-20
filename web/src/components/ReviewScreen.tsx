@@ -7,26 +7,12 @@ import ActionButtons from './ActionButtons'
 import { CriticReviewPanel } from './CriticReviewPanel'
 import RevisePanel from './RevisePanel'
 import OverviewPanel from './review/OverviewPanel'
-import FileOwnershipPanel from './review/FileOwnershipPanel'
-import WaveStructurePanel from './review/WaveStructurePanel'
-import AgentContextPanel from './review/AgentContextPanel'
-import InterfaceContractsPanel from './review/InterfaceContractsPanel'
-import ScaffoldsPanel from './review/ScaffoldsPanel'
-import DependencyGraphPanel from './review/DependencyGraphPanel'
-import KnownIssuesPanel from './review/KnownIssuesPanel'
-import PostMergeChecklistPanel from './review/PostMergeChecklistPanel'
-import PreMortemPanel from './review/PreMortemPanel'
-import WiringPanel from './review/WiringPanel'
-import ReactionsPanel from './review/ReactionsPanel'
-import StubReportPanel from './review/StubReportPanel'
-import QualityGatesPanel from './review/QualityGatesPanel'
 import NotSuitableResearchPanel from './review/NotSuitableResearchPanel'
 import FileDiffPanel from './review/FileDiffPanel'
-import ContextViewerPanel from './review/ContextViewerPanel'
+import { ReviewLayout } from './review/ReviewLayout'
 import WorktreePanel from './WorktreePanel'
 import ChatPanel from './ChatPanel'
 import ManifestValidation from './ManifestValidation'
-import AmendPanel from './AmendPanel'
 
 interface ReviewScreenProps {
   slug: string
@@ -405,90 +391,16 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 </div>
               </div>
 
-              {/* Active panels — fixed layout grid */}
-              <div className="space-y-6">
-                {/* Wave Structure + Dependency Graph pair */}
-                {(activePanels.includes('wave-structure') || activePanels.includes('dependency-graph')) && (
-                  <div className={`panel-animate grid gap-6 ${
-                    activePanels.includes('wave-structure') && activePanels.includes('dependency-graph')
-                      ? 'grid-cols-1 md:grid-cols-2'
-                      : 'grid-cols-1'
-                  }`}>
-                    {activePanels.includes('wave-structure') && <WaveStructurePanel impl={impl} {...(effectiveExecutionState ? { executionState: effectiveExecutionState } : {})} />}
-                    {activePanels.includes('dependency-graph') && <DependencyGraphPanel dependencyGraphText={(impl as any).dependency_graph_text} {...(effectiveExecutionState ? { executionState: effectiveExecutionState } : {})} />}
-                  </div>
-                )}
-
-                {/* File Ownership — full width when alone */}
-                {/* TODO: onFileClick wired here; FileOwnershipPanel does not yet declare this prop — will activate after Wave 1 merge */}
-                {activePanels.includes('file-ownership') && (() => {
-                  const AnyFileOwnershipPanel = FileOwnershipPanel as any
-                  return <div className="panel-animate"><AnyFileOwnershipPanel impl={impl} repos={repos} onFileClick={(agent: string, wave: number, file: string) => setDiffTarget({ agent, wave, file })} /></div>
-                })()}
-
-                {/* Interface Contracts — full width */}
-                {activePanels.includes('interface-contracts') && (
-                  <div className="panel-animate"><InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} /></div>
-                )}
-
-                {/* Agent Prompts — full width */}
-                {activePanels.includes('agent-prompts') && (
-                  <div className="panel-animate"><AgentContextPanel impl={impl} slug={slug} /></div>
-                )}
-
-                {/* Scaffolds — full width, above pre-mortem */}
-                {activePanels.includes('scaffolds') && (
-                  <div className="panel-animate"><ScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} /></div>
-                )}
-
-                {/* Pre-Mortem — full width */}
-                {activePanels.includes('pre-mortem') && <div className="panel-animate"><PreMortemPanel preMortem={impl.pre_mortem} /></div>}
-
-                {/* Wiring Declarations — full width */}
-                {activePanels.includes('wiring') && (
-                  <div className="panel-animate">
-                    <WiringPanel wiring={impl.wiring} />
-                  </div>
-                )}
-
-                {/* Reactions Config — full width */}
-                {activePanels.includes('reactions') && (
-                  <div className="panel-animate">
-                    <ReactionsPanel reactions={impl.reactions} />
-                  </div>
-                )}
-
-                {/* Known Issues — full width */}
-                {activePanels.includes('known-issues') && <div className="panel-animate"><KnownIssuesPanel knownIssues={(impl as any).known_issues} /></div>}
-
-                {/* Stub Report — full width */}
-                {activePanels.includes('stub-report') && <div className="panel-animate"><StubReportPanel stubReportText={impl.stub_report_text} /></div>}
-
-                {/* Post-Merge Checklist — full width */}
-                {activePanels.includes('post-merge-checklist') && <div className="panel-animate"><PostMergeChecklistPanel checklistText={(impl as any).post_merge_checklist_text} /></div>}
-
-                {/* Amend — full width */}
-                {activePanels.includes('amend') && (
-                  <div className="panel-animate">
-                    <AmendPanel
-                      slug={props.slug}
-                      waves={props.impl.waves}
-                      onAmendComplete={() => props.onRefreshImpl?.(props.slug)}
-                    />
-                  </div>
-                )}
-
-                {/* Quality Gates — full width */}
-                {activePanels.includes('quality-gates') && (
-                  <div className="panel-animate"><QualityGatesPanel gatesText={(impl as any).quality_gates_text ?? ''} /></div>
-                )}
-
-                {/* Project Memory (CONTEXT.md) — full width */}
-                {activePanels.includes('context-viewer') && (
-                  <div className="panel-animate"><ContextViewerPanel /></div>
-                )}
-
-              </div>
+              {/* Active panels — delegated to ReviewLayout */}
+              <ReviewLayout
+                activePanels={activePanels}
+                impl={impl}
+                slug={slug}
+                executionState={effectiveExecutionState}
+                repos={repos}
+                onFileClick={(agent: string, wave: number, file: string) => setDiffTarget({ agent, wave, file })}
+                onAmendComplete={() => onRefreshImpl?.(slug)}
+              />
             </div>
           </>
         )}
