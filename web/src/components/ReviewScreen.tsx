@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { IMPLDocResponse } from '../types'
+import { IMPLDocResponse, CriticResult } from '../types'
 import { listWorktrees, batchDeleteWorktrees, fetchDiskWaveStatus, DiskWaveStatus } from '../api'
 import { useExecutionSync, ExecutionSyncState, AgentExecStatus } from '../hooks/useExecutionSync'
+import { useGlobalEvents } from '../hooks/useGlobalEvents'
 import ActionButtons from './ActionButtons'
+import { CriticReviewPanel } from './CriticReviewPanel'
 import RevisePanel from './RevisePanel'
 import OverviewPanel from './review/OverviewPanel'
 import FileOwnershipPanel from './review/FileOwnershipPanel'
@@ -177,6 +179,37 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     }
   }, [executionState, diskStatus, hasWaveWork])
 
+  // Critic review state — fetched from GET /api/impl/{slug}/critic-review
+  const [criticReport, setCriticReport] = useState<CriticResult | null>(null)
+
+  const fetchCriticReport = useCallback(() => {
+    fetch(`/api/impl/${encodeURIComponent(slug)}/critic-review`)
+      .then(res => {
+        if (res.ok) return res.json() as Promise<CriticResult>
+        return null
+      })
+      .then(data => setCriticReport(data))
+      .catch(() => setCriticReport(null))
+  }, [slug])
+
+  useEffect(() => {
+    fetchCriticReport()
+  }, [fetchCriticReport])
+
+  // Listen for critic_review_complete SSE event and refresh
+  const handleCriticReviewComplete = useCallback((e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data)
+      if (data?.slug === slug) {
+        fetchCriticReport()
+      }
+    } catch {
+      // ignore malformed events
+    }
+  }, [slug, fetchCriticReport])
+
+  useGlobalEvents({ critic_review_complete: handleCriticReviewComplete })
+
   // Worktree presence detection
   const [worktreeCount, setWorktreeCount] = useState(0)
   const [worktreeWarning, setWorktreeWarning] = useState(false)
@@ -275,6 +308,32 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
         <div className={`mb-6 ${isNotSuitable ? 'opacity-40 pointer-events-none' : ''}`}>
           <OverviewPanel impl={impl} />
         </div>
+
+        {/* Critic Review — shown when critic_report exists; button when not yet run */}
+        {!isNotSuitable && (
+          <div className="mb-6">
+            {criticReport ? (
+              <CriticReviewPanel result={criticReport} />
+            ) : (
+              <div className="flex items-center gap-3">
+                <button
+                  className="flex items-center gap-2 text-sm font-medium px-4 h-9 border border-border bg-background text-foreground hover:bg-muted transition-colors rounded-md"
+                  onClick={() => {
+                    // Trigger is handled via the CLI (sawtools run-critic).
+                    // This button is a placeholder — SSE event critic_review_complete
+                    // will refresh the panel when the review completes.
+                  }}
+                  title="Run sawtools run-critic to generate a critic review. The panel will update automatically when complete."
+                >
+                  Run Critic Review
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  No critic review yet. Run <code className="font-mono bg-muted px-1 rounded">sawtools run-critic</code> to verify agent briefs before execution.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* NOT SUITABLE: show research panel, hide toggles and action buttons */}
         {isNotSuitable ? (

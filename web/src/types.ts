@@ -371,3 +371,26 @@ export interface InterruptedSession {
 // - conflict_resolving:        {slug, wave, file}
 // - conflict_resolved:         {slug, wave, file}
 // - conflict_resolution_failed: {slug, wave, file, error}
+
+// E37: Critic Agent review result types
+export interface CriticResult {
+  verdict: 'PASS' | 'ISSUES';
+  agent_reviews: Record<string, AgentCriticReview>;
+  summary: string;
+  reviewed_at: string;
+  issue_count: number;
+}
+
+export interface AgentCriticReview {
+  agent_id: string;
+  verdict: 'PASS' | 'ISSUES';
+  issues?: CriticIssue[];
+}
+
+export interface CriticIssue {
+  check: string;
+  severity: 'error' | 'warning';
+  description: string;
+  file?: string;
+  symbol?: string;
+}
