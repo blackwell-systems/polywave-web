@@ -2,134 +2,123 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
-	"regexp"
-)
 
-// validateModelName ensures model name contains only safe characters.
-// Returns error if validation fails (injection prevention).
-func validateModelName(model string) error {
-	if model == "" {
-		return nil // empty is allowed (falls back to defaults)
-	}
-	if len(model) > 200 {
-		return fmt.Errorf("model name too long (max 200 chars)")
-	}
-	// Allow alphanumeric, hyphens, dots, colons, underscores, slashes
-	matched, _ := regexp.MatchString(`^[a-zA-Z0-9:._/-]+$`, model)
-	if !matched {
-		return fmt.Errorf("model name contains invalid characters")
-	}
-	return nil
-}
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+)
 
 // handleGetConfig serves GET /api/config.
 // Reads saw.config.json from the repo root and returns it as SAWConfig JSON.
 // If the file does not exist, returns a default SAWConfig{}.
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
-	data, err := os.ReadFile(configPath)
+	deps := service.Deps{
+		RepoPath: s.cfg.RepoPath,
+		ConfigPath: func(repoPath string) string {
+			return filepath.Join(repoPath, "saw.config.json")
+		},
+	}
+
+	cfg, err := service.GetConfig(deps)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// Return default config with server startup repo
-			repoName := filepath.Base(s.cfg.RepoPath)
-			defaultCfg := SAWConfig{
-				Repos: []RepoEntry{{Name: repoName, Path: s.cfg.RepoPath}},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(defaultCfg) //nolint:errcheck
-			return
-		}
 		http.Error(w, "failed to read config", http.StatusInternalServerError)
 		return
 	}
 
-	var cfg SAWConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		http.Error(w, "failed to parse config", http.StatusInternalServerError)
-		return
+	// Convert service types to API types for response
+	apiCfg := SAWConfig{
+		Repos: make([]RepoEntry, len(cfg.Repos)),
+		Agent: AgentConfig{
+			ScoutModel:       cfg.Agent.ScoutModel,
+			WaveModel:        cfg.Agent.WaveModel,
+			ChatModel:        cfg.Agent.ChatModel,
+			ScaffoldModel:    cfg.Agent.ScaffoldModel,
+			IntegrationModel: cfg.Agent.IntegrationModel,
+			PlannerModel:     cfg.Agent.PlannerModel,
+			ReviewModel:      cfg.Agent.ReviewModel,
+		},
+		Quality: QualityConfig{
+			RequireTests:   cfg.Quality.RequireTests,
+			RequireLint:    cfg.Quality.RequireLint,
+			BlockOnFailure: cfg.Quality.BlockOnFailure,
+			CodeReview: CodeReviewCfg{
+				Enabled:   cfg.Quality.CodeReview.Enabled,
+				Blocking:  cfg.Quality.CodeReview.Blocking,
+				Model:     cfg.Quality.CodeReview.Model,
+				Threshold: cfg.Quality.CodeReview.Threshold,
+			},
+		},
+		Appear: AppearConfig{
+			Theme:               cfg.Appear.Theme,
+			ColorTheme:          cfg.Appear.ColorTheme,
+			ColorThemeDark:      cfg.Appear.ColorThemeDark,
+			ColorThemeLight:     cfg.Appear.ColorThemeLight,
+			FavoriteThemesDark:  cfg.Appear.FavoriteThemesDark,
+			FavoriteThemesLight: cfg.Appear.FavoriteThemesLight,
+		},
 	}
-
-	// Backward-compat: if no repos registry, use legacy repo.path or server startup repo
-	if len(cfg.Repos) == 0 {
-		if cfg.Repo.Path != "" {
-			cfg.Repos = []RepoEntry{{Name: "repo", Path: cfg.Repo.Path}}
-		} else {
-			// Use server startup repo as fallback
-			repoName := filepath.Base(s.cfg.RepoPath)
-			cfg.Repos = []RepoEntry{{Name: repoName, Path: s.cfg.RepoPath}}
-		}
+	for i, repo := range cfg.Repos {
+		apiCfg.Repos[i] = RepoEntry{Name: repo.Name, Path: repo.Path}
 	}
-	cfg.Repo = RepoConfig{} // clear legacy field from response
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(cfg) //nolint:errcheck
+	json.NewEncoder(w).Encode(apiCfg) //nolint:errcheck
 }
 
 // handleSaveConfig serves POST /api/config.
 // Decodes SAWConfig JSON body and atomically writes it to saw.config.json.
 func (s *Server) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
-	var cfg SAWConfig
-	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+	var apiCfg SAWConfig
+	if err := json.NewDecoder(r.Body).Decode(&apiCfg); err != nil {
 		http.Error(w, "invalid config JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Validate model names to prevent injection attacks
-	if err := validateModelName(cfg.Agent.ScoutModel); err != nil {
-		http.Error(w, "invalid scout_model: "+err.Error(), http.StatusBadRequest)
-		return
+	// Convert API types to service types
+	svcCfg := &service.SAWConfig{
+		Repos: make([]service.RepoEntry, len(apiCfg.Repos)),
+		Agent: service.AgentConfig{
+			ScoutModel:       apiCfg.Agent.ScoutModel,
+			WaveModel:        apiCfg.Agent.WaveModel,
+			ChatModel:        apiCfg.Agent.ChatModel,
+			ScaffoldModel:    apiCfg.Agent.ScaffoldModel,
+			IntegrationModel: apiCfg.Agent.IntegrationModel,
+			PlannerModel:     apiCfg.Agent.PlannerModel,
+			ReviewModel:      apiCfg.Agent.ReviewModel,
+		},
+		Quality: service.QualityConfig{
+			RequireTests:   apiCfg.Quality.RequireTests,
+			RequireLint:    apiCfg.Quality.RequireLint,
+			BlockOnFailure: apiCfg.Quality.BlockOnFailure,
+			CodeReview: service.CodeReviewCfg{
+				Enabled:   apiCfg.Quality.CodeReview.Enabled,
+				Blocking:  apiCfg.Quality.CodeReview.Blocking,
+				Model:     apiCfg.Quality.CodeReview.Model,
+				Threshold: apiCfg.Quality.CodeReview.Threshold,
+			},
+		},
+		Appear: service.AppearConfig{
+			Theme:               apiCfg.Appear.Theme,
+			ColorTheme:          apiCfg.Appear.ColorTheme,
+			ColorThemeDark:      apiCfg.Appear.ColorThemeDark,
+			ColorThemeLight:     apiCfg.Appear.ColorThemeLight,
+			FavoriteThemesDark:  apiCfg.Appear.FavoriteThemesDark,
+			FavoriteThemesLight: apiCfg.Appear.FavoriteThemesLight,
+		},
 	}
-	if err := validateModelName(cfg.Agent.WaveModel); err != nil {
-		http.Error(w, "invalid wave_model: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := validateModelName(cfg.Agent.ChatModel); err != nil {
-		http.Error(w, "invalid chat_model: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := validateModelName(cfg.Agent.IntegrationModel); err != nil {
-		http.Error(w, "invalid integration_model: "+err.Error(), http.StatusBadRequest)
-		return
-	}
-	if err := validateModelName(cfg.Agent.ReviewModel); err != nil {
-		http.Error(w, "invalid review_model: "+err.Error(), http.StatusBadRequest)
-		return
+	for i, repo := range apiCfg.Repos {
+		svcCfg.Repos[i] = service.RepoEntry{Name: repo.Name, Path: repo.Path}
 	}
 
-	cfg.Repo = RepoConfig{} // ensure legacy field is never written back
-
-	data, err := json.MarshalIndent(cfg, "", "  ")
-	if err != nil {
-		http.Error(w, "failed to marshal config", http.StatusInternalServerError)
-		return
+	deps := service.Deps{
+		RepoPath: s.cfg.RepoPath,
+		ConfigPath: func(repoPath string) string {
+			return filepath.Join(repoPath, "saw.config.json")
+		},
 	}
 
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
-
-	// Atomic write: write to temp file in same directory, then rename
-	tmpFile, err := os.CreateTemp(filepath.Dir(configPath), "saw-config-*.json.tmp")
-	if err != nil {
-		http.Error(w, "failed to create temp file", http.StatusInternalServerError)
-		return
-	}
-	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath) // clean up if rename fails
-
-	if _, err := tmpFile.Write(data); err != nil {
-		tmpFile.Close()
-		http.Error(w, "failed to write temp file", http.StatusInternalServerError)
-		return
-	}
-	if err := tmpFile.Close(); err != nil {
-		http.Error(w, "failed to close temp file", http.StatusInternalServerError)
-		return
-	}
-	if err := os.Rename(tmpPath, configPath); err != nil {
-		http.Error(w, "failed to save config", http.StatusInternalServerError)
+	if err := service.SaveConfig(deps, svcCfg); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

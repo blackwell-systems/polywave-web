@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -63,6 +64,20 @@ func (s *Server) getConfiguredRepos() []RepoEntry {
 		Name: filepath.Base(s.cfg.RepoPath),
 		Path: s.cfg.RepoPath,
 	}}
+}
+
+// makeDeps constructs a service.Deps struct for delegating to service functions.
+// This provides a bridge between the HTTP handler layer and the service layer.
+func (s *Server) makeDeps() service.Deps {
+	ssePublisher := NewSSEPublisher(s.broker, s.globalBroker)
+	return service.Deps{
+		RepoPath: s.cfg.RepoPath,
+		IMPLDir:  s.cfg.IMPLDir,
+		Publisher: ssePublisher,
+		ConfigPath: func(repoPath string) string {
+			return filepath.Join(repoPath, "saw.config.json")
+		},
+	}
 }
 
 // New creates a Server with the given Config and registers all routes.
