@@ -24,6 +24,7 @@ const SESSION_KEY = 'saw-scout-context'
 const inputCls = "w-full bg-muted border border-border rounded px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
 
 export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeRepo }: ScoutLauncherProps): JSX.Element {
+  const [mode, setMode] = useState<'existing' | 'new'>('existing')
   const [feature, setFeature] = useState('')
   const [repo, setRepo] = useState(() => activeRepo?.path ?? '')
   const [showRepo, setShowRepo] = useState(false)
@@ -100,8 +101,14 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
 
     let runId: string
     try {
-      const result = await runScout(feature.trim(), repo.trim() || undefined, contextData)
-      runId = result.runId
+      if (mode === 'new') {
+        const { runBootstrap } = await import('../lib/bootstrapApi')
+        const result = await runBootstrap(feature.trim(), repo.trim() || undefined)
+        runId = result.run_id
+      } else {
+        const result = await runScout(feature.trim(), repo.trim() || undefined, contextData)
+        runId = result.runId
+      }
       runIdRef.current = runId
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -203,9 +210,30 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
 
         {/* Feature input */}
         <div className="bg-card border border-border rounded-lg p-4 shadow-sm space-y-3">
+          {/* Mode toggle */}
+          <div className="flex rounded-md border border-border overflow-hidden text-xs font-medium mb-1">
+            <button
+              type="button"
+              onClick={() => setMode('existing')}
+              className={`flex-1 py-1.5 transition-colors ${mode === 'existing' ? 'bg-primary/10 text-primary' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+              disabled={running}
+            >
+              Existing project
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('new')}
+              className={`flex-1 py-1.5 transition-colors border-l border-border ${mode === 'new' ? 'bg-primary/10 text-primary' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+              disabled={running}
+            >
+              New project
+            </button>
+          </div>
           <textarea
             className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground resize-none outline-none min-h-[80px] disabled:opacity-50"
-            placeholder="Describe the feature to build..."
+            placeholder={mode === 'new'
+              ? "Describe the project to build from scratch..."
+              : "Describe the feature to build..."}
             value={feature}
             onChange={e => setFeature(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -321,26 +349,28 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
                   />
                 </div>
 
-                {/* Constraint checkboxes */}
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1">
-                    Constraints
-                  </label>
-                  <div className="space-y-1">
-                    {CONSTRAINTS.map(label => (
-                      <label key={label} className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="rounded border-border text-primary focus:ring-ring"
-                          checked={contextData.constraints.includes(label)}
-                          onChange={() => toggleConstraint(label)}
-                          disabled={running}
-                        />
-                        <span className="text-xs text-foreground">{label}</span>
-                      </label>
-                    ))}
+                {/* Constraint checkboxes — hidden in new-project mode */}
+                {mode === 'existing' && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                      Constraints
+                    </label>
+                    <div className="space-y-1">
+                      {CONSTRAINTS.map(label => (
+                        <label key={label} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="rounded border-border text-primary focus:ring-ring"
+                            checked={contextData.constraints.includes(label)}
+                            onChange={() => toggleConstraint(label)}
+                            disabled={running}
+                          />
+                          <span className="text-xs text-foreground">{label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
@@ -360,7 +390,7 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
               disabled={running || feature.trim().length < 15}
               className="flex items-center justify-center text-sm font-medium px-6 transition-colors border-l bg-blue-50/60 hover:bg-blue-100/80 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 dark:text-blue-400 dark:border-blue-800 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {running ? 'Running…' : 'Run Scout'}
+              {running ? 'Running…' : mode === 'new' ? 'Run Bootstrap' : 'Run Scout'}
             </button>
           </div>
         </div>
