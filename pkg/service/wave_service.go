@@ -18,9 +18,9 @@ import (
 // between waves. Keys are slugs (string), values are chan bool (buffered 1).
 var gateChannels sync.Map
 
-// activeWaves tracks which slugs have an active wave execution goroutine.
-// Used by StartWave to prevent duplicate runs.
-var activeWaves sync.Map
+// ActiveWaves tracks which slugs have an active wave execution goroutine.
+// Used by StartWave to prevent duplicate runs. Exported for test access.
+var ActiveWaves sync.Map
 
 // FallbackSAWConfig is populated once from the server's default repo path.
 // StartWave uses it when the target repo has no saw.config.json of its own.
@@ -34,21 +34,21 @@ var FallbackSAWConfig *SAWConfig
 // be found.
 func StartWave(deps Deps, slug string) error {
 	// Prevent duplicate runs.
-	if _, loaded := activeWaves.LoadOrStore(slug, struct{}{}); loaded {
+	if _, loaded := ActiveWaves.LoadOrStore(slug, struct{}{}); loaded {
 		return fmt.Errorf("wave already running for slug %q", slug)
 	}
 
 	// Resolve the IMPL doc path.
 	implPath, repoPath, err := resolveIMPLPath(deps, slug)
 	if err != nil {
-		activeWaves.Delete(slug)
+		ActiveWaves.Delete(slug)
 		return fmt.Errorf("IMPL doc not found for slug %q: %w", slug, err)
 	}
 
 	publish := makePublish(deps, slug)
 
 	go func() {
-		defer activeWaves.Delete(slug)
+		defer ActiveWaves.Delete(slug)
 		runWaveLoop(implPath, slug, repoPath, publish)
 	}()
 
@@ -58,11 +58,11 @@ func StartWave(deps Deps, slug string) error {
 // StopWave cancels a running wave execution for the given slug.
 // If no wave is running, it returns an error.
 func StopWave(deps Deps, slug string) error {
-	if _, ok := activeWaves.Load(slug); !ok {
+	if _, ok := ActiveWaves.Load(slug); !ok {
 		return fmt.Errorf("no wave running for slug %q", slug)
 	}
 	// Remove from active runs to signal stop.
-	activeWaves.Delete(slug)
+	ActiveWaves.Delete(slug)
 	return nil
 }
 

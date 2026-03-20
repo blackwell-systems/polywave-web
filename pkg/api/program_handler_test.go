@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -274,9 +275,9 @@ completion:
 		serverCancel: serverCancel,
 	}
 
-	// Mark the program as already executing
-	server.activeProgramRuns.Store("test-program", struct{}{})
-	defer server.activeProgramRuns.Delete("test-program")
+	// Mark the program as already executing (in service layer)
+	service.ProgramRuns.TryStart("test-program")
+	defer service.ProgramRuns.Done("test-program")
 
 	req := httptest.NewRequest("POST", "/api/program/test-program/tier/1/execute", nil)
 	req.SetPathValue("slug", "test-program")

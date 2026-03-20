@@ -62,6 +62,13 @@ func runProgramTier(
 			return fmt.Errorf("failed to resolve IMPL %s: %w", implSlug, err)
 		}
 
+		// Execute the IMPL via runWaveLoopFunc (test seam for mocking).
+		// Wraps publish to forward IMPL-level events to program subscribers.
+		implPublish := func(event string, data interface{}) {
+			publish(event, data)
+		}
+		runWaveLoopFunc(implPath, implSlug, repoPath, implPublish, func(ExecutionStage, StageStatus, int, string) {})
+
 		implManifest, err := protocol.Load(implPath)
 		if err != nil {
 			publish("program_blocked", map[string]interface{}{

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 	"bufio"
 	"context"
 	"encoding/json"
@@ -244,8 +245,8 @@ func TestHandleWaveStart_Returns409_OnDuplicate(t *testing.T) {
 	s, dir := makeTestServer(t)
 	writeIMPLDoc(t, dir, "dup-feature", minimalIMPL)
 
-	// Simulate a run already in progress.
-	s.activeRuns.Store("dup-feature", struct{}{})
+	// Simulate a run already in progress (in service layer).
+	service.ActiveWaves.Store("dup-feature", struct{}{})
 
 	req := httptest.NewRequest(http.MethodPost, "/api/wave/dup-feature/start", nil)
 	req.SetPathValue("slug", "dup-feature")
