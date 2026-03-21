@@ -7,13 +7,11 @@ import ModelPicker from '../ModelPicker'
 type ModelRole = 'scout' | 'wave' | 'chat' | 'planner' | 'scaffold' | 'integration'
 
 export interface AppHeaderProps {
-  onPipelineClick: () => void
   onNewPlanClick: () => void
   onProgramsClick: () => void
   onNewProgramClick: () => void
   onSearchClick: () => void
   onSettingsClick: () => void
-  showPipeline: boolean
   showPrograms: boolean
   sseConnected: boolean
   models: Record<ModelRole, string>
@@ -42,13 +40,11 @@ function shortModel(value: string): string {
 
 export function AppHeader(props: AppHeaderProps): JSX.Element {
   const {
-    onPipelineClick,
     onNewPlanClick,
     onProgramsClick,
     onNewProgramClick,
     onSearchClick,
     onSettingsClick,
-    showPipeline,
     showPrograms,
     sseConnected,
     models,
@@ -80,22 +76,16 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
     <header className="flex items-stretch justify-between h-[61px] border-b shrink-0">
       <div className="flex items-stretch">
         <button
-          onClick={onPipelineClick}
-          className={`flex items-center justify-center text-sm font-medium px-6 transition-colors border-r ${showPipeline ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-400 dark:border-emerald-800' : 'bg-emerald-50/40 hover:bg-emerald-100/60 text-emerald-700 border-emerald-200 dark:bg-emerald-950/20 dark:hover:bg-emerald-900/40 dark:text-emerald-500 dark:border-emerald-900'}`}
+          onClick={onProgramsClick}
+          className={`flex items-center justify-center text-sm font-medium px-6 transition-colors border-r ${showPrograms ? 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-400 dark:border-violet-800' : 'bg-violet-50/40 hover:bg-violet-100/60 text-violet-700 border-violet-200 dark:bg-violet-950/20 dark:hover:bg-violet-900/40 dark:text-violet-500 dark:border-violet-900'}`}
         >
-          Pipeline
+          Home
         </button>
         <button
           onClick={onNewPlanClick}
           className="flex items-center justify-center text-sm font-medium px-6 transition-colors border-r bg-emerald-50/20 hover:bg-emerald-50/50 text-emerald-500 border-emerald-100 dark:bg-emerald-950/10 dark:hover:bg-emerald-900/20 dark:text-emerald-600 dark:border-emerald-900/50"
         >
           New Plan
-        </button>
-        <button
-          onClick={onProgramsClick}
-          className={`flex items-center justify-center text-sm font-medium px-6 transition-colors border-r ${showPrograms ? 'bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950/60 dark:text-violet-400 dark:border-violet-800' : 'bg-violet-50/40 hover:bg-violet-100/60 text-violet-700 border-violet-200 dark:bg-violet-950/20 dark:hover:bg-violet-900/40 dark:text-violet-500 dark:border-violet-900'}`}
-        >
-          Programs
         </button>
         <button
           onClick={onNewProgramClick}

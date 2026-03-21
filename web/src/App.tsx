@@ -8,8 +8,9 @@ import LiveRail from './components/LiveRail'
 import SettingsScreen from './components/SettingsScreen'
 import CommandPalette from './components/CommandPalette'
 import { useResizableDivider } from './hooks/useResizableDivider'
-import PipelineView from './components/PipelineView'
-import ProgramBoard from './components/ProgramBoard'
+// @deprecated PipelineView — replaced by UnifiedProgramsView. Kept for reference; do not delete yet.
+// import PipelineView from './components/PipelineView'
+import { UnifiedProgramsView } from './components/ProgramBoard'
 import { useNotifications } from './hooks/useNotifications'
 import { useModal } from './hooks/useModal'
 import ToastContainer from './components/ToastContainer'
@@ -78,8 +79,7 @@ export default function App() {
 
   const [sseRefreshTick, setSseRefreshTick] = useState(0)
   const [showPalette, setShowPalette] = useState(false)
-  const [showPipeline, setShowPipeline] = useState(false)
-  const [showPrograms, setShowPrograms] = useState(false)
+  const [showPrograms, setShowPrograms] = useState(true)
   const [selectedProgramSlug, setSelectedProgramSlug] = useState<string | null>(null)
 
   // Bump refresh tick when entries change (SSE-driven via context)
@@ -133,7 +133,7 @@ export default function App() {
 
   const handleSelect = useCallback(async (selected: string) => {
     setSelectedSlug(selected)
-    setShowPipeline(false)
+    setShowPrograms(false)
     setRejected(false)
     setLoading(true)
     setError(null)
@@ -258,26 +258,11 @@ export default function App() {
 
   // Main content area
   const mainContent = showPrograms ? (
-    selectedProgramSlug ? (
-      <ProgramBoard
-        programSlug={selectedProgramSlug}
-        onSelectImpl={(slug) => { setShowPrograms(false); handleSelect(slug) }}
-      />
-    ) : (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-        <p className="text-sm font-medium text-foreground">No programs yet</p>
-        <p className="text-xs text-muted-foreground mt-1">Programs coordinate multiple related implementation plans as a single unit. Use the New Program button above to create one.</p>
-      </div>
-    )
-  ) : showPipeline ? (
-    <PipelineView
-      onSelectImpl={(slug) => { setShowPipeline(false); handleSelect(slug) }}
+    <UnifiedProgramsView
+      onSelectImpl={(slug) => { setShowPrograms(false); void handleSelect(slug) }}
       onSelectProgram={(programSlug) => {
-        setShowPipeline(false)
-        setShowPrograms(true)
         setSelectedProgramSlug(programSlug)
       }}
-      onClose={() => setShowPipeline(false)}
     />
   ) : (
     <>
@@ -329,7 +314,6 @@ export default function App() {
         setLiveView(null)
         refreshPrograms().then(() => { if (slug) setSelectedProgramSlug(slug) }).catch(() => {})
         setShowPrograms(true)
-        setShowPipeline(false)
         setSelectedSlug(null)
         setImpl(null)
       }}
@@ -345,17 +329,14 @@ export default function App() {
       <AppLayout
         header={
           <AppHeader
-            onPipelineClick={() => { setShowPipeline(v => !v); setShowPrograms(false); if (!showPipeline) { setSelectedSlug(null); setImpl(null); setLiveView(null) } }}
             onNewPlanClick={() => setLiveView(v => v === 'scout' ? null : 'scout')}
             onProgramsClick={() => {
-              setShowPrograms(v => !v)
-              if (!showPrograms) { setShowPipeline(false); setSelectedSlug(null); setImpl(null); setLiveView(null) }
-              if (!showPrograms && programs.length > 0) setSelectedProgramSlug(programs[0].slug)
+              setShowPrograms(true)
+              setSelectedSlug(null); setImpl(null); setLiveView(null)
             }}
             onNewProgramClick={() => setLiveView(v => v === 'planner' ? null : 'planner')}
             onSearchClick={() => setShowPalette(true)}
             onSettingsClick={settingsModal.toggle}
-            showPipeline={showPipeline}
             showPrograms={showPrograms}
             sseConnected={sseConnected}
             models={models}

@@ -1,8 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import ProgressBar from './ProgressBar'
-import { fetchProgramStatus, executeTier, replanProgram } from '../programApi'
-import type { ProgramStatus, TierStatus, ImplTierStatus } from '../types/program'
+import { fetchProgramStatus, executeTier, replanProgram, listProgramsFull } from '../programApi'
+import type { ProgramStatus, TierStatus, ImplTierStatus, ProgramDiscovery, ProgramListResponse } from '../types/program'
+import type { PipelineEntry } from '../types/autonomy'
+import GlobalMetricsBar from './GlobalMetricsBar'
+import OperationsPanel from './OperationsPanel'
+import { useGlobalEvents } from '../hooks/useGlobalEvents'
 
 interface ProgramBoardProps {
   programSlug: string
@@ -162,6 +166,186 @@ function TierSection({
     </Card>
   )
 }
+
+// --- Unified Programs View ---
+
+export interface UnifiedProgramsViewProps {
+  onSelectImpl: (slug: string) => void
+  onSelectProgram: (programSlug: string) => void
+}
+
+export function UnifiedProgramsView({ onSelectImpl, onSelectProgram }: UnifiedProgramsViewProps): JSX.Element {
+  const [data, setData] = useState<ProgramListResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedProgram, setSelectedProgram] = useState<string | null>(null)
+
+  const loadData = useCallback(async () => {
+    try {
+      const resp = await listProgramsFull()
+      setData(resp)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadData()
+  }, [loadData])
+
+  // Subscribe to SSE events for live updates
+  const handleRefresh = useCallback(() => {
+    void loadData()
+  }, [loadData])
+
+  useGlobalEvents({
+    program_list_updated: handleRefresh,
+    pipeline_updated: handleRefresh,
+  })
+
+  const handleSelectProgram = (slug: string) => {
+    setSelectedProgram(slug)
+    onSelectProgram(slug)
+  }
+
+  // If a program is selected, show its detail board
+  if (selectedProgram) {
+    return (
+      <div className="h-full flex flex-col">
+        {data?.metrics && <GlobalMetricsBar metrics={data.metrics} />}
+        <div className="flex flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-4 pt-3 pb-1">
+              <button
+                onClick={() => setSelectedProgram(null)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                &larr; Back to all programs
+              </button>
+            </div>
+            <ProgramBoard
+              programSlug={selectedProgram}
+              onSelectImpl={onSelectImpl}
+            />
+          </div>
+          <OperationsPanel onSelectItem={onSelectImpl} />
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-muted-foreground">Loading programs...</div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center bg-background">
+        <div className="text-destructive">Error: {error}</div>
+      </div>
+    )
+  }
+
+  const programs = data?.programs ?? []
+  const metrics = data?.metrics
+  const standalone = data?.standalone ?? []
+
+  return (
+    <div className="h-full flex flex-col">
+      {metrics && <GlobalMetricsBar metrics={metrics} />}
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="max-w-5xl mx-auto space-y-6">
+            {/* Programs section */}
+            {programs.length > 0 ? (
+              <div className="space-y-3">
+                <h2 className="text-lg font-semibold text-foreground">Programs</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {programs.map((p) => (
+                    <ProgramCard key={p.slug} program={p} onClick={() => handleSelectProgram(p.slug)} />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No programs yet. Use New Program to create one.</p>
+              </div>
+            )}
+
+            {/* Standalone IMPLs section */}
+            {standalone.length > 0 && (
+              <div className="space-y-3">
+                <h2 className="text-lg font-semibold text-foreground">Standalone IMPLs</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {standalone.map((entry) => (
+                    <StandaloneImplCard
+                      key={entry.slug}
+                      entry={entry}
+                      onClick={() => onSelectImpl(entry.slug)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <OperationsPanel onSelectItem={onSelectImpl} />
+      </div>
+    </div>
+  )
+}
+
+const PROGRAM_STATE_COLORS: Record<string, string> = {
+  COMPLETE:       'bg-green-500',
+  TIER_EXECUTING: 'bg-blue-500 animate-pulse',
+  REVIEWED:       'bg-yellow-400',
+  SCAFFOLD:       'bg-purple-400',
+  BLOCKED:        'bg-red-500',
+}
+
+function ProgramCard({ program, onClick }: { program: ProgramDiscovery; onClick: () => void }): JSX.Element {
+  const dotColor = PROGRAM_STATE_COLORS[program.state] ?? 'bg-gray-400'
+  return (
+    <div
+      onClick={onClick}
+      className="flex flex-col gap-2 p-4 rounded-lg border border-border bg-card cursor-pointer hover:shadow-md hover:border-primary/40 transition-all"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-foreground truncate">{program.title || program.slug}</span>
+        <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+      </div>
+      <span className="text-xs text-muted-foreground">{program.state}</span>
+    </div>
+  )
+}
+
+function StandaloneImplCard({ entry, onClick }: { entry: PipelineEntry; onClick: () => void }): JSX.Element {
+  const borderColor = getImplStatusColor(entry.status)
+  return (
+    <div
+      onClick={onClick}
+      className="flex flex-col gap-2 p-3 rounded-lg border-2 cursor-pointer hover:scale-105 hover:shadow-lg transition-all"
+      style={{ borderColor }}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-semibold text-foreground truncate">{entry.title || entry.slug}</span>
+        {getImplStatusBadge(entry.status)}
+      </div>
+      {entry.wave_progress && (
+        <span className="text-xs text-muted-foreground">{entry.wave_progress}</span>
+      )}
+    </div>
+  )
+}
+
+// --- Original ProgramBoard (single-program detail view) ---
 
 export default function ProgramBoard({ programSlug, onSelectImpl }: ProgramBoardProps): JSX.Element {
   const [status, setStatus] = useState<ProgramStatus | null>(null)
