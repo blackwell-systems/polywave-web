@@ -182,7 +182,12 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   }, [executionState, diskStatus, hasWaveWork])
 
   // Critic gate — shared hook handles fetch, run, SSE, threshold detection
-  const { needsCritic, criticReport, criticRunning, criticOutput, criticError, runCritic: handleRunCritic } = useCriticState(slug, impl)
+  const {
+    needsCritic, criticReport, criticRunning, criticOutput, criticError,
+    runCritic: handleRunCritic, applyCriticFix: handleApplyCriticFix,
+    autoFixAll: handleAutoFixAll, autoFixRunning
+  } = useCriticState(slug, impl)
+  const [showCriticEditor, setShowCriticEditor] = useState(false)
 
   const handleImplUpdated = useCallback((e: MessageEvent) => {
     try {
@@ -320,7 +325,17 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
         {/* Critic review — display only, shown when report exists */}
         {!isNotSuitable && criticReport && (
           <div className="mb-6">
-            <CriticReviewPanel result={criticReport} />
+            <CriticReviewPanel
+                result={criticReport}
+                onApplyFix={handleApplyCriticFix}
+                onRerunCritic={handleRunCritic}
+                criticRunning={criticRunning}
+                onAutoFixAll={handleAutoFixAll}
+                autoFixRunning={autoFixRunning}
+                slug={slug}
+                showEditor={showCriticEditor}
+                onToggleEditor={() => setShowCriticEditor(prev => !prev)}
+            />
           </div>
         )}
 

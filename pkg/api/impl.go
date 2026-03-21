@@ -630,4 +630,5 @@ func (s *Server) RegisterCriticRoutes() {
 	s.mux.HandleFunc("GET /api/impl/{slug}/critic-review", s.handleGetCriticReview)
 	s.mux.HandleFunc("POST /api/impl/{slug}/run-critic", s.handleRunCriticReview)
 	s.mux.HandleFunc("PATCH /api/impl/{slug}/fix-critic", s.handleFixCritic)
+	s.mux.HandleFunc("POST /api/impl/{slug}/auto-fix-critic", s.handleAutoFixCritic)
 }
