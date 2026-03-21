@@ -57,3 +57,5 @@ lint_command: go vet ./...
   - IMPL doc: docs/IMPL/complete/IMPL-new-user-experience.yaml
 - **react-refactor**: completed 2026-03-19, 4 waves, 9 agents
   - IMPL doc: docs/IMPL/complete/IMPL-react-refactor.yaml
+- **webapp-ux-onboarding**: completed 2026-03-20, 3 waves, 6 agents
+  - IMPL doc: /Users/dayna.blackwell/code/scout-and-wave/docs/IMPL/complete/IMPL-webapp-ux-onboarding.yaml

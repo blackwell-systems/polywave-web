@@ -54,8 +54,8 @@ export function WaveMergePanel({
   const waveTotal = waveAgents.length
   const allComplete = waveComplete === waveTotal && waveTotal > 0
   const alreadyMerged = wave.merge_status === 'merged' || wave.merge_status === 'success'
-  // Live SSE merge state takes priority over disk-seeded status
-  const mergeStatus = mergeState?.status ?? (alreadyMerged ? 'success' : 'idle')
+  // Disk-confirmed merge is authoritative — overrides stale SSE failure state
+  const mergeStatus = alreadyMerged ? 'success' : (mergeState?.status ?? 'idle')
   const testStatus = testState?.status ?? 'idle'
 
   return (
@@ -213,7 +213,7 @@ export function WaveMergePanel({
             const nextWaveFullyPending = nextWave && !nextWave.complete && nextWave.agents.every(a => a.status === 'pending' || !a.status)
             const isLastWave = wave.wave >= Math.max(...waves.map(w => w.wave))
             return !isLastWave && nextWaveFullyPending && !hasGate && !waveGate && (
-              <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-lg px-4 py-4 flex items-center justify-between gap-4">
+              <div className="mt-3 bg-green-500/10 border border-green-500/30 rounded-none px-4 py-4 flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm font-semibold text-green-700 dark:text-green-300">
                     Wave {wave.wave} complete
@@ -224,7 +224,7 @@ export function WaveMergePanel({
                 </div>
                 <button
                   onClick={() => void onStartWave()}
-                  className="shrink-0 text-sm font-semibold px-5 py-2.5 rounded-lg bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] transition-all shadow-sm"
+                  className="shrink-0 text-sm font-semibold px-5 py-2.5 rounded-none bg-green-600 text-white hover:bg-green-700 active:scale-[0.98] transition-all shadow-sm"
                 >
                   Run Wave {wave.wave + 1} &rarr;
                 </button>

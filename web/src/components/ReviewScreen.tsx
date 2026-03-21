@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { IMPLDocResponse, CriticResult, CriticFixRequest } from '../types'
+import { IMPLDocResponse, CriticResult } from '../types'
 import { listWorktrees, batchDeleteWorktrees, fetchDiskWaveStatus, DiskWaveStatus } from '../api'
-import { sawClient } from '../lib/apiClient'
 import { useExecutionSync, ExecutionSyncState, AgentExecStatus } from '../hooks/useExecutionSync'
 import { useGlobalEvents } from '../hooks/useGlobalEvents'
+import { sawClient } from '../lib/apiClient'
 import ActionButtons from './ActionButtons'
 import { CriticReviewPanel } from './CriticReviewPanel'
 import RevisePanel from './RevisePanel'
@@ -30,22 +30,36 @@ interface ReviewScreenProps {
 
 type PanelKey = 'reactions' | 'pre-mortem' | 'wiring' | 'stub-report' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist' | 'quality-gates' | 'worktrees' | 'context-viewer' | 'validation' | 'amend'
 
-const panelTooltips: Partial<Record<PanelKey, string>> = {
-  'file-ownership': 'Shows which agent owns which files. No two agents in the same wave may modify the same file (I1 invariant). This prevents merge conflicts.',
+const panelTooltips: Record<PanelKey, string> = {
   'wave-structure': 'Sequential execution phases with parallel agents. Wave N+1 depends on Wave N completing (I3). Shows dependency relationships.',
+  'dependency-graph': 'Visualizes which packages and modules depend on each other. Helps verify the Scout chose sensible agent boundaries.',
+  'file-ownership': 'Shows which agent owns which files. No two agents in the same wave may modify the same file (I1 invariant). This prevents merge conflicts.',
   'interface-contracts': 'Shared types and function signatures defined before parallel work starts (I2 invariant). Ensures agents can integrate without runtime coordination.',
+  'pre-mortem': 'Risk assessment performed by the Scout. Identifies likely failure modes, estimated complexity, and mitigation strategies for each wave.',
+  'wiring': 'Integration points where one agent\'s output must be called from another file (E35). Tracked to ensure nothing is left unconnected after merge.',
+  'reactions': 'Customized failure-handling rules for this IMPL (E19.1). Overrides default retry/escalation behavior per failure type (transient, fixable, needs_replan).',
+  'agent-prompts': 'The full 9-field prompt each agent receives, including task description, file ownership, interface contracts, and verification gates.',
+  'scaffolds': 'Type definition files created before Wave 1 launches (I2). Ensures all agents reference the same shared types and interfaces.',
+  'quality-gates': 'Build, lint, test, and custom checks that must pass after each wave merges (E21). Failures block the next wave from starting.',
+  'known-issues': 'Issues the Scout identified during analysis that may affect implementation but don\'t block execution.',
+  'context-viewer': 'Project-level memory (CONTEXT.md) tracking completed features, architectural decisions, and established interfaces across all IMPLs.',
+  'stub-report': 'Post-wave scan for TODO/FIXME/stub markers left by agents (E20). Informational — helps catch incomplete implementations before the next wave.',
+  'post-merge-checklist': 'Manual verification steps to perform after all waves complete. Covers integration testing, deployment checks, and documentation updates.',
+  'amend': 'Modify the IMPL doc mid-execution: add waves, redirect agents, or extend scope without starting over (E36).',
+  'worktrees': 'Isolated git branches created for each agent. View active worktrees, inspect their status, or clean up stale branches.',
+  'validation': 'Run structural validation on the IMPL doc (E16). Checks required sections, agent ID formats, file ownership conflicts, and gate definitions.',
 }
 
 const panels: Array<{ key: PanelKey; label: string; essential?: boolean }> = [
   { key: 'wave-structure',       label: 'Wave Structure',      essential: true },
-  { key: 'file-ownership',       label: 'File Ownership',      essential: true },
-  { key: 'interface-contracts',  label: 'Interface Contracts', essential: true },
   { key: 'dependency-graph',     label: 'Dependency Graph',    essential: false },
+  { key: 'file-ownership',       label: 'File Ownership',      essential: true },
+  { key: 'scaffolds',            label: 'Scaffolds',           essential: false },
+  { key: 'interface-contracts',  label: 'Interface Contracts', essential: true },
   { key: 'pre-mortem',           label: 'Pre-Mortem',          essential: false },
   { key: 'wiring',               label: 'Wiring',              essential: false },
   { key: 'reactions',            label: 'Reactions',           essential: false },
   { key: 'agent-prompts',        label: 'Agent Prompts',       essential: false },
-  { key: 'scaffolds',            label: 'Scaffolds',           essential: false },
   { key: 'quality-gates',        label: 'Quality Gates',       essential: false },
   { key: 'known-issues',         label: 'Known Issues',        essential: false },
   { key: 'context-viewer',       label: 'Project Memory',      essential: false },
@@ -100,9 +114,13 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   }, [])
 
   const [activePanels, setActivePanels] = useState<PanelKey[]>(() => {
-    return ['wave-structure', 'file-ownership', 'interface-contracts']
+    const defaults: PanelKey[] = ['wave-structure', 'dependency-graph', 'file-ownership']
+    if ((impl as any).scaffolds_detail?.length > 0) defaults.push('scaffolds')
+    if ((impl as any).interface_contracts_text?.trim()) defaults.push('interface-contracts')
+    if (impl.wiring?.length) defaults.push('wiring')
+    return defaults
   })
-  const [showAdvanced, setShowAdvanced] = useState(false)
+
   const [isStuck, setIsStuck] = useState(false)
   const sentinelRef = useRef<HTMLDivElement>(null)
 
@@ -162,44 +180,14 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     }
   }, [executionState, diskStatus, hasWaveWork])
 
-  // Critic review state — fetched from GET /api/impl/{slug}/critic-review
+  // Critic review — display only, auto-fetched
   const [criticReport, setCriticReport] = useState<CriticResult | null>(null)
-  const [criticRunning, setCriticRunning] = useState(false)
-
-  const fetchCriticReport = useCallback(() => {
+  const fetchCritic = useCallback(() => {
     sawClient.impl.criticReview(slug)
       .then(data => setCriticReport(data))
       .catch(() => setCriticReport(null))
   }, [slug])
-
-  useEffect(() => {
-    fetchCriticReport()
-  }, [fetchCriticReport])
-
-  const runCriticReview = useCallback(() => {
-    setCriticRunning(true)
-    sawClient.impl.runCritic(slug)
-      .catch(() => setCriticRunning(false))
-    // criticRunning resets to false when critic_review_complete SSE fires
-  }, [slug])
-
-  const applyCriticFix = useCallback(async (fix: CriticFixRequest) => {
-    const updated = await sawClient.impl.applyCriticFix(slug, fix)
-    setCriticReport(updated)
-  }, [slug])
-
-  // Listen for critic_review_complete SSE event and refresh
-  const handleCriticReviewComplete = useCallback((e: MessageEvent) => {
-    try {
-      const data = JSON.parse(e.data)
-      if (data?.slug === slug) {
-        setCriticRunning(false)
-        fetchCriticReport()
-      }
-    } catch {
-      // ignore malformed events
-    }
-  }, [slug, fetchCriticReport])
+  useEffect(() => { fetchCritic() }, [fetchCritic])
 
   const handleImplUpdated = useCallback((e: MessageEvent) => {
     try {
@@ -208,7 +196,14 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     } catch { /* ignore malformed events */ }
   }, [slug, onRefreshImpl])
 
-  useGlobalEvents({ critic_review_complete: handleCriticReviewComplete, impl_updated: handleImplUpdated })
+  const handleCriticComplete = useCallback((e: MessageEvent) => {
+    try {
+      const data = JSON.parse(e.data)
+      if (data?.slug === slug) fetchCritic()
+    } catch { /* ignore */ }
+  }, [slug, fetchCritic])
+
+  useGlobalEvents({ impl_updated: handleImplUpdated, critic_review_complete: handleCriticComplete })
 
   // Worktree presence detection
   const [worktreeCount, setWorktreeCount] = useState(0)
@@ -225,37 +220,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
     refreshWorktreeCount()
   }, [refreshWorktreeCount, refreshTick])
 
-  // Critic error blocking: true when critic found errors (not just warnings)
-  const hasCriticErrors = useMemo(() => {
-    if (!criticReport || criticReport.verdict !== 'ISSUES') return false
-    return Object.values(criticReport.agent_reviews).some(
-      review => review.issues?.some(i => i.severity === 'error')
-    )
-  }, [criticReport])
-
-  // Auto-trigger critic: recommend when wave 1 has 3+ agents or 2+ repos
-  const wave1AgentCount = useMemo(() =>
-    impl.waves.find(w => w.number === 1)?.agents.length ?? 0,
-    [impl.waves]
-  )
-  const repoCount = useMemo(() =>
-    new Set(impl.file_ownership.map(fo => fo.repo).filter(Boolean)).size,
-    [impl.file_ownership]
-  )
-  const shouldAutoRunCritic = wave1AgentCount >= 3 || repoCount >= 2
-
-  // Auto-run critic on mount when threshold is met and no report yet
-  const autoRunTriggered = useRef(false)
-  useEffect(() => {
-    if (shouldAutoRunCritic && !criticReport && !criticRunning && !autoRunTriggered.current) {
-      autoRunTriggered.current = true
-      runCriticReview()
-    }
-  }, [shouldAutoRunCritic, criticReport, criticRunning, runCriticReview])
-
   function handleApproveClick() {
-    // Critic errors block approval (warnings do not)
-    if (hasCriticErrors) return
     if (worktreeCount > 0) {
       setWorktreeWarning(true)
     } else {
@@ -334,66 +299,25 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
           )}
         </div>
 
-        {/* First-timer guidance banner */}
-        {criticReport === null && !criticRunning && (
-          <div className="mb-6 flex items-start gap-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3">
-            <span className="text-blue-500 mt-0.5 shrink-0">&#8505;</span>
-            <div className="text-sm text-blue-800 dark:text-blue-300">
-              <strong>Reviewing for the first time?</strong> Check the wave structure
-              (does the agent split make sense?), verify suitability in the Overview,
-              then run a Critic Review before approving.
-            </div>
+        {/* Guidance banner */}
+        <div className="mb-6 flex items-start gap-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg px-4 py-3">
+          <span className="text-blue-500 mt-0.5 shrink-0">&#8505;</span>
+          <div className="text-sm text-blue-800 dark:text-blue-300">
+            <strong>Review checklist:</strong> Check suitability in Overview,
+            verify wave structure and file ownership make sense,
+            then approve to launch agents.
           </div>
-        )}
+        </div>
 
         {/* Overview - always visible */}
         <div className={`mb-6 ${isNotSuitable ? 'opacity-40 pointer-events-none' : ''}`}>
           <OverviewPanel impl={impl} />
         </div>
 
-        {/* Critic Review — shown when critic_report exists; button when not yet run */}
-        {!isNotSuitable && (
+        {/* Critic review — display only, shown when report exists */}
+        {!isNotSuitable && criticReport && (
           <div className="mb-6">
-            {criticReport ? (
-              <>
-                <CriticReviewPanel
-                  result={criticReport}
-                  onApplyFix={applyCriticFix}
-                  onRerunCritic={runCriticReview}
-                  criticRunning={criticRunning}
-                />
-                {hasCriticErrors && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-md px-3 py-2">
-                    <span className="font-bold">!</span>
-                    <span>Resolve critic errors before approving.</span>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="flex flex-col gap-3">
-                {shouldAutoRunCritic && !criticRunning && (
-                  <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md px-3 py-2">
-                    <span className="font-bold">!</span>
-                    <span>This IMPL has {wave1AgentCount} wave-1 agent{wave1AgentCount !== 1 ? 's' : ''} -- critic review recommended</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-3">
-                  <button
-                    className="flex items-center gap-2 text-sm font-medium px-4 h-9 border border-border bg-background text-foreground hover:bg-muted transition-colors rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-                    onClick={runCriticReview}
-                    disabled={criticRunning}
-                    title="Verify all agent briefs against the actual codebase before execution."
-                  >
-                    {criticRunning ? 'Running...' : 'Run Critic Review'}
-                  </button>
-                  <span className="text-xs text-muted-foreground">
-                    {criticRunning
-                      ? 'Checking agent briefs against codebase -- panel will update when complete.'
-                      : 'No critic review yet. Verify agent briefs before approving wave execution.'}
-                  </span>
-                </div>
-              </div>
-            )}
+            <CriticReviewPanel result={criticReport} />
           </div>
         )}
 
@@ -411,11 +335,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 }`}
               >
                 <div className="flex flex-wrap gap-2">
-                  {/* Essential label */}
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 self-center pr-1">
-                    Essential
-                  </span>
-                  {panels.filter(p => p.essential).map(panel => (
+                  {panels.map(panel => (
                     <button
                       key={panel.key}
                       onClick={() => togglePanel(panel.key)}
@@ -425,45 +345,11 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                           : 'border-border bg-background text-foreground hover:bg-muted'
                       }`}
                     >
-                      {panelTooltips[panel.key] ? (
-                        <Tooltip content={panelTooltips[panel.key]!} position="bottom">
-                          <span>{panel.label}</span>
-                        </Tooltip>
-                      ) : (
-                        panel.label
-                      )}
+                      <Tooltip content={panelTooltips[panel.key]} position="bottom">
+                        <span>{panel.label}</span>
+                      </Tooltip>
                     </button>
                   ))}
-
-                  {/* Show all / Show less toggle */}
-                  <button
-                    onClick={() => setShowAdvanced(v => !v)}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border px-3 h-10 transition-colors"
-                  >
-                    {showAdvanced ? 'Show less' : 'Show all'}
-                  </button>
-
-                  {/* Advanced panels — only when showAdvanced */}
-                  {showAdvanced && (
-                    <>
-                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 self-center px-1">
-                        Advanced
-                      </span>
-                      {panels.filter(p => !p.essential).map(panel => (
-                        <button
-                          key={panel.key}
-                          onClick={() => togglePanel(panel.key)}
-                          className={`flex items-center justify-center text-sm font-medium px-4 h-10 transition-colors border ${
-                            activePanels.includes(panel.key)
-                              ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/15'
-                              : 'border-border bg-background text-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {panel.label}
-                        </button>
-                      ))}
-                    </>
-                  )}
                 </div>
               </div>
 
@@ -488,18 +374,18 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
           <ActionButtons onApprove={handleApproveClick} onReject={onReject} onRequestChanges={() => setShowRevise(true)} onViewWaves={onViewWaves} hasWaveWork={hasWaveWork} />
           <button
             onClick={() => togglePanel('validation')}
-            title="Run manifest validation to check for structural errors in the IMPL doc"
             className={`flex items-center justify-center text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
               activePanels.includes('validation')
                 ? 'border-t-blue-500 text-blue-700 dark:text-blue-400 bg-blue-500/10'
                 : 'border-t-blue-500/40 text-muted-foreground hover:bg-blue-500/10 hover:text-foreground'
             }`}
           >
-            Validate
+            <Tooltip content={panelTooltips['validation']} position="top">
+              <span>Validate</span>
+            </Tooltip>
           </button>
           <button
             onClick={() => { togglePanel('worktrees'); refreshWorktreeCount() }}
-            title="View and manage isolated git branches created for this plan's agents"
             className={`flex items-center justify-center gap-2 text-sm font-medium px-6 h-14 transition-all duration-150 border-t-2 ${
               worktreeCount > 0
                 ? activePanels.includes('worktrees')
@@ -510,7 +396,9 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                   : 'border-t-amber-500/40 text-muted-foreground hover:bg-amber-500/10 hover:text-foreground'
             }`}
           >
-            Worktrees
+            <Tooltip content={panelTooltips['worktrees']} position="top">
+              <span>Worktrees</span>
+            </Tooltip>
             {worktreeCount > 0 && (
               <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold bg-red-500 text-white">
                 {worktreeCount}
@@ -525,7 +413,9 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
                 : 'border-t-violet-500/40 text-violet-600 dark:text-violet-400 bg-violet-500/5 hover:bg-violet-500/10 hover:text-violet-700 dark:hover:text-violet-300'
             }`}
           >
-            {getChatButtonLabel}
+            <Tooltip content="Chat with an AI about this IMPL doc. Ask questions about the plan, get explanations of agent briefs, or discuss implementation details." position="top">
+              <span>{getChatButtonLabel}</span>
+            </Tooltip>
           </button>
         </div>
       )}

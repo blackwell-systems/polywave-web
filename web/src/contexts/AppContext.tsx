@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import { listImpls, getConfig, saveConfig, fetchInterruptedSessions } from '../api'
 import { listPrograms } from '../programApi'
 import { useGlobalEvents } from '../hooks/useGlobalEvents'
-import type { IMPLListEntry, RepoEntry } from '../types'
+import type { IMPLListEntry, RepoEntry, InterruptedSession } from '../types'
 import type { ProgramDiscovery } from '../types/program'
 
 export interface AppContextValue {
@@ -21,6 +21,8 @@ export interface AppContextValue {
   sseConnected: boolean
   programs: ProgramDiscovery[]
   refreshPrograms: () => Promise<void>
+  interruptedSessions: InterruptedSession[]
+  runningSlugs: Set<string>
 }
 
 const defaultModels = {
@@ -45,6 +47,8 @@ const defaultValue: AppContextValue = {
   sseConnected: false,
   programs: [],
   refreshPrograms: async () => {},
+  interruptedSessions: [],
+  runningSlugs: new Set(),
 }
 
 export const AppContext = createContext<AppContextValue>(defaultValue)
@@ -69,18 +73,62 @@ export function AppProvider({ children }: { children: ReactNode }): JSX.Element 
   const [chatModel, setChatModel] = useState<string>(defaultModels.chat)
   const [plannerModel, setPlannerModel] = useState<string>(defaultModels.planner)
 
+  const [interruptedSessions, setInterruptedSessions] = useState<InterruptedSession[]>([])
+  const [runningSlugs, setRunningSlugs] = useState<Set<string>>(new Set())
+
+  // Refresh interrupted sessions (called on multiple SSE events)
+  const refreshInterrupted = useCallback(() => {
+    fetchInterruptedSessions().then(setInterruptedSessions).catch(() => {})
+  }, [])
+
+  // Extract slug from SSE event data
+  const extractSlug = useCallback((e: MessageEvent): string | null => {
+    try { return JSON.parse(e.data)?.slug ?? null } catch { return null }
+  }, [])
+
   // SSE subscription: keep IMPL list in sync with external changes
   const handleImplListUpdated = useCallback(() => {
     setSseConnected(true)
     listImpls().then(setEntries).catch(() => {})
-    fetchInterruptedSessions().catch(() => {})
-  }, [])
-  useGlobalEvents({ impl_list_updated: handleImplListUpdated })
+    refreshInterrupted()
+  }, [refreshInterrupted])
+
+  // Wave start: mark slug as running
+  const handleWaveStarted = useCallback((e: MessageEvent) => {
+    const slug = extractSlug(e)
+    if (slug) setRunningSlugs(prev => { const next = new Set(prev); next.add(slug); return next })
+    refreshInterrupted()
+  }, [extractSlug, refreshInterrupted])
+
+  // Wave/finalize complete: remove slug from running, refresh sessions
+  const handleWaveComplete = useCallback((e: MessageEvent) => {
+    const slug = extractSlug(e)
+    if (slug) setRunningSlugs(prev => { const next = new Set(prev); next.delete(slug); return next })
+    refreshInterrupted()
+  }, [extractSlug, refreshInterrupted])
+
+  // Agent events: mark as running, refresh
+  const handleAgentEvent = useCallback((e: MessageEvent) => {
+    const slug = extractSlug(e)
+    if (slug) setRunningSlugs(prev => { const next = new Set(prev); next.add(slug); return next })
+    refreshInterrupted()
+  }, [extractSlug, refreshInterrupted])
+
+  useGlobalEvents({
+    impl_list_updated: handleImplListUpdated,
+    wave_started: handleWaveStarted,
+    wave_complete: handleWaveComplete,
+    agent_started: handleAgentEvent,
+    agent_complete: handleAgentEvent,
+    scaffold_complete: handleAgentEvent,
+    finalize_complete: handleWaveComplete,
+  })
 
   // Initial data fetch
   useEffect(() => {
     listImpls().then(setEntries).catch(() => {})
     listPrograms().then(setPrograms).catch(() => {})
+    fetchInterruptedSessions().then(setInterruptedSessions).catch(() => {})
     getConfig().then(config => {
       if (config.repos && config.repos.length > 0) {
         setRepos(config.repos)
@@ -162,6 +210,8 @@ export function AppProvider({ children }: { children: ReactNode }): JSX.Element 
     sseConnected,
     programs,
     refreshPrograms,
+    interruptedSessions,
+    runningSlugs,
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

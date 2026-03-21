@@ -4,10 +4,11 @@ import { resumeExecution } from '../api'
 
 interface ResumeBannerProps {
   sessions: InterruptedSession[]
+  runningSlugs?: Set<string>
   onSelect: (slug: string) => void
 }
 
-export default function ResumeBanner({ sessions, onSelect }: ResumeBannerProps): JSX.Element | null {
+export default function ResumeBanner({ sessions, runningSlugs, onSelect }: ResumeBannerProps): JSX.Element | null {
   const [resuming, setResuming] = useState<Record<string, boolean>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -30,9 +31,9 @@ export default function ResumeBanner({ sessions, onSelect }: ResumeBannerProps):
         Interrupted {sessions.length === 1 ? 'session' : 'sessions'}
       </div>
       {sessions.map((s) => {
+        const isRunning = runningSlugs?.has(s.impl_slug) || resuming[s.impl_slug]
         const dirtyWithChanges = s.dirty_worktrees?.filter((w) => w.has_changes) ?? []
         const dirtyCount = dirtyWithChanges.length
-        const isResuming = resuming[s.impl_slug] ?? false
         const resumeLabel = dirtyCount > 0
           ? `Resume (continue ${dirtyCount} agent${dirtyCount !== 1 ? 's' : ''})`
           : 'Resume'
@@ -41,32 +42,34 @@ export default function ResumeBanner({ sessions, onSelect }: ResumeBannerProps):
           <div key={s.impl_slug} className="rounded-none px-2 py-1.5 bg-transparent">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono text-foreground truncate">{s.impl_slug}</span>
-              <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                {Math.round(s.progress_pct)}%
+              <span className={`text-[10px] font-medium ${isRunning ? 'text-blue-700 dark:text-blue-400' : 'text-amber-700 dark:text-amber-400'}`}>
+                {isRunning ? 'Running...' : `${Math.round(s.progress_pct)}%`}
               </span>
             </div>
             <div className="text-[10px] text-muted-foreground mt-0.5 leading-tight">
               Wave {s.current_wave}/{s.total_waves}
-              {s.failed_agents.length > 0 && (
+              {s.failed_agents.length > 0 && !isRunning && (
                 <span className="text-destructive ml-1">
                   — {s.failed_agents.length} failed
                 </span>
               )}
-              {s.orphaned_worktrees.length > 0 && (
+              {s.orphaned_worktrees.length > 0 && !isRunning && (
                 <span className="text-amber-600 dark:text-amber-400 ml-1">
                   — {s.orphaned_worktrees.length} orphaned worktree{s.orphaned_worktrees.length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
-            {dirtyCount > 0 && (
+            {dirtyCount > 0 && !isRunning && (
               <div className="text-[10px] text-amber-700 dark:text-amber-400 mt-0.5 leading-tight">
                 {dirtyCount} agent{dirtyCount !== 1 ? 's' : ''} have uncommitted work:{' '}
                 {dirtyWithChanges.map((w) => w.agent_id).join(', ')}
               </div>
             )}
-            <div className="text-[10px] text-muted-foreground/70 mt-0.5 italic">
-              {s.suggested_action}
-            </div>
+            {!isRunning && (
+              <div className="text-[10px] text-muted-foreground/70 mt-0.5 italic">
+                {s.suggested_action}
+              </div>
+            )}
             {errors[s.impl_slug] && (
               <div className="text-[10px] text-destructive mt-0.5 leading-tight">
                 {errors[s.impl_slug]}
@@ -79,13 +82,20 @@ export default function ResumeBanner({ sessions, onSelect }: ResumeBannerProps):
               >
                 View
               </button>
-              <button
-                onClick={() => handleResume(s.impl_slug)}
-                disabled={!s.can_auto_resume || isResuming}
-                className="text-[10px] font-medium px-2 py-0.5 rounded-none border border-emerald-600 dark:border-emerald-500 bg-emerald-600 dark:bg-emerald-600 text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                {isResuming ? 'Resuming…' : resumeLabel}
-              </button>
+              {!isRunning && (
+                <button
+                  onClick={() => handleResume(s.impl_slug)}
+                  disabled={!s.can_auto_resume}
+                  className="text-[10px] font-medium px-2 py-0.5 rounded-none border border-emerald-400 dark:border-emerald-600 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {resumeLabel}
+                </button>
+              )}
+              {isRunning && (
+                <span className="text-[10px] font-medium text-blue-600 dark:text-blue-400 animate-pulse">
+                  Executing...
+                </span>
+              )}
             </div>
           </div>
         )

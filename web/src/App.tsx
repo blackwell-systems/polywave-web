@@ -8,7 +8,6 @@ import LiveRail from './components/LiveRail'
 import SettingsScreen from './components/SettingsScreen'
 import CommandPalette from './components/CommandPalette'
 import { useResizableDivider } from './hooks/useResizableDivider'
-import ModelPicker from './components/ModelPicker'
 import PipelineView from './components/PipelineView'
 import ProgramBoard from './components/ProgramBoard'
 import { useNotifications } from './hooks/useNotifications'
@@ -66,7 +65,7 @@ export default function App() {
     entries, refreshEntries,
     models, saveModel: contextSaveModel,
     sseConnected,
-    programs, refreshPrograms,
+    programs, refreshPrograms, interruptedSessions, runningSlugs,
   } = useAppContext()
 
   // UI-local state (only used within App.tsx)
@@ -77,23 +76,11 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [rejected, setRejected] = useState(false)
 
-  const [pickerOpen, setPickerOpen] = useState<'scout' | 'scaffold' | 'wave' | 'integration' | 'chat' | 'planner' | 'all' | null>(null)
-
   const [sseRefreshTick, setSseRefreshTick] = useState(0)
   const [showPalette, setShowPalette] = useState(false)
   const [showPipeline, setShowPipeline] = useState(false)
   const [showPrograms, setShowPrograms] = useState(false)
   const [selectedProgramSlug, setSelectedProgramSlug] = useState<string | null>(null)
-
-  // Close model picker on Escape
-  useEffect(() => {
-    if (!pickerOpen) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPickerOpen(null)
-    }
-    document.addEventListener('keydown', handler)
-    return () => document.removeEventListener('keydown', handler)
-  }, [pickerOpen])
 
   // Bump refresh tick when entries change (SSE-driven via context)
   useEffect(() => {
@@ -157,6 +144,16 @@ export default function App() {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  // Lightweight refresh that does NOT unmount ReviewScreen (no loading spinner)
+  const handleRefreshImpl = useCallback(async (slug: string) => {
+    try {
+      const data = await fetchImpl(slug)
+      setImpl(data)
+    } catch {
+      // non-fatal — keep showing current data
     }
   }, [])
 
@@ -257,28 +254,7 @@ export default function App() {
     refreshEntries().catch(() => {})
   }, [settingsModal, refreshEntries])
 
-  // Model picker dropdown content
-  const modelPickerContent = pickerOpen === 'all' ? (
-    <>
-      <div className="fixed inset-0 z-40" onClick={() => setPickerOpen(null)} />
-      <div className="absolute top-full right-0 mt-2 z-50 bg-popover border border-border rounded-lg shadow-2xl p-4 w-[520px] animate-in fade-in slide-in-from-top-2 duration-200 space-y-4">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Agent Models</p>
-        {(['planner', 'scout', 'scaffold', 'wave', 'integration', 'chat'] as const).map(field => {
-          const model = models[field]
-          const label = field.charAt(0).toUpperCase() + field.slice(1)
-          return (
-            <ModelPicker
-              key={field}
-              id={`header-${field}-model`}
-              label={`${label} Model`}
-              value={model}
-              onChange={value => saveModel(field, value)}
-            />
-          )
-        })}
-      </div>
-    </>
-  ) : null
+  // Model picker is now inline in AppHeader — no dropdown content needed here
 
   // Main content area
   const mainContent = showPrograms ? (
@@ -319,7 +295,7 @@ export default function App() {
       )}
       {rejected && <p className="text-orange-600 text-sm p-4">Plan rejected.</p>}
       {!loading && impl !== null && selectedSlug !== null && (
-        <ReviewScreen slug={selectedSlug} impl={impl} onApprove={handleApprove} onReject={handleReject} onViewWaves={handleViewWaves} onRefreshImpl={handleSelect} repos={repos} chatModel={models.chat} refreshTick={sseRefreshTick} />
+        <ReviewScreen slug={selectedSlug} impl={impl} onApprove={handleApprove} onReject={handleReject} onViewWaves={handleViewWaves} onRefreshImpl={handleRefreshImpl} repos={repos} chatModel={models.chat} refreshTick={sseRefreshTick} />
       )}
       {!loading && impl === null && !error && (
         repos.length === 0 ? (
@@ -379,12 +355,11 @@ export default function App() {
             onNewProgramClick={() => setLiveView(v => v === 'planner' ? null : 'planner')}
             onSearchClick={() => setShowPalette(true)}
             onSettingsClick={settingsModal.toggle}
-            onModelsClick={() => setPickerOpen(pickerOpen === 'all' ? null : 'all')}
             showPipeline={showPipeline}
             showPrograms={showPrograms}
             sseConnected={sseConnected}
-            modelPickerOpen={pickerOpen === 'all'}
-            modelPickerContent={modelPickerContent}
+            models={models}
+            onModelChange={saveModel}
           />
         }
         sidebar={
@@ -393,7 +368,8 @@ export default function App() {
             programs={programs}
             selectedProgramSlug={selectedProgramSlug}
             onSelectProgram={setSelectedProgramSlug}
-            interruptedSessions={[]}
+            interruptedSessions={interruptedSessions}
+            runningSlugs={runningSlugs}
             entries={entries}
             selectedSlug={selectedSlug}
             onSelect={handleSelect}

@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { useWaveEvents } from '../hooks/useWaveEvents'
 import { useFileActivity } from '../hooks/useFileActivity'
 import AgentCard from './AgentCard'
@@ -55,6 +56,14 @@ function agentKey(agent: string, wave: number): string {
 export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoardProps): JSX.Element {
   // Optimistic status overrides — keyed by "wave:agent"
   const [statusOverrides, setStatusOverrides] = useState<Map<string, 'pending'>>(new Map())
+  const [collapsedWaves, setCollapsedWaves] = useState<Set<number>>(new Set())
+  const toggleWaveCollapse = useCallback((waveNum: number) => {
+    setCollapsedWaves(prev => {
+      const next = new Set(prev)
+      if (next.has(waveNum)) next.delete(waveNum); else next.add(waveNum)
+      return next
+    })
+  }, [])
   const [staleDismissed, setStaleDismissed] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [fileActivityExpanded, setFileActivityExpanded] = useState(false)
@@ -62,8 +71,13 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
   const state = useWaveEvents(slug)
   const liveStatus = useFileActivity(state)
 
-  // Merge optimistic overrides on top of SSE-driven agent state
+  // Merge optimistic overrides on top of SSE-driven agent state.
+  // Disk-confirmed merged waves are authoritative — override stale SSE failure state.
+  const mergedWaves = new Set(state.waves.filter(w => w.merge_status === 'merged' || w.merge_status === 'success').map(w => w.wave))
   function applyOverrides(agent: AgentStatus): AgentStatus {
+    if (mergedWaves.has(agent.wave) && agent.status !== 'complete') {
+      return { ...agent, status: 'complete' }
+    }
     const key = agentKey(agent.agent, agent.wave)
     const override = statusOverrides.get(key)
     if (override) return { ...agent, status: override }
@@ -353,36 +367,47 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
           const hasGate = state.waveGate?.wave === wave.wave
           return (
             <div key={wave.wave}>
-              <div className="bg-card border border-border rounded-lg p-4 shadow-sm space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-foreground text-sm">Wave {wave.wave}</span>
-                  {wave.complete && (wave.merge_status === 'merged' || wave.merge_status === 'success') && (
-                    <span className="text-xs text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900 px-2 py-0.5 rounded-full">
-                      Merged
-                    </span>
-                  )}
-                </div>
+              <div className="bg-card border border-border rounded-lg shadow-sm overflow-hidden">
+                <button
+                  onClick={() => toggleWaveCollapse(wave.wave)}
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <span className="font-semibold text-foreground text-sm">Wave {wave.wave}</span>
+                    {wave.complete && (wave.merge_status === 'merged' || wave.merge_status === 'success') && (
+                      <span className="text-xs text-green-700 dark:text-green-400 bg-green-100 dark:bg-green-900 px-2 py-0.5 rounded-full">
+                        Merged
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">{waveComplete}/{waveTotal}</span>
+                  </div>
+                  <ChevronDown size={16} className={`text-primary/70 dark:text-primary/60 transition-transform duration-200 ${collapsedWaves.has(wave.wave) ? '-rotate-90' : ''}`} />
+                </button>
 
                 {waveTotal > 0 && (
-                  <ProgressBar complete={waveComplete} total={waveTotal} />
+                  <div className="px-4 pb-2">
+                    <ProgressBar complete={waveComplete} total={waveTotal} />
+                  </div>
                 )}
 
-                <div className={compact ? 'flex flex-col gap-2' : 'flex flex-wrap gap-3'}>
-                  {waveAgents.map(agent => {
-                    const tag = dominantRepo(agent.files ?? [], repos ?? [])
-                    return (
-                      <div key={`${agent.agent}-${agent.wave}`} className="flex flex-col gap-1">
-                        <AgentCard agent={agent} />
-                        {tag && (
-                          <span className="self-start text-[9px] font-mono px-1.5 py-0.5 rounded border border-border text-muted-foreground bg-muted">
-                            [{tag}]
-                          </span>
-                        )}
-                        {agent.status === 'failed' && renderFailureActionButton(agent)}
-                      </div>
-                    )
-                  })}
-                </div>
+                {!collapsedWaves.has(wave.wave) && (
+                  <div className={`px-4 pb-4 ${compact ? 'flex flex-col gap-2' : 'flex flex-wrap gap-3'}`}>
+                    {waveAgents.map(agent => {
+                      const tag = dominantRepo(agent.files ?? [], repos ?? [])
+                      return (
+                        <div key={`${agent.agent}-${agent.wave}`} className="flex flex-col gap-1">
+                          <AgentCard agent={agent} />
+                          {tag && (
+                            <span className="self-start text-[9px] font-mono px-1.5 py-0.5 rounded border border-border text-muted-foreground bg-muted">
+                              [{tag}]
+                            </span>
+                          )}
+                          {agent.status === 'failed' && renderFailureActionButton(agent)}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Merge and test controls */}

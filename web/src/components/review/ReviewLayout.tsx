@@ -1,4 +1,5 @@
-import React, { Suspense } from 'react'
+import React, { Suspense, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { IMPLDocResponse } from '../../types'
 import { ExecutionSyncState } from '../../hooks/useExecutionSync'
 import FileOwnershipPanel from './FileOwnershipPanel'
@@ -21,6 +22,22 @@ const LazyAmendPanel = React.lazy(() => import('../AmendPanel'))
 
 function PanelFallback() {
   return <div className="animate-pulse h-32 bg-muted rounded" />
+}
+
+function CollapsibleSection({ title, children, defaultOpen = true }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
+  const [open, setOpen] = useState(defaultOpen)
+  return (
+    <div className="panel-animate border border-border rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-muted/30 hover:bg-muted/50 transition-colors text-sm font-medium text-foreground"
+      >
+        {title}
+        <ChevronDown size={16} className={`text-primary/70 dark:text-primary/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="px-4 py-3">{children}</div>}
+    </div>
+  )
 }
 
 type PanelKey = 'reactions' | 'pre-mortem' | 'wiring' | 'stub-report' | 'file-ownership' | 'wave-structure' | 'agent-prompts' | 'interface-contracts' | 'scaffolds' | 'dependency-graph' | 'known-issues' | 'post-merge-checklist' | 'quality-gates' | 'worktrees' | 'context-viewer' | 'validation' | 'amend'
@@ -60,101 +77,80 @@ export function ReviewLayout(props: ReviewLayoutProps): JSX.Element {
         </div>
       )}
 
-      {/* File Ownership — full width when alone */}
       {activePanels.includes('file-ownership') && (() => {
         const AnyFileOwnershipPanel = FileOwnershipPanel as any
-        return <div className="panel-animate"><AnyFileOwnershipPanel impl={impl} repos={repos} onFileClick={onFileClick} /></div>
+        return <CollapsibleSection title="File Ownership"><AnyFileOwnershipPanel impl={impl} repos={repos} onFileClick={onFileClick} /></CollapsibleSection>
       })()}
 
-      {/* Interface Contracts — full width */}
       {activePanels.includes('interface-contracts') && (
-        <div className="panel-animate"><InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} /></div>
+        <CollapsibleSection title="Interface Contracts"><InterfaceContractsPanel contractsText={(impl as any).interface_contracts_text} /></CollapsibleSection>
       )}
 
-      {/* Agent Prompts — full width */}
       {activePanels.includes('agent-prompts') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyAgentContextPanel impl={impl} slug={slug} /></div>
+          <CollapsibleSection title="Agent Prompts"><LazyAgentContextPanel impl={impl} slug={slug} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Scaffolds — full width, above pre-mortem */}
       {activePanels.includes('scaffolds') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} /></div>
+          <CollapsibleSection title="Scaffolds"><LazyScaffoldsPanel scaffoldsDetail={(impl as any).scaffolds_detail} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Pre-Mortem — full width */}
       {activePanels.includes('pre-mortem') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyPreMortemPanel preMortem={impl.pre_mortem} /></div>
+          <CollapsibleSection title="Pre-Mortem"><LazyPreMortemPanel preMortem={impl.pre_mortem} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Wiring Declarations — full width */}
       {activePanels.includes('wiring') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate">
-            <LazyWiringPanel wiring={impl.wiring} />
-          </div>
+          <CollapsibleSection title="Wiring"><LazyWiringPanel wiring={impl.wiring} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Reactions Config — full width */}
       {activePanels.includes('reactions') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate">
-            <LazyReactionsPanel reactions={impl.reactions} />
-          </div>
+          <CollapsibleSection title="Reactions"><LazyReactionsPanel reactions={impl.reactions} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Known Issues — full width */}
       {activePanels.includes('known-issues') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyKnownIssuesPanel knownIssues={(impl as any).known_issues} /></div>
+          <CollapsibleSection title="Known Issues"><LazyKnownIssuesPanel knownIssues={(impl as any).known_issues} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Stub Report — full width */}
       {activePanels.includes('stub-report') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyStubReportPanel stubReportText={impl.stub_report_text} /></div>
+          <CollapsibleSection title="Stub Report"><LazyStubReportPanel stubReportText={impl.stub_report_text} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Post-Merge Checklist — full width */}
       {activePanels.includes('post-merge-checklist') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyPostMergeChecklistPanel checklistText={(impl as any).post_merge_checklist_text} /></div>
+          <CollapsibleSection title="Post-Merge Checklist"><LazyPostMergeChecklistPanel checklistText={(impl as any).post_merge_checklist_text} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Amend — full width */}
       {activePanels.includes('amend') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate">
-            <LazyAmendPanel
-              slug={slug}
-              waves={impl.waves}
-              onAmendComplete={onAmendComplete}
-            />
-          </div>
+          <CollapsibleSection title="Amend">
+            <LazyAmendPanel slug={slug} waves={impl.waves} onAmendComplete={onAmendComplete} />
+          </CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Quality Gates — full width */}
       {activePanels.includes('quality-gates') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyQualityGatesPanel gatesText={(impl as any).quality_gates_text ?? ''} /></div>
+          <CollapsibleSection title="Quality Gates"><LazyQualityGatesPanel gatesText={(impl as any).quality_gates_text ?? ''} /></CollapsibleSection>
         </Suspense>
       )}
 
-      {/* Project Memory (CONTEXT.md) — full width */}
       {activePanels.includes('context-viewer') && (
         <Suspense fallback={<PanelFallback />}>
-          <div className="panel-animate"><LazyContextViewerPanel /></div>
+          <CollapsibleSection title="Project Memory"><LazyContextViewerPanel /></CollapsibleSection>
         </Suspense>
       )}
     </div>

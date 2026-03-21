@@ -10,6 +10,7 @@ export interface SidebarNavProps {
   selectedProgramSlug: string | null
   onSelectProgram: (slug: string) => void
   interruptedSessions: InterruptedSession[]
+  runningSlugs?: Set<string>
   entries: IMPLListEntry[]
   selectedSlug: string | null
   onSelect: (slug: string) => void
@@ -28,6 +29,7 @@ export function SidebarNav(props: SidebarNavProps): JSX.Element {
     selectedProgramSlug,
     onSelectProgram,
     interruptedSessions,
+    runningSlugs,
     entries,
     selectedSlug,
     onSelect,
@@ -51,7 +53,7 @@ export function SidebarNav(props: SidebarNavProps): JSX.Element {
 
   return (
     <>
-      <ResumeBanner sessions={interruptedSessions} onSelect={onSelect} />
+      <ResumeBanner sessions={interruptedSessions} runningSlugs={runningSlugs} onSelect={onSelect} />
       <ImplList
         entries={entries}
         selectedSlug={selectedSlug}

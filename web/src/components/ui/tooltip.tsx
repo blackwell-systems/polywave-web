@@ -16,7 +16,7 @@ export interface TooltipProps {
   content: string | React.ReactNode
   /** Tooltip position relative to children. Default: 'top' */
   position?: 'top' | 'bottom' | 'left' | 'right'
-  /** Max width in pixels. Default: 300 */
+  /** Max width in pixels. Default: 420 */
   maxWidth?: number
 }
 
@@ -38,7 +38,7 @@ export function Tooltip({
   children,
   content,
   position = 'top',
-  maxWidth = 300,
+  maxWidth = 380,
 }: TooltipProps): JSX.Element {
   const [visible, setVisible] = React.useState(false)
 
@@ -58,14 +58,14 @@ export function Tooltip({
         role="tooltip"
         className={cn(
           'absolute z-50 pointer-events-none',
-          'rounded px-2 py-1 text-xs leading-snug',
+          'rounded px-3 py-1.5 text-xs leading-normal',
           'bg-[var(--tooltip-bg,#1f2937)] text-[var(--tooltip-text,#f9fafb)]',
           'shadow-md',
           'transition-opacity duration-200',
           visible ? 'opacity-100' : 'opacity-0',
           positionClasses[position],
         )}
-        style={{ maxWidth }}
+        style={{ maxWidth, width: maxWidth, whiteSpace: 'normal' }}
       >
         {content}
         {/* Arrow */}

@@ -1,7 +1,10 @@
-import React from 'react'
-import { ChevronDown, Search, Settings } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Search, Settings } from 'lucide-react'
 import DarkModeToggle from '../DarkModeToggle'
 import ThemePicker from '../ThemePicker'
+import ModelPicker from '../ModelPicker'
+
+type ModelRole = 'scout' | 'wave' | 'chat' | 'planner' | 'scaffold' | 'integration'
 
 export interface AppHeaderProps {
   onPipelineClick: () => void
@@ -10,12 +13,31 @@ export interface AppHeaderProps {
   onNewProgramClick: () => void
   onSearchClick: () => void
   onSettingsClick: () => void
-  onModelsClick: () => void
   showPipeline: boolean
   showPrograms: boolean
   sseConnected: boolean
-  modelPickerOpen: boolean
-  modelPickerContent: React.ReactNode
+  models: Record<ModelRole, string>
+  onModelChange: (role: ModelRole, value: string) => void
+}
+
+const ROLE_COLORS: Record<ModelRole, string> = {
+  scout: 'text-amber-600 dark:text-amber-400',
+  wave: 'text-blue-600 dark:text-blue-400',
+  chat: 'text-violet-600 dark:text-violet-400',
+  planner: 'text-emerald-600 dark:text-emerald-400',
+  scaffold: 'text-cyan-600 dark:text-cyan-400',
+  integration: 'text-rose-600 dark:text-rose-400',
+}
+
+const ROLES: ModelRole[] = ['planner', 'scout', 'scaffold', 'wave', 'integration', 'chat']
+
+function shortModel(value: string): string {
+  // Strip provider prefix and shorten model name for display
+  const model = value.includes(':') ? value.split(':', 2)[1] : value
+  return model
+    .replace('claude-', '')
+    .replace('-20251001', '')
+    .replace('-latest', '')
 }
 
 export function AppHeader(props: AppHeaderProps): JSX.Element {
@@ -26,13 +48,33 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
     onNewProgramClick,
     onSearchClick,
     onSettingsClick,
-    onModelsClick,
     showPipeline,
     showPrograms,
     sseConnected,
-    modelPickerOpen,
-    modelPickerContent,
+    models,
+    onModelChange,
   } = props
+
+  const [openRole, setOpenRole] = useState<ModelRole | null>(null)
+  const pickerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!openRole) return
+    function handleClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setOpenRole(null)
+      }
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setOpenRole(null)
+    }
+    document.addEventListener('mousedown', handleClick)
+    document.addEventListener('keydown', handleKey)
+    return () => {
+      document.removeEventListener('mousedown', handleClick)
+      document.removeEventListener('keydown', handleKey)
+    }
+  }, [openRole])
 
   return (
     <header className="flex items-stretch justify-between h-[61px] border-b shrink-0">
@@ -71,18 +113,34 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
         </button>
       </div>
       <div className="flex items-stretch">
-        {/* Single Models button */}
-        <div className="relative flex items-stretch border-r border-border">
-          <button
-            title="Configure agent models"
-            onClick={onModelsClick}
-            className="flex items-center gap-2 px-4 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <span className="text-sm font-medium">Models</span>
-            <ChevronDown size={12} className={`transition-transform ${modelPickerOpen ? 'rotate-180' : ''}`} />
-          </button>
-          {modelPickerContent}
-        </div>
+        {/* Individual model role buttons */}
+        {ROLES.map(role => (
+          <div key={role} ref={openRole === role ? pickerRef : undefined} className="relative flex items-stretch border-r border-border">
+            <button
+              onClick={() => setOpenRole(openRole === role ? null : role)}
+              className="flex items-center gap-2 px-3 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors group"
+            >
+              <span className={`text-[10px] uppercase tracking-wider font-semibold ${ROLE_COLORS[role]}`}>{role}</span>
+              <span className="text-xs font-mono truncate max-w-[120px]">{shortModel(models[role])}</span>
+            </button>
+            {openRole === role && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setOpenRole(null)} />
+                <div className="absolute top-full right-0 mt-2 z-50 bg-popover border border-border rounded-lg shadow-2xl p-4 w-[480px] animate-in fade-in slide-in-from-top-2 duration-200">
+                  <ModelPicker
+                    id={`header-${role}-model`}
+                    label={`${role.charAt(0).toUpperCase() + role.slice(1)} Model`}
+                    value={models[role]}
+                    onChange={value => {
+                      onModelChange(role, value)
+                      setOpenRole(null)
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        ))}
         <ThemePicker />
         <DarkModeToggle />
         <button onClick={onSettingsClick} title="Settings" className="flex items-center justify-center px-4 border-l border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">

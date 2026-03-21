@@ -137,7 +137,7 @@ function EntryRow({ e, selectedSlug, loading, onSelect, onRequestDelete }: Entry
         variant="ghost"
         size="sm"
         className={cn(
-          'flex-1 justify-start font-mono text-xs pr-6 gap-1.5 flex-col items-start h-auto py-1.5 rounded-none',
+          'flex-1 justify-start font-mono text-xs pr-6 gap-1.5 flex-col items-start h-auto py-1.5 rounded-none bg-background/60',
           isSelected && 'bg-primary/10 border-l-2 border-primary rounded-none',
           isComplete && !isSelected && 'opacity-40 text-muted-foreground line-through hover:opacity-80 hover:no-underline'
         )}
