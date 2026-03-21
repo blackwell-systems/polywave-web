@@ -228,6 +228,8 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("POST /api/program/{slug}/tier/{n}/execute", s.handleExecuteTier)
 	s.mux.HandleFunc("GET /api/program/{slug}/contracts", s.handleGetProgramContracts)
 	s.mux.HandleFunc("POST /api/program/{slug}/replan", s.handleReplanProgram)
+	s.mux.HandleFunc("POST /api/programs/analyze-impls", s.handleAnalyzeImpls)
+	s.mux.HandleFunc("POST /api/programs/create-from-impls", s.handleCreateFromImpls)
 	s.mux.HandleFunc("GET /api/program/events", s.handleProgramEvents)
 
 	// Autonomy layer (v0.58.0)

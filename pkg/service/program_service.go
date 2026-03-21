@@ -335,6 +335,42 @@ func runProgramTier(
 	return nil
 }
 
+// AnalyzeImplConflicts wraps protocol.CheckIMPLConflicts with multi-repo support.
+// If repoPath is empty, the first configured repo is used.
+func AnalyzeImplConflicts(deps Deps, slugs []string, repoPath string) (*protocol.ConflictReport, error) {
+	if repoPath == "" {
+		repos := GetConfiguredRepos(deps)
+		if len(repos) > 0 {
+			repoPath = repos[0].Path
+		}
+	}
+	if repoPath == "" {
+		return nil, fmt.Errorf("no repo path configured")
+	}
+	return protocol.CheckIMPLConflicts(slugs, repoPath)
+}
+
+// CreateProgramFromIMPLs wraps protocol.GenerateProgramFromIMPLs with
+// multi-repo resolution and config reading.
+func CreateProgramFromIMPLs(deps Deps, slugs []string, name string, programSlug string, repoPath string) (*protocol.GenerateProgramResult, error) {
+	if repoPath == "" {
+		repos := GetConfiguredRepos(deps)
+		if len(repos) > 0 {
+			repoPath = repos[0].Path
+		}
+	}
+	if repoPath == "" {
+		return nil, fmt.Errorf("no repo path configured")
+	}
+	opts := protocol.GenerateProgramOpts{
+		ImplSlugs:   slugs,
+		RepoPath:    repoPath,
+		ProgramSlug: programSlug,
+		Title:       name,
+	}
+	return protocol.GenerateProgramFromIMPLs(opts)
+}
+
 // ResolveIMPLPathForProgram searches for an IMPL doc by slug in the repository.
 // It searches complete (docs/IMPL/complete/) before active (docs/IMPL/) so that
 // a completed IMPL is always preferred over any stale in-progress copy.
