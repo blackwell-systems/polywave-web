@@ -67,3 +67,5 @@ lint_command: go vet ./...
   - IMPL doc: docs/IMPL/complete/IMPL-create-program-from-impls-gui.yaml
 - **persistent-waveboard-panel**: completed 2026-03-21, 2 waves, 3 agents
   - IMPL doc: docs/IMPL/complete/IMPL-persistent-waveboard-panel.yaml
+- **centralize-status-helpers**: completed 2026-03-21, 2 waves, 4 agents
+  - IMPL doc: docs/IMPL/complete/IMPL-centralize-status-helpers.yaml
