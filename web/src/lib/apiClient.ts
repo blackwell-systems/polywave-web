@@ -23,6 +23,7 @@ import type {
   InterruptedSession,
   CriticResult,
   CriticFixRequest,
+  AutoFixCriticResponse,
 } from '../types'
 
 import type {
@@ -69,6 +70,7 @@ export interface SawClient {
     criticReview(slug: string): Promise<CriticResult | null>
     runCritic(slug: string): Promise<void>
     applyCriticFix(slug: string, fix: CriticFixRequest): Promise<CriticResult>
+    autoFixCritic(slug: string, dryRun?: boolean): Promise<AutoFixCriticResponse>
     fetchAgentContext(slug: string, agent: string): Promise<AgentContextResponse>
     worktrees: {
       list(slug: string): Promise<WorktreeListResponse>
@@ -297,6 +299,16 @@ export function createHttpClient(): SawClient {
         })
         await check(r)
         return r.json() as Promise<CriticResult>
+      },
+
+      async autoFixCritic(slug: string, dryRun?: boolean): Promise<AutoFixCriticResponse> {
+        const r = await fetch(`/api/impl/${enc(slug)}/auto-fix-critic`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dry_run: dryRun }),
+        })
+        if (!r.ok) throw new Error(await r.text())
+        return r.json() as Promise<AutoFixCriticResponse>
       },
 
       async fetchAgentContext(slug: string, agent: string): Promise<AgentContextResponse> {
