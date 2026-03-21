@@ -1,0 +1,564 @@
+title: Critic-to-Remediation Loop in Web UI
+feature_slug: critic-remediation-loop
+verdict: SUITABLE
+suitability_assessment: |
+    1. File decomposition: 6 files across backend (Go) and frontend (TypeScript/React),
+       cleanly separable into 3 agents with disjoint ownership. Backend auto-fix handler
+       is independent of frontend UI work; TypeScript types bridge both but are owned
+       by a single agent.
+
+    2. Investigation-first items: None. The critic handler, CriticReviewPanel, and
+       amend_handler already exist. The gap is well-defined: wire auto-fix orchestration
+       on the backend and surface it in the frontend.
+
+    3. Interface discoverability: Yes. The API contract (POST auto-fix-critic) and
+       the TypeScript types can be fully defined before implementation.
+
+    4. Pre-implementation status check:
+       - handleFixCritic (PATCH fix-critic): EXISTS — handles single fix types
+         (add_file_ownership, update_contract, add_integration_connector). PARTIAL.
+       - handleAmendImpl (POST amend): EXISTS — supports redirect-agent, add-wave,
+         extend-scope. DONE for its scope.
+       - CriticReviewPanel: EXISTS with IssueFixer per-issue. PARTIAL — no "Fix All"
+         button, no inline editor fallback, no auto-fix-then-rerun loop.
+       - useCriticState hook: EXISTS — manages critic lifecycle. PARTIAL — no
+         applyCriticFix or autoFixCritic methods.
+       - ReviewScreen: EXISTS but passes CriticReviewPanel WITHOUT onApplyFix or
+         onRerunCritic props. TODO — must wire props.
+
+    5. Parallelization value: 3 agents, build+test cycle >30s (Go build + npm test),
+       agents touch 2-3 files each. Clear speedup.
+
+    Estimated times:
+    - Scout phase: ~8 min
+    - Agent execution: ~12 min (3 agents x 8 min avg, single wave)
+    - Merge & verification: ~4 min
+    Total SAW time: ~24 min
+
+    Sequential baseline: ~30 min (3 agents x 10 min avg)
+    Time savings: ~6 min (20% faster)
+
+    Recommendation: Clear speedup. Proceed.
+test_command: go test ./... && cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+lint_command: go vet ./...
+file_ownership:
+    - file: pkg/api/critic_handler.go
+      agent: A
+      wave: 1
+      action: modify
+    - file: pkg/api/critic_handler_test.go
+      agent: A
+      wave: 1
+      action: modify
+    - file: web/src/types.ts
+      agent: B
+      wave: 1
+      action: modify
+    - file: web/src/lib/apiClient.ts
+      agent: B
+      wave: 1
+      action: modify
+    - file: web/src/components/CriticReviewPanel.tsx
+      agent: C
+      wave: 1
+      action: modify
+    - file: web/src/hooks/useCriticState.ts
+      agent: C
+      wave: 1
+      action: modify
+    - file: pkg/api/impl.go
+      agent: D
+      wave: 2
+      action: modify
+    - file: web/src/components/ReviewScreen.tsx
+      agent: D
+      wave: 2
+      action: modify
+interface_contracts:
+    - name: AutoFixCriticRequest
+      description: JSON request body for POST /api/impl/{slug}/auto-fix-critic
+      definition: |
+        // Go struct in pkg/api/critic_handler.go
+        type AutoFixCriticRequest struct {
+            DryRun bool `json:"dry_run,omitempty"` // if true, return planned fixes without applying
+        }
+
+        // TypeScript type in web/src/types.ts
+        export interface AutoFixCriticRequest {
+            dry_run?: boolean;
+        }
+      location: pkg/api/critic_handler.go
+    - name: AutoFixCriticResponse
+      description: JSON response from POST /api/impl/{slug}/auto-fix-critic including new critic result
+      definition: |
+        // Go struct in pkg/api/critic_handler.go
+        type AutoFixCriticResponse struct {
+            FixesApplied []AppliedFix   `json:"fixes_applied"`
+            FixesFailed  []FailedFix    `json:"fixes_failed"`
+            NewResult    *CriticResult  `json:"new_result,omitempty"` // nil if dry_run
+            AllResolved  bool           `json:"all_resolved"`
+        }
+        type AppliedFix struct {
+            Check       string `json:"check"`       // e.g. "file_existence"
+            AgentID     string `json:"agent_id"`
+            Description string `json:"description"` // human-readable summary
+        }
+        type FailedFix struct {
+            Check       string `json:"check"`
+            AgentID     string `json:"agent_id"`
+            Reason      string `json:"reason"`      // why auto-fix failed
+        }
+
+        // TypeScript mirrors in web/src/types.ts
+        export interface AutoFixCriticResponse {
+            fixes_applied: AppliedFix[];
+            fixes_failed: FailedFix[];
+            new_result?: CriticResult;
+            all_resolved: boolean;
+        }
+        export interface AppliedFix {
+            check: string;
+            agent_id: string;
+            description: string;
+        }
+        export interface FailedFix {
+            check: string;
+            agent_id: string;
+            reason: string;
+        }
+      location: pkg/api/critic_handler.go
+    - name: autoFixCritic API client method
+      description: Frontend API client method calling POST /api/impl/{slug}/auto-fix-critic
+      definition: |
+        // Added to sawClient.impl in web/src/lib/apiClient.ts
+        async autoFixCritic(slug: string, dryRun?: boolean): Promise<AutoFixCriticResponse> {
+            const r = await fetch(`/api/impl/${enc(slug)}/auto-fix-critic`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dry_run: dryRun }),
+            });
+            if (!r.ok) throw new Error(await r.text());
+            return r.json() as Promise<AutoFixCriticResponse>;
+        }
+      location: web/src/lib/apiClient.ts
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |
+            ## What to implement
+
+            Add the orchestrator-level auto-fix-critic endpoint to pkg/api/critic_handler.go.
+            This endpoint reads the existing critic report from the IMPL manifest, determines
+            which errors are auto-fixable, applies fixes (reusing existing handleFixCritic logic),
+            re-validates with `sawtools validate --fix`, re-runs critic, and returns results.
+
+            ### New types to add (in pkg/api/critic_handler.go):
+
+            ```go
+            type AutoFixCriticRequest struct {
+                DryRun bool `json:"dry_run,omitempty"`
+            }
+            type AutoFixCriticResponse struct {
+                FixesApplied []AppliedFix              `json:"fixes_applied"`
+                FixesFailed  []FailedFix               `json:"fixes_failed"`
+                NewResult    *protocol.CriticResult     `json:"new_result,omitempty"`
+                AllResolved  bool                       `json:"all_resolved"`
+            }
+            type AppliedFix struct {
+                Check       string `json:"check"`
+                AgentID     string `json:"agent_id"`
+                Description string `json:"description"`
+            }
+            type FailedFix struct {
+                Check       string `json:"check"`
+                AgentID     string `json:"agent_id"`
+                Reason      string `json:"reason"`
+            }
+            ```
+
+            ### New handler: handleAutoFixCritic (POST /api/impl/{slug}/auto-fix-critic)
+
+            Algorithm:
+            1. Load manifest via protocol.Load(implPath)
+            2. Get critic report via protocol.GetCriticReview(manifest)
+            3. For each agent_review with issues, classify each issue:
+               - `file_existence` or `side_effect_completeness` with severity "error" and a file field:
+                 Apply add_file_ownership fix (append to manifest.FileOwnership)
+               - `symbol_accuracy` with "expected X, found Y" pattern in description:
+                 Apply update_contract fix (string replace in contract definition)
+               - All other types: add to FixesFailed with reason "no auto-fix available"
+            4. Save manifest via protocol.Save()
+            5. Run `sawtools validate --fix` via exec.Command
+            6. Unless dry_run, run `sawtools run-critic <implPath>` synchronously (with timeout)
+            7. Reload manifest and return AutoFixCriticResponse with new critic result
+            8. Emit SSE events: `critic_autofix_started`, `critic_autofix_complete` via globalBroker
+
+            ### Route registration
+
+            Add to RegisterCriticRoutes() in pkg/api/impl.go:
+            ```go
+            s.mux.HandleFunc("POST /api/impl/{slug}/auto-fix-critic", s.handleAutoFixCritic)
+            ```
+
+            NOTE: RegisterCriticRoutes is defined in impl.go (line 629), NOT in critic_handler.go.
+            You must modify impl.go ONLY to add the one HandleFunc line. The handler implementation
+            goes in critic_handler.go.
+
+            WAIT — impl.go is not in your file ownership. Instead, add a new registration function
+            in critic_handler.go:
+            ```go
+            func (s *Server) RegisterAutoFixRoutes() {
+                s.mux.HandleFunc("POST /api/impl/{slug}/auto-fix-critic", s.handleAutoFixCritic)
+            }
+            ```
+            This will be wired in the integration wave.
+
+            ### Tests (in critic_handler_test.go)
+
+            Add tests for handleAutoFixCritic:
+            - TestAutoFixCritic_NoReport: returns error when no critic report exists
+            - TestAutoFixCritic_FileExistence: verifies file_existence errors get auto-fixed
+            - TestAutoFixCritic_UnfixableError: verifies unknown check types land in fixes_failed
+            - TestAutoFixCritic_DryRun: verifies dry_run returns planned fixes without applying
+
+            Use the existing test patterns in critic_handler_test.go (httptest.NewRecorder, etc.).
+
+            ### Constraints
+            - Do NOT modify impl.go (owned by integration wave)
+            - Reuse protocol.Load/Save/GetCriticReview — do not parse YAML manually
+            - The synchronous critic re-run should have a 3-minute timeout
+            - Use criticCommandFunc (already defined, overridable in tests)
+          files:
+            - pkg/api/critic_handler.go
+            - pkg/api/critic_handler_test.go
+        - id: B
+          task: |
+            ## What to implement
+
+            Add TypeScript types and API client method for the auto-fix-critic endpoint.
+
+            ### Types to add in web/src/types.ts (append after CriticFixRequest):
+
+            ```typescript
+            export interface AutoFixCriticRequest {
+                dry_run?: boolean;
+            }
+
+            export interface AutoFixCriticResponse {
+                fixes_applied: AppliedFix[];
+                fixes_failed: FailedFix[];
+                new_result?: CriticResult;
+                all_resolved: boolean;
+            }
+
+            export interface AppliedFix {
+                check: string;
+                agent_id: string;
+                description: string;
+            }
+
+            export interface FailedFix {
+                check: string;
+                agent_id: string;
+                reason: string;
+            }
+            ```
+
+            ### API client method in web/src/lib/apiClient.ts
+
+            Add to the `impl` namespace object (after the existing `applyCriticFix` method):
+
+            ```typescript
+            async autoFixCritic(slug: string, dryRun?: boolean): Promise<AutoFixCriticResponse> {
+                const r = await fetch(`/api/impl/${enc(slug)}/auto-fix-critic`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dry_run: dryRun }),
+                });
+                if (!r.ok) throw new Error(await r.text());
+                return r.json() as Promise<AutoFixCriticResponse>;
+            }
+            ```
+
+            Also add the import for `AutoFixCriticResponse` at the top of apiClient.ts
+            (it already imports CriticResult and CriticFixRequest from '../types').
+
+            ### Constraints
+            - Keep existing types and methods unchanged
+            - Follow the exact naming convention used by existing types (e.g., CriticFixRequest)
+            - The enc() helper already exists in apiClient.ts — reuse it
+          files:
+            - web/src/types.ts
+            - web/src/lib/apiClient.ts
+        - id: C
+          task: |
+            ## What to implement
+
+            Enhance CriticReviewPanel with "Fix All Issues" button, per-issue auto-fix
+            progress, inline IMPL editor fallback, and wire useCriticState to support
+            the remediation loop.
+
+            ### Changes to web/src/hooks/useCriticState.ts
+
+            Add to CriticState interface and hook return:
+            ```typescript
+            /** Apply a single critic fix */
+            applyCriticFix: (fix: CriticFixRequest) => Promise<void>;
+            /** Run auto-fix for all fixable issues, re-validate, re-run critic */
+            autoFixAll: () => Promise<void>;
+            /** Whether auto-fix is in progress */
+            autoFixRunning: boolean;
+            /** Auto-fix result summary (null when not run) */
+            autoFixResult: AutoFixCriticResponse | null;
+            ```
+
+            Implementation:
+            - `applyCriticFix`: call `sawClient.impl.applyCriticFix(slug, fix)`, then
+              `fetchCritic()` to refresh the report. Emit SSE-compatible state updates.
+            - `autoFixAll`: call `sawClient.impl.autoFixCritic(slug)` (the new endpoint
+              from Agent A/B). On success, update criticReport from response.new_result.
+              Set autoFixRunning during execution.
+            - Add `autoFixRunning` and `autoFixResult` state variables.
+
+            NOTE: The API client methods `applyCriticFix` and `autoFixCritic` already exist
+            (or will exist after Agent B). Since agents run in parallel, you must define
+            the fetch calls inline if the apiClient import would fail at build time:
+            ```typescript
+            // Inline fetch as fallback if apiClient method not available at build time
+            const r = await fetch(`/api/impl/${slug}/auto-fix-critic`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
+            });
+            ```
+            Actually — sawClient.impl.applyCriticFix already exists in apiClient.ts.
+            Only autoFixCritic is new (Agent B adds it). Use inline fetch for autoFixCritic
+            to avoid build dependency on Agent B's work.
+
+            ### Changes to web/src/components/CriticReviewPanel.tsx
+
+            1. Add new props to CriticReviewPanelProps:
+            ```typescript
+            interface CriticReviewPanelProps {
+                result: CriticResult;
+                onApplyFix?: (fix: CriticFixRequest) => Promise<void>;
+                onRerunCritic?: () => void;
+                criticRunning?: boolean;
+                onAutoFixAll?: () => Promise<void>;
+                autoFixRunning?: boolean;
+                showEditor?: boolean;       // whether to show inline editor
+                onToggleEditor?: () => void; // toggle inline editor visibility
+                slug?: string;              // needed for ImplEditor
+            }
+            ```
+
+            2. Add "Fix All Issues" button in the verdict banner area (next to the
+            verdict badge), visible when verdict is ISSUES and onAutoFixAll is provided:
+            ```tsx
+            {!isPass && onAutoFixAll && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onAutoFixAll(); }}
+                    disabled={autoFixRunning}
+                    className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-none border border-primary/30 bg-transparent text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                >
+                    {autoFixRunning ? 'Fixing...' : 'Fix All Issues'}
+                </button>
+            )}
+            ```
+
+            3. Add "Edit IMPL" button in the footer area (next to "Re-run Critic"),
+            visible when onToggleEditor is provided and verdict is ISSUES:
+            ```tsx
+            {!isPass && onToggleEditor && (
+                <button
+                    onClick={onToggleEditor}
+                    className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-none border border-border bg-background text-foreground hover:bg-muted transition-colors"
+                >
+                    Edit IMPL
+                </button>
+            )}
+            ```
+
+            4. Add inline ImplEditor below the footer when showEditor is true and slug
+            is provided:
+            ```tsx
+            {showEditor && slug && (
+                <div className="border-t border-border">
+                    <ImplEditor slug={slug} />
+                </div>
+            )}
+            ```
+
+            Import ImplEditor at top:
+            ```typescript
+            import ImplEditor from './ImplEditor'
+            ```
+
+            5. Update the existing IssueFixer component: when fixStatus.state is 'success',
+            show a brief "Re-running critic..." indicator if the parent is doing a re-run.
+
+            ### Constraints
+            - All new buttons must use the unified style: transparent bg, colored border
+              (matching the existing "Re-run Critic" button pattern)
+            - Do NOT modify ImplEditor.tsx — use it as-is
+            - Keep all existing CriticReviewPanel functionality intact
+            - The component must remain functional even when new optional props are not passed
+              (backward compatible — ReviewScreen currently passes no fix props)
+          files:
+            - web/src/components/CriticReviewPanel.tsx
+            - web/src/hooks/useCriticState.ts
+      base_commit: f588929a38cab7381011379fe44c7630a9975caf
+    - number: 2
+      type: integration
+      agents:
+        - id: D
+          task: |
+            ## What to implement
+
+            Wire the auto-fix-critic endpoint route and connect the CriticReviewPanel
+            props in ReviewScreen.
+
+            ### 1. Route registration in pkg/api/impl.go
+
+            In RegisterCriticRoutes() (line 629), add:
+            ```go
+            s.mux.HandleFunc("POST /api/impl/{slug}/auto-fix-critic", s.handleAutoFixCritic)
+            ```
+
+            OR call s.RegisterAutoFixRoutes() from server.go New() after RegisterCriticRoutes().
+            Check which pattern Agent A used and wire accordingly.
+
+            ### 2. Wire CriticReviewPanel props in ReviewScreen.tsx
+
+            In web/src/components/ReviewScreen.tsx, the CriticReviewPanel is rendered at
+            ~line 323 with only `result={criticReport}`. Update to pass all available props:
+
+            ```tsx
+            <CriticReviewPanel
+                result={criticReport}
+                onApplyFix={handleApplyCriticFix}
+                onRerunCritic={handleRunCritic}
+                criticRunning={criticRunning}
+                onAutoFixAll={handleAutoFixAll}
+                autoFixRunning={autoFixRunning}
+                slug={slug}
+                showEditor={showCriticEditor}
+                onToggleEditor={() => setShowCriticEditor(prev => !prev)}
+            />
+            ```
+
+            Add state and handlers in ReviewScreen:
+            ```typescript
+            const [showCriticEditor, setShowCriticEditor] = useState(false);
+
+            // These come from useCriticState — destructure them:
+            const {
+                needsCritic, criticReport, criticRunning, criticOutput, criticError,
+                runCritic: handleRunCritic, applyCriticFix: handleApplyCriticFix,
+                autoFixAll: handleAutoFixAll, autoFixRunning
+            } = useCriticState(slug, impl);
+            ```
+
+            useCriticState already returns runCritic. After Agent C's changes it will
+            also return applyCriticFix, autoFixAll, and autoFixRunning. Destructure them.
+
+            ### Constraints
+            - Only modify the specific sections needed — do not refactor surrounding code
+            - The integration must work with the exact interfaces defined by Agents A, B, C
+          files:
+            - pkg/api/impl.go
+            - web/src/components/ReviewScreen.tsx
+quality_gates:
+    level: standard
+    gates:
+        - type: build
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./...
+          required: true
+        - type: lint
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go vet ./...
+          required: true
+        - type: test
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./pkg/api/ -run TestAutoFix
+          required: true
+        - type: test
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+          required: true
+completion_reports:
+    A:
+        status: complete
+        branch: saw/critic-remediation-loop/wave1-agent-A
+        commit: 27e6513
+        files_changed:
+            - pkg/api/critic_handler.go
+            - pkg/api/critic_handler_test.go
+        tests_added:
+            - TestAutoFixCritic_NoReport
+            - TestAutoFixCritic_FileExistence
+            - TestAutoFixCritic_UnfixableError
+            - TestAutoFixCritic_DryRun
+        verification: PASS
+    B:
+        status: complete
+        branch: saw/critic-remediation-loop/wave1-agent-B
+        commit: 948a954
+        files_changed:
+            - web/src/types.ts
+            - web/src/lib/apiClient.ts
+        verification: PASS
+    C:
+        status: complete
+        branch: saw/critic-remediation-loop/wave1-agent-C
+        commit: b6cdf3c
+        files_changed:
+            - web/src/components/CriticReviewPanel.tsx
+            - web/src/hooks/useCriticState.ts
+        verification: PASS
+    D:
+        status: complete
+        branch: main
+        commit: 72bdfca
+        files_changed:
+            - pkg/api/impl.go
+            - web/src/components/ReviewScreen.tsx
+        verification: PASS
+pre_mortem:
+    overall_risk: low
+    rows:
+        - scenario: Agent C's inline fetch for autoFixCritic diverges from Agent B's API client signature
+          likelihood: low
+          impact: low
+          mitigation: Both use the same POST endpoint and JSON shape. Integration wave D can normalize if needed.
+        - scenario: Synchronous critic re-run in auto-fix handler takes >3 min and times out
+          likelihood: low
+          impact: medium
+          mitigation: Handler has 3-min timeout. For large IMPLs, user can fall back to manual Re-run Critic button.
+        - scenario: CriticReviewPanel backward compatibility broken by new required props
+          likelihood: low
+          impact: high
+          mitigation: All new props are optional (?) in the interface. Existing callers passing no fix props will still work.
+critic_report:
+    verdict: PASS
+    agent_reviews:
+        A:
+            agent_id: A
+            verdict: ISSUES
+            issues:
+                - check: pattern_accuracy
+                  severity: warning
+                  description: Brief first instructs Agent A to add route to RegisterCriticRoutes() in impl.go (lines 233-236 of brief), then contradicts itself saying impl.go is not in file ownership and redirects to creating RegisterAutoFixRoutes() in critic_handler.go (lines 242-249). The final instruction is correct but the initial contradictory instruction may confuse the agent.
+                  file: pkg/api/critic_handler.go
+                  symbol: RegisterAutoFixRoutes
+        B:
+            agent_id: B
+            verdict: PASS
+        C:
+            agent_id: C
+            verdict: PASS
+        D:
+            agent_id: D
+            verdict: PASS
+    summary: 'All 4 agent briefs verified against codebase. All 8 files exist for modify actions. Symbol references (protocol.Load, protocol.Save, protocol.GetCriticReview, criticCommandFunc, globalBroker, EmitCriticReviewComplete, CriticFixRequest, CriticResult, enc(), applyCriticFix, ImplEditor, RegisterCriticRoutes, useCriticState) confirmed present. Route registration pattern (mux.HandleFunc) matches impl.go. CriticReviewPanel props verified. ReviewScreen line references accurate. One advisory warning: Agent A brief contains a self-correcting contradiction about route registration in impl.go before redirecting to critic_handler.go, which could momentarily confuse the agent. All interface contracts are type-consistent. Import chains verified. Side-effect registration correctly deferred to integration wave (Agent D).'
+    reviewed_at: "2026-03-21T04:14:26Z"
+    issue_count: 1
+state: REVIEWED
