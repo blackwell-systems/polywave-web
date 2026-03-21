@@ -116,7 +116,7 @@ describe('Tooltip', () => {
       </Tooltip>,
     )
     const tooltip = screen.getByRole('tooltip')
-    expect(tooltip.style.maxWidth).toBe('300px')
+    expect(tooltip.style.maxWidth).toBe('380px')
   })
 
   it('sets aria-label for string content', () => {
