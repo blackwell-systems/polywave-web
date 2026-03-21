@@ -1,12 +1,16 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 )
@@ -137,6 +141,217 @@ func TestHandleGetCriticReview_WithReview(t *testing.T) {
 	}
 	if _, ok := got.AgentReviews["A"]; !ok {
 		t.Error("expected agent review for A in response")
+	}
+}
+
+// TestCriticReviewStartedEvent verifies that critic_review_started is emitted
+// before the subprocess runs.
+func TestCriticReviewStartedEvent(t *testing.T) {
+	broker := newGlobalBroker()
+	s := &Server{globalBroker: broker}
+
+	ch := broker.subscribe()
+	defer broker.unsubscribe(ch)
+
+	// Override command to exit immediately
+	origCmd := criticCommandFunc
+	criticCommandFunc = func(ctx context.Context, implPath string) *exec.Cmd {
+		return exec.CommandContext(ctx, "true")
+	}
+	defer func() { criticCommandFunc = origCmd }()
+
+	done := make(chan struct{})
+	go func() {
+		s.runCriticAsync("test-slug", "/nonexistent/impl.yaml")
+		close(done)
+	}()
+
+	// First event should be critic_review_started
+	select {
+	case msg := <-ch:
+		if !strings.HasPrefix(msg, "critic_review_started:") {
+			t.Fatalf("expected first event to be critic_review_started, got: %s", msg)
+		}
+		var payload map[string]string
+		jsonStr := strings.TrimPrefix(msg, "critic_review_started:")
+		if err := json.Unmarshal([]byte(jsonStr), &payload); err != nil {
+			t.Fatalf("failed to parse JSON: %v", err)
+		}
+		if payload["slug"] != "test-slug" {
+			t.Fatalf("expected slug=test-slug, got %s", payload["slug"])
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("timed out waiting for critic_review_started event")
+	}
+
+	<-done
+}
+
+// TestCriticReviewFailedEvent verifies that critic_review_failed is emitted
+// when the subprocess exits with a non-zero code.
+func TestCriticReviewFailedEvent(t *testing.T) {
+	broker := newGlobalBroker()
+	s := &Server{globalBroker: broker}
+
+	ch := broker.subscribe()
+	defer broker.unsubscribe(ch)
+
+	// Override command to fail
+	origCmd := criticCommandFunc
+	criticCommandFunc = func(ctx context.Context, implPath string) *exec.Cmd {
+		return exec.CommandContext(ctx, "false")
+	}
+	defer func() { criticCommandFunc = origCmd }()
+
+	done := make(chan struct{})
+	go func() {
+		s.runCriticAsync("fail-slug", "/nonexistent/impl.yaml")
+		close(done)
+	}()
+
+	var gotStarted, gotFailed bool
+	timeout := time.After(5 * time.Second)
+	for !gotFailed {
+		select {
+		case msg := <-ch:
+			if strings.HasPrefix(msg, "critic_review_started:") {
+				gotStarted = true
+			}
+			if strings.HasPrefix(msg, "critic_review_failed:") {
+				gotFailed = true
+				var payload map[string]interface{}
+				jsonStr := strings.TrimPrefix(msg, "critic_review_failed:")
+				if err := json.Unmarshal([]byte(jsonStr), &payload); err != nil {
+					t.Fatalf("failed to parse JSON: %v", err)
+				}
+				if payload["slug"] != "fail-slug" {
+					t.Fatalf("expected slug=fail-slug, got %v", payload["slug"])
+				}
+				if payload["error"] == nil || payload["error"] == "" {
+					t.Fatal("expected non-empty error field")
+				}
+			}
+		case <-timeout:
+			t.Fatal("timed out waiting for critic_review_failed event")
+		}
+	}
+
+	if !gotStarted {
+		t.Fatal("expected critic_review_started before critic_review_failed")
+	}
+
+	<-done
+}
+
+// TestCriticTimeoutBehavior verifies that the critic times out and emits
+// critic_review_failed with an appropriate timeout error message.
+func TestCriticTimeoutBehavior(t *testing.T) {
+	broker := newGlobalBroker()
+	s := &Server{globalBroker: broker}
+
+	ch := broker.subscribe()
+	defer broker.unsubscribe(ch)
+
+	// Set a short timeout for testing
+	origTimeout := criticTimeout
+	criticTimeout = 100 * time.Millisecond
+	defer func() { criticTimeout = origTimeout }()
+
+	// Override command to sleep longer than timeout
+	origCmd := criticCommandFunc
+	criticCommandFunc = func(ctx context.Context, implPath string) *exec.Cmd {
+		return exec.CommandContext(ctx, "sleep", "30")
+	}
+	defer func() { criticCommandFunc = origCmd }()
+
+	done := make(chan struct{})
+	go func() {
+		s.runCriticAsync("timeout-slug", "/nonexistent/impl.yaml")
+		close(done)
+	}()
+
+	var gotTimeout bool
+	timeout := time.After(5 * time.Second)
+	for !gotTimeout {
+		select {
+		case msg := <-ch:
+			if strings.HasPrefix(msg, "critic_review_failed:") {
+				var payload map[string]interface{}
+				jsonStr := strings.TrimPrefix(msg, "critic_review_failed:")
+				if err := json.Unmarshal([]byte(jsonStr), &payload); err != nil {
+					t.Fatalf("failed to parse JSON: %v", err)
+				}
+				errMsg, ok := payload["error"].(string)
+				if !ok {
+					t.Fatal("expected error to be a string")
+				}
+				if !strings.Contains(errMsg, "timed out") {
+					t.Fatalf("expected timeout error message, got: %s", errMsg)
+				}
+				gotTimeout = true
+			}
+		case <-timeout:
+			t.Fatal("timed out waiting for critic timeout event")
+		}
+	}
+
+	<-done
+}
+
+// TestCriticOutputStreaming verifies that stdout from the subprocess is
+// streamed as critic_output SSE events.
+func TestCriticOutputStreaming(t *testing.T) {
+	broker := newGlobalBroker()
+	s := &Server{globalBroker: broker}
+
+	ch := broker.subscribe()
+	defer broker.unsubscribe(ch)
+
+	// Override command to produce output
+	origCmd := criticCommandFunc
+	criticCommandFunc = func(ctx context.Context, implPath string) *exec.Cmd {
+		return exec.CommandContext(ctx, "echo", "hello from critic")
+	}
+	defer func() { criticCommandFunc = origCmd }()
+
+	done := make(chan struct{})
+	go func() {
+		s.runCriticAsync("output-slug", "/nonexistent/impl.yaml")
+		close(done)
+	}()
+
+	var gotOutput bool
+	timeout := time.After(5 * time.Second)
+loop:
+	for {
+		select {
+		case msg := <-ch:
+			if strings.HasPrefix(msg, "critic_output:") {
+				var payload map[string]interface{}
+				jsonStr := strings.TrimPrefix(msg, "critic_output:")
+				if err := json.Unmarshal([]byte(jsonStr), &payload); err != nil {
+					t.Fatalf("failed to parse JSON: %v", err)
+				}
+				if payload["slug"] != "output-slug" {
+					t.Fatalf("expected slug=output-slug, got %v", payload["slug"])
+				}
+				chunk, ok := payload["chunk"].(string)
+				if !ok || !strings.Contains(chunk, "hello from critic") {
+					t.Fatalf("expected chunk containing 'hello from critic', got: %v", payload["chunk"])
+				}
+				gotOutput = true
+			}
+		case <-timeout:
+			break loop
+		case <-done:
+			// Drain remaining events briefly
+			time.Sleep(50 * time.Millisecond)
+			break loop
+		}
+	}
+
+	if !gotOutput {
+		t.Fatal("expected at least one critic_output event")
 	}
 }
 

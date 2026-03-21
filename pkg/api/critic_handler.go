@@ -1,10 +1,13 @@
 package api
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"net/http"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 )
@@ -73,13 +76,81 @@ func (s *Server) handleRunCriticReview(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusAccepted)
 }
 
-// runCriticAsync invokes sawtools run-critic and emits critic_review_complete
-// when done. Safe to call in a goroutine.
+// criticTimeout is the maximum duration for a critic subprocess to complete.
+var criticTimeout = 5 * time.Minute
+
+// criticCommandFunc creates the exec.Cmd for critic execution.
+// Overridable in tests.
+var criticCommandFunc = func(ctx context.Context, implPath string) *exec.Cmd {
+	return exec.CommandContext(ctx, "sawtools", "run-critic", implPath) //nolint:gosec
+}
+
+// runCriticAsync invokes sawtools run-critic, streaming stdout/stderr as
+// critic_output SSE events, and emits critic_review_complete on success or
+// critic_review_failed on error. Safe to call in a goroutine.
 func (s *Server) runCriticAsync(slug, implPath string) {
-	cmd := exec.Command("sawtools", "run-critic", implPath) //nolint:gosec
-	if err := cmd.Run(); err != nil {
-		return // critic failure is non-fatal; UI retains prior state
+	s.globalBroker.broadcastJSON("critic_review_started", map[string]string{"slug": slug})
+
+	ctx, cancel := context.WithTimeout(context.Background(), criticTimeout)
+	defer cancel()
+
+	cmd := criticCommandFunc(ctx, implPath)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		s.globalBroker.broadcastJSON("critic_review_failed", map[string]interface{}{
+			"slug": slug, "error": "stdout pipe: " + err.Error(),
+		})
+		return
 	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		s.globalBroker.broadcastJSON("critic_review_failed", map[string]interface{}{
+			"slug": slug, "error": "stderr pipe: " + err.Error(),
+		})
+		return
+	}
+
+	if err := cmd.Start(); err != nil {
+		s.globalBroker.broadcastJSON("critic_review_failed", map[string]interface{}{
+			"slug": slug, "error": err.Error(),
+		})
+		return
+	}
+
+	// Stream stdout line-by-line
+	scanDone := make(chan struct{})
+	go func() {
+		defer close(scanDone)
+		scanner := bufio.NewScanner(stderr)
+		for scanner.Scan() {
+			s.globalBroker.broadcastJSON("critic_output", map[string]interface{}{
+				"slug": slug, "chunk": scanner.Text() + "\n",
+			})
+		}
+	}()
+
+	scanner := bufio.NewScanner(stdout)
+	for scanner.Scan() {
+		s.globalBroker.broadcastJSON("critic_output", map[string]interface{}{
+			"slug": slug, "chunk": scanner.Text() + "\n",
+		})
+	}
+
+	// Wait for stderr goroutine to finish
+	<-scanDone
+
+	if err := cmd.Wait(); err != nil {
+		errMsg := err.Error()
+		if ctx.Err() == context.DeadlineExceeded {
+			errMsg = "critic timed out after 5 minutes"
+		}
+		s.globalBroker.broadcastJSON("critic_review_failed", map[string]interface{}{
+			"slug": slug, "error": errMsg,
+		})
+		return
+	}
+
 	manifest, err := protocol.Load(implPath)
 	if err != nil {
 		return
