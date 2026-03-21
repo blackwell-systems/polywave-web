@@ -1,6 +1,7 @@
 import { CheckCircle, Loader2, PauseCircle, Clock, Plus, Check } from 'lucide-react'
 import { PipelineEntry } from '../types/autonomy'
 import { getRepoColor, getRepoColorWithOpacity } from '../lib/entityColors'
+import { getStatusHoverClass } from '../lib/statusColors'
 
 interface PipelineRowProps {
   entry: PipelineEntry
@@ -8,13 +9,6 @@ interface PipelineRowProps {
   onSelectProgram?: (programSlug: string) => void
   onToggleProgramSelect?: (slug: string) => void
   isProgramSelected?: boolean
-}
-
-const hoverColors: Record<string, string> = {
-  executing: 'hover:bg-blue-50 dark:hover:bg-blue-950/30',
-  complete: 'hover:bg-green-50 dark:hover:bg-green-950/30',
-  blocked: 'hover:bg-amber-50 dark:hover:bg-amber-950/30',
-  queued: 'hover:bg-muted/50',
 }
 
 export default function PipelineRow({ entry, onSelect, onSelectProgram, onToggleProgramSelect, isProgramSelected }: PipelineRowProps): JSX.Element {
@@ -117,7 +111,7 @@ export default function PipelineRow({ entry, onSelect, onSelectProgram, onToggle
 
   return (
     <div
-      className={`flex items-center gap-4 px-6 py-4 border-b border-border ${hoverColors[entry.status] ?? 'hover:bg-muted/50'} transition-all duration-150 cursor-pointer`}
+      className={`flex items-center gap-4 px-6 py-4 border-b border-border ${getStatusHoverClass('pipeline', entry.status)} transition-all duration-150 cursor-pointer`}
       style={repoColor ? { borderLeft: `4px solid ${repoColor}` } : undefined}
       onClick={() => onSelect(entry.slug)}
     >

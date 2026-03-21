@@ -2,6 +2,7 @@ import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { resetThemeCache } from '../lib/entityColors'
+import { getNodeFillColors } from '../lib/statusColors'
 import { fetchProgramStatus } from '../programApi'
 import { ProgramStatus, ImplTierStatus } from '../types/program'
 
@@ -127,24 +128,6 @@ function layoutNodes(
   const height = PAD_Y * 2 + 40 + (tiers.length - 1) * tierGap + NODE_H
 
   return { nodes: positions, width, height }
-}
-
-/**
- * Get node fill colors based on IMPL status.
- */
-function getNodeFill(status: string): { bg: string; border: string; text: string } {
-  switch (status) {
-    case 'complete':
-      return { bg: '#22c55e40', border: '#22c55e80', text: '#22c55e' }
-    case 'executing':
-      return { bg: '#3b82f640', border: '#3b82f680', text: '#3b82f6' }
-    case 'blocked':
-      return { bg: '#ef444440', border: '#ef444480', text: '#ef4444' }
-    case 'reviewed':
-      return { bg: '#eab30840', border: '#eab30880', text: '#eab308' }
-    default: // pending
-      return { bg: '#6b728020', border: '#6b728060', text: '#6b7280' }
-  }
 }
 
 /**
@@ -347,7 +330,7 @@ export default function ProgramDependencyGraph({
 
       const source = nodeMap.get(dep)
       if (source) {
-        const fill = getNodeFill(node.impl.status)
+        const fill = getNodeFillColors(node.impl.status)
         edges.push({ from: source, to: node, color: fill.border })
       }
     }
@@ -475,7 +458,7 @@ export default function ProgramDependencyGraph({
 
             {/* Nodes */}
             {nodes.map(node => {
-              const fill = getNodeFill(node.impl.status)
+              const fill = getNodeFillColors(node.impl.status)
               const cx = node.x + NODE_W / 2
               const isHovered = hoveredSlug === node.impl.slug
               const isClickable = !!onSelectImpl

@@ -11,6 +11,7 @@ import PipelineMetricsBar from './PipelineMetrics'
 import { useGlobalEvents } from '../hooks/useGlobalEvents'
 import { ChevronDown, List, GitBranch } from 'lucide-react'
 import { getRepoColor, getRepoColorWithOpacity } from '../lib/entityColors'
+import { getStatusBorderColor, getStatusBadgeClasses, getStatusLabel, getProgramStateDotClass } from '../lib/statusColors'
 import ProgramDependencyGraph from './ProgramDependencyGraph'
 import CreateFromImplsPanel from './CreateFromImplsPanel'
 import DisjointAnalysisScreen from './DisjointAnalysisScreen'
@@ -18,39 +19,6 @@ import DisjointAnalysisScreen from './DisjointAnalysisScreen'
 interface ProgramBoardProps {
   programSlug: string
   onSelectImpl?: (implSlug: string) => void
-}
-
-function getImplStatusColor(status: string): string {
-  switch (status) {
-    case 'complete':      return 'rgb(63, 185, 80)'
-    case 'executing':
-    case 'in-progress':   return 'rgb(88, 166, 255)'
-    case 'reviewed':      return 'rgb(210, 153, 34)'
-    case 'scouting':      return 'rgb(130, 100, 220)'
-    case 'blocked':
-    case 'not-suitable':  return 'rgb(248, 81, 73)'
-    default:              return 'rgba(140, 140, 150, 0.4)'
-  }
-}
-
-function getImplStatusBadge(status: string): JSX.Element {
-  switch (status) {
-    case 'complete':
-      return <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800">Complete</span>
-    case 'executing':
-    case 'in-progress':
-      return <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800 animate-pulse">Executing</span>
-    case 'reviewed':
-      return <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800">Reviewed</span>
-    case 'scouting':
-      return <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800 animate-pulse">Scouting</span>
-    case 'blocked':
-      return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">Blocked</span>
-    case 'not-suitable':
-      return <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800">Not Suitable</span>
-    default:
-      return <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">Pending</span>
-  }
 }
 
 function ImplCard({
@@ -62,7 +30,7 @@ function ImplCard({
   onClick?: () => void
   waveProgress?: string
 }): JSX.Element {
-  const borderColor = getImplStatusColor(impl.status)
+  const borderColor = getStatusBorderColor('impl', impl.status)
   const clickable = onClick !== undefined
   // Prefer SSE-updated waveProgress over impl.wave_progress (SSE is more current)
   const progressLabel = waveProgress ?? impl.wave_progress
@@ -80,7 +48,9 @@ function ImplCard({
     >
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold text-foreground truncate">{impl.slug}</span>
-        {getImplStatusBadge(impl.status)}
+        <span className={`text-xs px-2 py-0.5 rounded-full border ${getStatusBadgeClasses('impl', impl.status)}`}>
+          {getStatusLabel('impl', impl.status)}
+        </span>
       </div>
       {(impl.status === 'executing' || impl.status === 'in-progress' || impl.status === 'scouting') && (
         <div className="flex items-center gap-2">
@@ -535,16 +505,8 @@ export function UnifiedProgramsView({ onSelectImpl, onSelectProgram, createFromI
   )
 }
 
-const PROGRAM_STATE_COLORS: Record<string, string> = {
-  COMPLETE:       'bg-green-500',
-  TIER_EXECUTING: 'bg-blue-500 animate-pulse',
-  REVIEWED:       'bg-yellow-400',
-  SCAFFOLD:       'bg-purple-400',
-  BLOCKED:        'bg-red-500',
-}
-
 function ProgramCard({ program, onClick }: { program: ProgramDiscovery; onClick: () => void }): JSX.Element {
-  const dotColor = PROGRAM_STATE_COLORS[program.state] ?? 'bg-gray-400'
+  const dotColor = getProgramStateDotClass(program.state)
   return (
     <div
       onClick={onClick}
