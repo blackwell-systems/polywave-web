@@ -406,3 +406,26 @@ export interface CriticFixRequest {
   old_symbol?: string
   new_symbol?: string
 }
+
+export interface AutoFixCriticRequest {
+  dry_run?: boolean;
+}
+
+export interface AutoFixCriticResponse {
+  fixes_applied: AppliedFix[];
+  fixes_failed: FailedFix[];
+  new_result?: CriticResult;
+  all_resolved: boolean;
+}
+
+export interface AppliedFix {
+  check: string;
+  agent_id: string;
+  description: string;
+}
+
+export interface FailedFix {
+  check: string;
+  agent_id: string;
+  reason: string;
+}
