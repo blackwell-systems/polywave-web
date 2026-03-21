@@ -335,6 +335,69 @@ func (s *Server) handleGetProgramContracts(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(status.ContractStatuses)
 }
 
+// AnalyzeImplsRequest is the JSON request body for POST /api/programs/analyze-impls.
+type AnalyzeImplsRequest struct {
+	Slugs    []string `json:"slugs"`
+	RepoPath string   `json:"repo_path,omitempty"`
+}
+
+// CreateFromImplsRequest is the JSON request body for POST /api/programs/create-from-impls.
+type CreateFromImplsRequest struct {
+	Slugs       []string `json:"slugs"`
+	Name        string   `json:"name,omitempty"`
+	ProgramSlug string   `json:"program_slug,omitempty"`
+	RepoPath    string   `json:"repo_path,omitempty"`
+}
+
+// handleAnalyzeImpls handles POST /api/programs/analyze-impls.
+// Accepts a list of IMPL slugs, runs CheckIMPLConflicts, returns the conflict report.
+func (s *Server) handleAnalyzeImpls(w http.ResponseWriter, r *http.Request) {
+	var req AnalyzeImplsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(req.Slugs) < 2 {
+		http.Error(w, "at least 2 slugs are required for conflict analysis", http.StatusBadRequest)
+		return
+	}
+
+	report, err := service.AnalyzeImplConflicts(s.makeDeps(), req.Slugs, req.RepoPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(report)
+}
+
+// handleCreateFromImpls handles POST /api/programs/create-from-impls.
+// Accepts IMPL slugs and optional name/slug, calls GenerateProgramFromIMPLs,
+// writes the PROGRAM manifest to disk, returns the result.
+func (s *Server) handleCreateFromImpls(w http.ResponseWriter, r *http.Request) {
+	var req CreateFromImplsRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	if len(req.Slugs) < 1 {
+		http.Error(w, "at least 1 slug is required", http.StatusBadRequest)
+		return
+	}
+
+	result, err := service.CreateProgramFromIMPLs(s.makeDeps(), req.Slugs, req.Name, req.ProgramSlug, req.RepoPath)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.globalBroker.broadcast("program_list_updated")
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(result)
+}
+
 // handleReplanProgram handles POST /api/program/{slug}/replan.
 // Launches the Planner agent to revise the PROGRAM manifest and returns 202 Accepted.
 func (s *Server) handleReplanProgram(w http.ResponseWriter, r *http.Request) {

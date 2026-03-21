@@ -671,3 +671,193 @@ func TestHandleExecuteTier_CleanupOnPathError(t *testing.T) {
 		t.Error("activeProgramRuns should not retain the slug after a path-resolution error")
 	}
 }
+
+// TestHandleAnalyzeImpls_TooFewSlugs tests that <2 slugs returns 400.
+func TestHandleAnalyzeImpls_TooFewSlugs(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	server := &Server{
+		cfg: Config{RepoPath: tmpDir, IMPLDir: filepath.Join(tmpDir, "docs", "IMPL")},
+		svcDeps: service.Deps{
+			RepoPath: tmpDir,
+			ConfigPath: func(repoPath string) string {
+				return filepath.Join(repoPath, "saw.config.json")
+			},
+		},
+	}
+
+	// Test with 0 slugs
+	req := httptest.NewRequest("POST", "/api/programs/analyze-impls",
+		strings.NewReader(`{"slugs":[]}`))
+	w := httptest.NewRecorder()
+	server.handleAnalyzeImpls(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for 0 slugs, got %d", w.Code)
+	}
+
+	// Test with 1 slug
+	req = httptest.NewRequest("POST", "/api/programs/analyze-impls",
+		strings.NewReader(`{"slugs":["only-one"]}`))
+	w = httptest.NewRecorder()
+	server.handleAnalyzeImpls(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for 1 slug, got %d", w.Code)
+	}
+}
+
+// TestHandleAnalyzeImpls_ValidReport tests valid conflict analysis.
+func TestHandleAnalyzeImpls_ValidReport(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	repoDir := filepath.Join(tmpDir, "test-repo")
+	implDir := filepath.Join(repoDir, "docs", "IMPL")
+	os.MkdirAll(implDir, 0755)
+
+	impl1 := `title: Impl One
+slug: impl-one
+state: reviewed
+file_ownership:
+  - file: pkg/a.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/a.go]
+`
+	impl2 := `title: Impl Two
+slug: impl-two
+state: reviewed
+file_ownership:
+  - file: pkg/b.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/b.go]
+`
+	os.WriteFile(filepath.Join(implDir, "IMPL-impl-one.yaml"), []byte(impl1), 0644)
+	os.WriteFile(filepath.Join(implDir, "IMPL-impl-two.yaml"), []byte(impl2), 0644)
+
+	configPath := filepath.Join(tmpDir, "saw.config.json")
+	cfgData, _ := json.Marshal(SAWConfig{Repos: []RepoEntry{{Name: "test", Path: repoDir}}})
+	os.WriteFile(configPath, cfgData, 0644)
+
+	server := &Server{
+		cfg: Config{RepoPath: tmpDir, IMPLDir: implDir},
+		svcDeps: service.Deps{
+			RepoPath: tmpDir,
+			ConfigPath: func(repoPath string) string {
+				return filepath.Join(repoPath, "saw.config.json")
+			},
+		},
+	}
+
+	body := `{"slugs":["impl-one","impl-two"],"repo_path":"` + repoDir + `"}`
+	req := httptest.NewRequest("POST", "/api/programs/analyze-impls",
+		strings.NewReader(body))
+	w := httptest.NewRecorder()
+	server.handleAnalyzeImpls(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var report protocol.ConflictReport
+	if err := json.NewDecoder(w.Body).Decode(&report); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+	// No conflicts since files are disjoint
+	if len(report.Conflicts) != 0 {
+		t.Errorf("expected 0 conflicts, got %d", len(report.Conflicts))
+	}
+}
+
+// TestHandleCreateFromImpls_TooFewSlugs tests that 0 slugs returns 400.
+func TestHandleCreateFromImpls_TooFewSlugs(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	server := &Server{
+		cfg: Config{RepoPath: tmpDir},
+		svcDeps: service.Deps{
+			RepoPath: tmpDir,
+			ConfigPath: func(repoPath string) string {
+				return filepath.Join(repoPath, "saw.config.json")
+			},
+		},
+	}
+
+	req := httptest.NewRequest("POST", "/api/programs/create-from-impls",
+		strings.NewReader(`{"slugs":[]}`))
+	w := httptest.NewRecorder()
+	server.handleCreateFromImpls(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400 for 0 slugs, got %d", w.Code)
+	}
+}
+
+// TestHandleCreateFromImpls_CreatesManifest tests successful program creation.
+func TestHandleCreateFromImpls_CreatesManifest(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	repoDir := filepath.Join(tmpDir, "test-repo")
+	implDir := filepath.Join(repoDir, "docs", "IMPL")
+	os.MkdirAll(implDir, 0755)
+	os.MkdirAll(filepath.Join(repoDir, "docs"), 0755)
+
+	impl1 := `title: Feature Alpha
+slug: feature-alpha
+state: reviewed
+file_ownership:
+  - file: pkg/alpha.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/alpha.go]
+`
+	os.WriteFile(filepath.Join(implDir, "IMPL-feature-alpha.yaml"), []byte(impl1), 0644)
+
+	configPath := filepath.Join(tmpDir, "saw.config.json")
+	cfgData, _ := json.Marshal(SAWConfig{Repos: []RepoEntry{{Name: "test", Path: repoDir}}})
+	os.WriteFile(configPath, cfgData, 0644)
+
+	server := &Server{
+		cfg:          Config{RepoPath: tmpDir, IMPLDir: implDir},
+		globalBroker: newGlobalBroker(),
+		svcDeps: service.Deps{
+			RepoPath: tmpDir,
+			ConfigPath: func(repoPath string) string {
+				return filepath.Join(repoPath, "saw.config.json")
+			},
+		},
+	}
+
+	body := `{"slugs":["feature-alpha"],"name":"Test Program","program_slug":"test-create","repo_path":"` + repoDir + `"}`
+	req := httptest.NewRequest("POST", "/api/programs/create-from-impls",
+		strings.NewReader(body))
+	w := httptest.NewRecorder()
+	server.handleCreateFromImpls(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var result protocol.GenerateProgramResult
+	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if result.ManifestPath == "" {
+		t.Error("expected manifest_path to be set")
+	}
+
+	// Verify file on disk
+	expectedPath := filepath.Join(repoDir, "docs", "PROGRAM-test-create.yaml")
+	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+		t.Errorf("expected PROGRAM manifest at %s", expectedPath)
+	}
+}

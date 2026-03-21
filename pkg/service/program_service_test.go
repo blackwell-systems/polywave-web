@@ -211,3 +211,146 @@ func TestResolveIMPLPathForProgram_PrefersComplete(t *testing.T) {
 		t.Errorf("expected %s, got %s", expected, path)
 	}
 }
+
+func TestAnalyzeImplConflicts_DefaultsToFirstRepo(t *testing.T) {
+	dir := t.TempDir()
+
+	implDir := filepath.Join(dir, "docs", "IMPL")
+	os.MkdirAll(implDir, 0755)
+
+	impl1 := `title: Impl One
+slug: impl-one
+state: reviewed
+file_ownership:
+  - file: pkg/shared.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/shared.go]
+`
+	impl2 := `title: Impl Two
+slug: impl-two
+state: reviewed
+file_ownership:
+  - file: pkg/other.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/other.go]
+`
+	os.WriteFile(filepath.Join(implDir, "IMPL-impl-one.yaml"), []byte(impl1), 0644)
+	os.WriteFile(filepath.Join(implDir, "IMPL-impl-two.yaml"), []byte(impl2), 0644)
+
+	deps := programTestDeps(t, []RepoEntry{{Name: "test", Path: dir}})
+
+	report, err := AnalyzeImplConflicts(deps, []string{"impl-one", "impl-two"}, "")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if report == nil {
+		t.Fatal("expected non-nil report")
+	}
+	if len(report.Conflicts) != 0 {
+		t.Errorf("expected 0 conflicts, got %d", len(report.Conflicts))
+	}
+	if len(report.DisjointSets) == 0 {
+		t.Error("expected disjoint sets to be populated")
+	}
+}
+
+func TestAnalyzeImplConflicts_DetectsConflict(t *testing.T) {
+	dir := t.TempDir()
+	implDir := filepath.Join(dir, "docs", "IMPL")
+	os.MkdirAll(implDir, 0755)
+
+	impl1 := `title: A
+slug: a
+state: reviewed
+file_ownership:
+  - file: pkg/x.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/x.go]
+`
+	impl2 := `title: B
+slug: b
+state: reviewed
+file_ownership:
+  - file: pkg/x.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/x.go]
+`
+	os.WriteFile(filepath.Join(implDir, "IMPL-a.yaml"), []byte(impl1), 0644)
+	os.WriteFile(filepath.Join(implDir, "IMPL-b.yaml"), []byte(impl2), 0644)
+
+	deps := Deps{RepoPath: dir}
+	report, err := AnalyzeImplConflicts(deps, []string{"a", "b"}, dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(report.Conflicts) != 1 {
+		t.Errorf("expected 1 conflict, got %d", len(report.Conflicts))
+	}
+}
+
+func TestCreateProgramFromIMPLs_WritesManifest(t *testing.T) {
+	dir := t.TempDir()
+	implDir := filepath.Join(dir, "docs", "IMPL")
+	os.MkdirAll(implDir, 0755)
+	os.MkdirAll(filepath.Join(dir, "docs"), 0755)
+
+	impl1 := `title: Feature A
+slug: feature-a
+state: reviewed
+file_ownership:
+  - file: pkg/a.go
+    agents: [A]
+waves:
+  - number: 1
+    agents:
+      - id: A
+        files: [pkg/a.go]
+`
+	os.WriteFile(filepath.Join(implDir, "IMPL-feature-a.yaml"), []byte(impl1), 0644)
+
+	deps := Deps{RepoPath: dir}
+	result, err := CreateProgramFromIMPLs(deps, []string{"feature-a"}, "My Program", "my-program", dir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+	if result.ManifestPath == "" {
+		t.Error("expected manifest_path to be set")
+	}
+
+	expectedPath := filepath.Join(dir, "docs", "PROGRAM-my-program.yaml")
+	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+		t.Errorf("expected PROGRAM manifest at %s", expectedPath)
+	}
+}
+
+func TestCreateProgramFromIMPLs_NoRepoPath(t *testing.T) {
+	deps := Deps{
+		RepoPath: "",
+		ConfigPath: func(repoPath string) string {
+			return filepath.Join(repoPath, "saw.config.json")
+		},
+	}
+	_, err := CreateProgramFromIMPLs(deps, []string{"x"}, "", "", "")
+	if err == nil {
+		t.Error("expected error when no repo path configured")
+	}
+}
