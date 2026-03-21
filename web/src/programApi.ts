@@ -5,13 +5,28 @@
 import { sawClient } from './lib/apiClient'
 import type {
   ProgramDiscovery,
+  ProgramListResponse,
   ProgramStatus,
   TierStatus,
   ContractStatus,
 } from './types/program'
 
+/**
+ * Fetch the full program list response including metrics and standalone IMPLs.
+ * Prefer this over `listPrograms` for new code.
+ */
+export async function listProgramsFull(): Promise<ProgramListResponse> {
+  const r = await fetch('/api/programs')
+  if (!r.ok) {
+    throw new Error(`HTTP ${r.status}: ${await r.text()}`)
+  }
+  return r.json() as Promise<ProgramListResponse>
+}
+
+/** @deprecated Use `listProgramsFull` for access to metrics and standalone IMPLs. */
 export async function listPrograms(): Promise<ProgramDiscovery[]> {
-  return sawClient.program.list()
+  const resp = await listProgramsFull()
+  return resp.programs
 }
 
 export async function fetchProgramStatus(slug: string): Promise<ProgramStatus> {

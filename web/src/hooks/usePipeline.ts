@@ -14,8 +14,10 @@ export interface UsePipelineReturn {
 /**
  * Custom hook that fetches pipeline data and subscribes to global SSE events
  * for real-time updates (pipeline_updated, impl_list_updated).
- * 
+ *
  * Created by Agent D (wave 2).
+ *
+ * @deprecated Use the enhanced programs endpoint instead. Will be removed with PipelineView.
  */
 export function usePipeline(): UsePipelineReturn {
   const [entries, setEntries] = useState<PipelineEntry[]>([])
