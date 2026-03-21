@@ -1,7 +1,7 @@
 // TypeScript types for the program layer API
 // Mirrors Go SDK protocol types from github.com/blackwell-systems/scout-and-wave-go/pkg/protocol
 
-import type { ImplReference } from './autonomy'
+import type { ImplReference, PipelineMetrics, PipelineEntry } from './autonomy'
 
 export interface ProgramStatus {
   program_slug: string
@@ -48,4 +48,10 @@ export interface ProgramDiscovery {
   slug: string
   state: string
   title: string
+}
+
+export interface ProgramListResponse {
+  programs: ProgramDiscovery[]
+  metrics: PipelineMetrics
+  standalone: PipelineEntry[]
 }
