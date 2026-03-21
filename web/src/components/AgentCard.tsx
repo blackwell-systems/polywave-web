@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { AgentStatus } from '../types'
 import { getAgentColor } from '../lib/entityColors'
+import { getStatusGlowStyle } from '../lib/statusColors'
 import ToolFeed from './ToolFeed'
 
 interface AgentCardProps {
@@ -37,33 +38,6 @@ const statusLabels: Record<string, string> = {
   failed: 'Failed',
 }
 
-// Status-based styling with glowing borders (maestro-inspired)
-const getStatusStyle = (status: string) => {
-  switch (status) {
-    case 'running':
-      return {
-        borderColor: 'rgb(88, 166, 255)',
-        boxShadow: '0 0 12px rgba(88, 166, 255, 0.4), 0 0 24px rgba(88, 166, 255, 0.2)',
-      }
-    case 'complete':
-      return {
-        borderColor: 'rgba(63, 185, 80, 0.5)',
-        boxShadow: '0 0 4px rgba(63, 185, 80, 0.12)',
-      }
-    case 'failed':
-      return {
-        borderColor: 'rgb(248, 81, 73)',
-        boxShadow: '0 0 12px rgba(248, 81, 73, 0.5), 0 0 24px rgba(248, 81, 73, 0.25)',
-      }
-    case 'pending':
-    default:
-      return {
-        borderColor: 'rgba(140, 140, 150, 0.4)',
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2)',
-      }
-  }
-}
-
 function formatElapsed(ms: number): string {
   const s = Math.floor(ms / 1000)
   if (s < 60) return `${s}s`
@@ -92,7 +66,7 @@ export default function AgentCard({ agent }: AgentCardProps) {
 
   const agentColor = getAgentColor(agent.agent)
   const branchName = agent.branch || `wave${agent.wave}-agent-${agent.agent.toLowerCase()}`
-  const statusStyle = getStatusStyle(agent.status)
+  const statusStyle = getStatusGlowStyle('agent', agent.status)
 
   return (
     <div
