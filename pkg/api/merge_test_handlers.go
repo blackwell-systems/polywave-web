@@ -42,8 +42,8 @@ func (s *Server) handleWaveMerge(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 
 	var req MergeWaveRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -127,8 +127,8 @@ func (s *Server) handleWaveTest(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 
 	var req TestWaveRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -326,8 +326,8 @@ func (s *Server) handleResolveConflicts(w http.ResponseWriter, r *http.Request) 
 	slug := r.PathValue("slug")
 
 	var req MergeWaveRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -431,8 +431,8 @@ func (s *Server) handleFixBuild(w http.ResponseWriter, r *http.Request) {
 		ErrorLog string `json:"error_log"`
 		GateType string `json:"gate_type"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &body); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if body.Wave < 1 {

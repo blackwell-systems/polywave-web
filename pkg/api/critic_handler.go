@@ -3,7 +3,6 @@ package api
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os/exec"
@@ -36,30 +35,23 @@ func (s *Server) handleGetCriticReview(w http.ResponseWriter, r *http.Request) {
 
 	implPath, _ := s.findImplPath(slug)
 	if implPath == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "IMPL doc not found"})
+		respondError(w, "IMPL doc not found", http.StatusNotFound)
 		return
 	}
 
 	manifest, err := protocol.Load(implPath)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "failed to load IMPL manifest"})
+		respondError(w, "failed to load IMPL manifest", http.StatusInternalServerError)
 		return
 	}
 
 	result := protocol.GetCriticReview(manifest)
 	if result == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "no critic review for this IMPL"})
+		respondError(w, "no critic review for this IMPL", http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	respondJSON(w, http.StatusOK, result)
 }
 
 // handleRunCriticReview serves POST /api/impl/{slug}/run-critic.
@@ -69,9 +61,7 @@ func (s *Server) handleRunCriticReview(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	implPath, _ := s.findImplPath(slug)
 	if implPath == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "IMPL doc not found"})
+		respondError(w, "IMPL doc not found", http.StatusNotFound)
 		return
 	}
 	go s.runCriticAsync(slug, implPath)
@@ -171,34 +161,26 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 
 	implPath, _ := s.findImplPath(slug)
 	if implPath == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "IMPL doc not found"})
+		respondError(w, "IMPL doc not found", http.StatusNotFound)
 		return
 	}
 
 	var fix CriticFix
-	if err := json.NewDecoder(r.Body).Decode(&fix); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON body: " + err.Error()})
+	if err := decodeJSON(r, &fix); err != nil {
+		respondError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	manifest, err := protocol.Load(implPath)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "failed to load IMPL manifest"})
+		respondError(w, "failed to load IMPL manifest", http.StatusInternalServerError)
 		return
 	}
 
 	switch fix.Type {
 	case "add_file_ownership":
 		if fix.File == "" || fix.AgentID == "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "add_file_ownership requires file and agent_id"})
+			respondError(w, "add_file_ownership requires file and agent_id", http.StatusBadRequest)
 			return
 		}
 		action := fix.Action
@@ -214,9 +196,7 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 
 	case "update_contract":
 		if fix.ContractName == "" || fix.OldSymbol == "" || fix.NewSymbol == "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "update_contract requires contract_name, old_symbol, and new_symbol"})
+			respondError(w, "update_contract requires contract_name, old_symbol, and new_symbol", http.StatusBadRequest)
 			return
 		}
 		found := false
@@ -228,17 +208,13 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if !found {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "contract not found: " + fix.ContractName})
+			respondError(w, "contract not found: "+fix.ContractName, http.StatusBadRequest)
 			return
 		}
 
 	case "add_integration_connector":
 		if fix.File == "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "add_integration_connector requires file"})
+			respondError(w, "add_integration_connector requires file", http.StatusBadRequest)
 			return
 		}
 		reason := "added via critic fix"
@@ -251,16 +227,12 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 		})
 
 	default:
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "unknown fix type: " + fix.Type})
+		respondError(w, "unknown fix type: "+fix.Type, http.StatusBadRequest)
 		return
 	}
 
 	if err := protocol.Save(manifest, implPath); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "failed to save manifest: " + err.Error()})
+		respondError(w, "failed to save manifest: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -270,9 +242,7 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 	// Reload manifest to get updated state (including any validator auto-fixes)
 	manifest, err = protocol.Load(implPath)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "failed to reload manifest after fix"})
+		respondError(w, "failed to reload manifest after fix", http.StatusInternalServerError)
 		return
 	}
 
@@ -282,7 +252,7 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 	// Return the critic report (may be nil if no review exists yet)
 	w.Header().Set("Content-Type", "application/json")
 	if manifest.CriticReport != nil {
-		json.NewEncoder(w).Encode(manifest.CriticReport)
+		respondJSON(w, http.StatusOK, manifest.CriticReport)
 	} else {
 		w.Write([]byte("null")) //nolint:errcheck
 	}
@@ -341,35 +311,27 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 
 	implPath, _ := s.findImplPath(slug)
 	if implPath == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "IMPL doc not found"})
+		respondError(w, "IMPL doc not found", http.StatusNotFound)
 		return
 	}
 
 	var req AutoFixCriticRequest
 	if r.Body != nil && r.ContentLength > 0 {
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]string{"error": "invalid JSON body: " + err.Error()})
+		if err := decodeJSON(r, &req); err != nil {
+			respondError(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 	}
 
 	manifest, err := protocol.Load(implPath)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "failed to load IMPL manifest"})
+		respondError(w, "failed to load IMPL manifest", http.StatusInternalServerError)
 		return
 	}
 
 	criticReport := protocol.GetCriticReview(manifest)
 	if criticReport == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "no critic report exists for this IMPL"})
+		respondError(w, "no critic report exists for this IMPL", http.StatusBadRequest)
 		return
 	}
 
@@ -446,8 +408,7 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 
 	if req.DryRun {
 		resp.AllResolved = len(failed) == 0 && len(applied) > 0
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		respondJSON(w, http.StatusOK, resp)
 		s.globalBroker.broadcastJSON("critic_autofix_complete", map[string]interface{}{
 			"slug": slug, "dry_run": true, "all_resolved": resp.AllResolved,
 		})
@@ -456,9 +417,7 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 
 	// Save manifest with applied fixes
 	if err := protocol.Save(manifest, implPath); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "failed to save manifest: " + err.Error()})
+		respondError(w, "failed to save manifest: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -474,9 +433,7 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 	// Reload manifest to get updated critic result
 	manifest, err = protocol.Load(implPath)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]string{"error": "failed to reload manifest after fix"})
+		respondError(w, "failed to reload manifest after fix", http.StatusInternalServerError)
 		return
 	}
 
@@ -491,8 +448,7 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 		"slug": slug, "dry_run": false, "all_resolved": resp.AllResolved,
 	})
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // findAgentWave returns the wave number for a given agent ID, defaulting to 1.
@@ -523,4 +479,3 @@ func criticThresholdMet(manifest *protocol.IMPLManifest) bool {
 	}
 	return len(repos) >= 2
 }
-

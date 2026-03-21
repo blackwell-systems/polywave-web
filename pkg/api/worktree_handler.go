@@ -3,7 +3,6 @@ package api
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -48,8 +47,7 @@ func (s *Server) handleListWorktrees(w http.ResponseWriter, r *http.Request) {
 	enrichWorktreeEntries(worktrees)
 
 	resp := WorktreeListResponse{Worktrees: worktrees}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleDeleteWorktree serves DELETE /api/impl/{slug}/worktrees/{branch}.
@@ -77,9 +75,7 @@ func (s *Server) handleDeleteWorktree(w http.ResponseWriter, r *http.Request) {
 	isMerged := mergedBranches[branch]
 
 	if !isMerged && !force {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusConflict)
-		json.NewEncoder(w).Encode(map[string]string{ //nolint:errcheck
+		respondJSON(w, http.StatusConflict, map[string]string{
 			"error":  "branch is unmerged",
 			"branch": branch,
 		})
@@ -119,8 +115,8 @@ func (s *Server) handleBatchDeleteWorktrees(w http.ResponseWriter, r *http.Reque
 	slug := r.PathValue("slug")
 
 	var req WorktreeBatchDeleteRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
 
@@ -147,9 +143,7 @@ func (s *Server) handleBatchDeleteWorktrees(w http.ResponseWriter, r *http.Reque
 			}
 		}
 		if len(unmerged) > 0 {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict)
-			json.NewEncoder(w).Encode(map[string]interface{}{ //nolint:errcheck
+			respondJSON(w, http.StatusConflict, map[string]interface{}{
 				"error":    "unmerged branches exist",
 				"unmerged": unmerged,
 			})
@@ -200,8 +194,7 @@ func (s *Server) handleBatchDeleteWorktrees(w http.ResponseWriter, r *http.Reque
 		FailedCount:  failedCount,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // parseWorktreePorcelain parses the output of `git worktree list --porcelain`

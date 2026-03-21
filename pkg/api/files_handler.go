@@ -190,8 +190,7 @@ func (s *Server) handleFilesTree(w http.ResponseWriter, r *http.Request) {
 		Repo: repoName,
 		Root: root,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // buildFileTree recursively constructs a FileNode tree starting at absPath.
@@ -325,8 +324,7 @@ func (s *Server) handleFilesRead(w http.ResponseWriter, r *http.Request) {
 		Language: lang,
 		Size:     info.Size(),
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleFilesDiff serves GET /api/files/diff?repo=<name>&path=<relpath>
@@ -387,8 +385,7 @@ func (s *Server) handleFilesDiff(w http.ResponseWriter, r *http.Request) {
 		"path": cleanRel,
 		"diff": diffBuf.String(),
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleFilesStatus serves GET /api/files/status?repo=<name>
@@ -412,8 +409,7 @@ func (s *Server) handleFilesStatus(w http.ResponseWriter, r *http.Request) {
 		Repo:  repoName,
 		Files: files,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // collectGitStatus runs git status --porcelain and returns a map from

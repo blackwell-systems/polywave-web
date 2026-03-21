@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -36,16 +35,15 @@ func (s *Server) handleListQueue(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to list queue: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(items) //nolint:errcheck
+	respondJSON(w, http.StatusOK, items)
 }
 
 // handleAddQueue serves POST /api/queue.
 // Creates a new queue item from the request body and writes it to disk.
 func (s *Server) handleAddQueue(w http.ResponseWriter, r *http.Request) {
 	var req AddQueueRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
 	if req.Title == "" {
@@ -81,9 +79,7 @@ func (s *Server) handleAddQueue(w http.ResponseWriter, r *http.Request) {
 
 	s.globalBroker.broadcast("impl_list_updated")
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(item) //nolint:errcheck
+	respondJSON(w, http.StatusCreated, item)
 }
 
 // handleDeleteQueue serves DELETE /api/queue/{slug}.
@@ -143,8 +139,8 @@ func (s *Server) handleReorderQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdatePriorityRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
 
@@ -193,8 +189,7 @@ func (s *Server) handleReorderQueue(w http.ResponseWriter, r *http.Request) {
 
 			s.globalBroker.broadcast("impl_list_updated")
 
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(item) //nolint:errcheck
+			respondJSON(w, http.StatusOK, item)
 			return
 		}
 	}

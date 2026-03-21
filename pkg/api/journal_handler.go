@@ -37,7 +37,7 @@ func (s *Server) handleJournalGet(w http.ResponseWriter, r *http.Request) {
 	agent := r.PathValue("agent")
 
 	if wave == "" || agent == "" {
-		http.Error(w, "wave and agent path parameters required", http.StatusBadRequest)
+		respondError(w, "wave and agent path parameters required", http.StatusBadRequest)
 		return
 	}
 
@@ -47,20 +47,20 @@ func (s *Server) handleJournalGet(w http.ResponseWriter, r *http.Request) {
 	// Create observer
 	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.IndexPath); os.IsNotExist(err) {
-		http.Error(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
+		respondError(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
 		return
 	}
 
 	// Read all entries from index.jsonl
 	entries, err := readJournalEntries(obs.IndexPath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to read journal: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to read journal: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -68,8 +68,7 @@ func (s *Server) handleJournalGet(w http.ResponseWriter, r *http.Request) {
 		Entries: entries,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleJournalSummary returns context.md markdown
@@ -78,7 +77,7 @@ func (s *Server) handleJournalSummary(w http.ResponseWriter, r *http.Request) {
 	agent := r.PathValue("agent")
 
 	if wave == "" || agent == "" {
-		http.Error(w, "wave and agent path parameters required", http.StatusBadRequest)
+		respondError(w, "wave and agent path parameters required", http.StatusBadRequest)
 		return
 	}
 
@@ -88,13 +87,13 @@ func (s *Server) handleJournalSummary(w http.ResponseWriter, r *http.Request) {
 	// Create observer
 	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.JournalDir); os.IsNotExist(err) {
-		http.Error(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
+		respondError(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
 		return
 	}
 
@@ -106,18 +105,17 @@ func (s *Server) handleJournalSummary(w http.ResponseWriter, r *http.Request) {
 			resp := SummaryResponse{
 				Markdown: "## Session Context (Recovered from Tool Journal)\n\n**No tool activity recorded yet.**\n",
 			}
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(resp)
+			respondJSON(w, http.StatusOK, resp)
 			return
 		}
-		http.Error(w, fmt.Sprintf("failed to read journal: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to read journal: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Generate context markdown
 	markdown, err := journal.GenerateContext(entries, 0) // 0 = all entries
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to generate context: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to generate context: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -125,8 +123,7 @@ func (s *Server) handleJournalSummary(w http.ResponseWriter, r *http.Request) {
 		Markdown: markdown,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleJournalCheckpoints returns list of checkpoint metadata
@@ -135,7 +132,7 @@ func (s *Server) handleJournalCheckpoints(w http.ResponseWriter, r *http.Request
 	agent := r.PathValue("agent")
 
 	if wave == "" || agent == "" {
-		http.Error(w, "wave and agent path parameters required", http.StatusBadRequest)
+		respondError(w, "wave and agent path parameters required", http.StatusBadRequest)
 		return
 	}
 
@@ -145,20 +142,20 @@ func (s *Server) handleJournalCheckpoints(w http.ResponseWriter, r *http.Request
 	// Create observer
 	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.JournalDir); os.IsNotExist(err) {
-		http.Error(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
+		respondError(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
 		return
 	}
 
 	// List checkpoints
 	checkpoints, err := obs.ListCheckpoints()
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to list checkpoints: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to list checkpoints: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -166,8 +163,7 @@ func (s *Server) handleJournalCheckpoints(w http.ResponseWriter, r *http.Request
 		Checkpoints: checkpoints,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleJournalRestore restores journal to checkpoint state
@@ -176,25 +172,25 @@ func (s *Server) handleJournalRestore(w http.ResponseWriter, r *http.Request) {
 	agent := r.PathValue("agent")
 
 	if wave == "" || agent == "" {
-		http.Error(w, "wave and agent path parameters required", http.StatusBadRequest)
+		respondError(w, "wave and agent path parameters required", http.StatusBadRequest)
 		return
 	}
 
 	// Parse request body
 	var req RestoreRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, fmt.Sprintf("invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	if req.CheckpointName == "" {
-		http.Error(w, "checkpoint_name is required", http.StatusBadRequest)
+		respondError(w, "checkpoint_name is required", http.StatusBadRequest)
 		return
 	}
 
 	// Validate checkpoint name (filesystem-safe)
 	if strings.ContainsAny(req.CheckpointName, "/\\ ") {
-		http.Error(w, "invalid checkpoint_name: must be filesystem-safe (no slashes or spaces)", http.StatusBadRequest)
+		respondError(w, "invalid checkpoint_name: must be filesystem-safe (no slashes or spaces)", http.StatusBadRequest)
 		return
 	}
 
@@ -204,29 +200,27 @@ func (s *Server) handleJournalRestore(w http.ResponseWriter, r *http.Request) {
 	// Create observer
 	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.JournalDir); os.IsNotExist(err) {
-		http.Error(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
+		respondError(w, fmt.Sprintf("journal not found for %s", agentPath), http.StatusNotFound)
 		return
 	}
 
 	// Restore checkpoint
 	if err := obs.RestoreCheckpoint(req.CheckpointName); err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			http.Error(w, fmt.Sprintf("checkpoint not found: %v", err), http.StatusBadRequest)
+			respondError(w, fmt.Sprintf("checkpoint not found: %v", err), http.StatusBadRequest)
 			return
 		}
-		http.Error(w, fmt.Sprintf("failed to restore checkpoint: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to restore checkpoint: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	respondJSON(w, http.StatusOK, map[string]string{
 		"status":  "success",
 		"message": fmt.Sprintf("restored to checkpoint %q", req.CheckpointName),
 	})

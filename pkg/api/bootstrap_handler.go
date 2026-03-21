@@ -44,8 +44,8 @@ type validateRepoResponse struct {
 // GET /api/scout/{runID}/events.
 func (s *Server) handleBootstrapRun(w http.ResponseWriter, r *http.Request) {
 	var req bootstrapRunRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if req.Description == "" {
@@ -63,9 +63,7 @@ func (s *Server) handleBootstrapRun(w http.ResponseWriter, r *http.Request) {
 		s.runBootstrapAgent(ctx, runID, req.Description, req.Repo)
 	}()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(bootstrapRunResponse{RunID: runID}) //nolint:errcheck
+	respondJSON(w, http.StatusAccepted, bootstrapRunResponse{RunID: runID})
 }
 
 // runBootstrapAgent is similar to runScoutAgent but:
@@ -205,15 +203,13 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 // "error": "...", "error_code": "not_found|not_git|no_commits"} on failure.
 func (s *Server) handleValidateRepoPath(w http.ResponseWriter, r *http.Request) {
 	var req validateRepoRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
 	resp := validatePath(req.Path)
-	json.NewEncoder(w).Encode(resp) //nolint:errcheck
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // validatePath performs the three-step repo validation checks.

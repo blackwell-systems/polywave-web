@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,82 +36,79 @@ func (s *Server) SetObservabilityStore(store observability.Store) {
 func (s *Server) handleObsIMPLMetrics(w http.ResponseWriter, r *http.Request) {
 	store := s.obsStore()
 	if store == nil {
-		http.Error(w, `{"error":"observability store not configured"}`, http.StatusInternalServerError)
+		respondError(w, "observability store not configured", http.StatusInternalServerError)
 		return
 	}
 
 	implSlug := r.PathValue("impl_slug")
 	if implSlug == "" {
-		http.Error(w, `{"error":"impl_slug is required"}`, http.StatusBadRequest)
+		respondError(w, "impl_slug is required", http.StatusBadRequest)
 		return
 	}
 
 	metrics, err := observability.GetIMPLMetrics(r.Context(), store, implSlug)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		respondError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(metrics)
+	respondJSON(w, http.StatusOK, metrics)
 }
 
 func (s *Server) handleObsProgramSummary(w http.ResponseWriter, r *http.Request) {
 	store := s.obsStore()
 	if store == nil {
-		http.Error(w, `{"error":"observability store not configured"}`, http.StatusInternalServerError)
+		respondError(w, "observability store not configured", http.StatusInternalServerError)
 		return
 	}
 
 	programSlug := r.PathValue("program_slug")
 	if programSlug == "" {
-		http.Error(w, `{"error":"program_slug is required"}`, http.StatusBadRequest)
+		respondError(w, "program_slug is required", http.StatusBadRequest)
 		return
 	}
 
 	summary, err := observability.GetProgramSummary(r.Context(), store, programSlug)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		respondError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(summary)
+	respondJSON(w, http.StatusOK, summary)
 }
 
 func (s *Server) handleObsQueryEvents(w http.ResponseWriter, r *http.Request) {
 	store := s.obsStore()
 	if store == nil {
-		http.Error(w, `{"error":"observability store not configured"}`, http.StatusInternalServerError)
+		respondError(w, "observability store not configured", http.StatusInternalServerError)
 		return
 	}
 
 	filters, err := parseQueryFilters(r)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+		respondError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	events, err := store.QueryEvents(r.Context(), filters)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		respondError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(events)
+	respondJSON(w, http.StatusOK, events)
 }
 
 func (s *Server) handleObsRollup(w http.ResponseWriter, r *http.Request) {
 	store := s.obsStore()
 	if store == nil {
-		http.Error(w, `{"error":"observability store not configured"}`, http.StatusInternalServerError)
+		respondError(w, "observability store not configured", http.StatusInternalServerError)
 		return
 	}
 
 	req, err := parseRollupRequest(r)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
+		respondError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -127,39 +123,37 @@ func (s *Server) handleObsRollup(w http.ResponseWriter, r *http.Request) {
 		req.Type = "retry_count"
 		result, err = observability.ComputeRetryRollup(r.Context(), store, req)
 	default:
-		http.Error(w, `{"error":"type must be cost, success_rate, or retry"}`, http.StatusBadRequest)
+		respondError(w, "type must be cost, success_rate, or retry", http.StatusBadRequest)
 		return
 	}
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		respondError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	respondJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) handleObsCostBreakdown(w http.ResponseWriter, r *http.Request) {
 	store := s.obsStore()
 	if store == nil {
-		http.Error(w, `{"error":"observability store not configured"}`, http.StatusInternalServerError)
+		respondError(w, "observability store not configured", http.StatusInternalServerError)
 		return
 	}
 
 	implSlug := r.PathValue("impl_slug")
 	if implSlug == "" {
-		http.Error(w, `{"error":"impl_slug is required"}`, http.StatusBadRequest)
+		respondError(w, "impl_slug is required", http.StatusBadRequest)
 		return
 	}
 
 	breakdown, err := observability.GetCostBreakdown(r.Context(), store, implSlug)
 	if err != nil {
-		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusInternalServerError)
+		respondError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(breakdown)
+	respondJSON(w, http.StatusOK, breakdown)
 }
 
 // parseQueryFilters extracts QueryFilters from HTTP query parameters.

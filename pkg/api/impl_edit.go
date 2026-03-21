@@ -107,8 +107,8 @@ func (s *Server) handleImplRevise(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Feedback string `json:"feedback"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Feedback == "" {
-		http.Error(w, "feedback is required", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil || req.Feedback == "" {
+		respondError(w, "feedback is required", http.StatusBadRequest)
 		return
 	}
 
@@ -121,9 +121,7 @@ func (s *Server) handleImplRevise(w http.ResponseWriter, r *http.Request) {
 		s.runImplReviseAgent(ctx, runID, slug, req.Feedback)
 	}()
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]string{"run_id": runID}) //nolint:errcheck
+	respondJSON(w, http.StatusAccepted, map[string]string{"run_id": runID})
 }
 
 // handleImplReviseEvents handles GET /api/impl/{slug}/revise/{runID}/events.
