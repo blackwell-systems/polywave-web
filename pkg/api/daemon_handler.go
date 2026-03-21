@@ -142,8 +142,7 @@ func (s *Server) handleDaemonStart(w http.ResponseWriter, r *http.Request) {
 		globalDaemonBroker.broadcast("daemon_stopped", string(stopped))
 	}()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stateCopy) //nolint:errcheck
+	respondJSON(w, http.StatusOK, stateCopy)
 }
 
 // handleDaemonStop serves POST /api/daemon/stop.
@@ -173,8 +172,7 @@ func (s *Server) handleDaemonStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	globalDaemon.mu.Unlock()
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state) //nolint:errcheck
+	respondJSON(w, http.StatusOK, state)
 }
 
 // handleDaemonEvents serves GET /api/daemon/events.

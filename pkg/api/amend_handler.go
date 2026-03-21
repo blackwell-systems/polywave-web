@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -33,13 +32,13 @@ type AmendImplResponse struct {
 func (s *Server) handleAmendImpl(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	if slug == "" {
-		http.Error(w, "missing slug", http.StatusBadRequest)
+		respondError(w, "missing slug", http.StatusBadRequest)
 		return
 	}
 
 	var req AmendImplRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
 
@@ -49,15 +48,13 @@ func (s *Server) handleAmendImpl(w http.ResponseWriter, r *http.Request) {
 		"extend-scope":   true,
 	}
 	if !validOps[req.Operation] {
-		http.Error(w, "operation must be one of: add-wave, redirect-agent, extend-scope", http.StatusBadRequest)
+		respondError(w, "operation must be one of: add-wave, redirect-agent, extend-scope", http.StatusBadRequest)
 		return
 	}
 
 	// extend-scope is an orchestrator-level operation; respond immediately
 	if req.Operation == "extend-scope" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(AmendImplResponse{ //nolint:errcheck
+		respondJSON(w, http.StatusOK, AmendImplResponse{
 			Success:   true,
 			Operation: "extend-scope",
 			Warnings:  []string{"extend-scope: re-launch Scout with IMPL as context (orchestrator-level operation)"},
@@ -67,7 +64,7 @@ func (s *Server) handleAmendImpl(w http.ResponseWriter, r *http.Request) {
 
 	implPath, _ := s.findImplPath(slug)
 	if implPath == "" {
-		http.Error(w, "IMPL doc not found", http.StatusNotFound)
+		respondError(w, "IMPL doc not found", http.StatusNotFound)
 		return
 	}
 
@@ -88,18 +85,14 @@ func (s *Server) handleAmendImpl(w http.ResponseWriter, r *http.Request) {
 	result, err := protocol.AmendImpl(opts)
 	if err != nil {
 		if errors.Is(err, protocol.ErrAmendBlocked) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict)
-			json.NewEncoder(w).Encode(AmendImplResponse{ //nolint:errcheck
+			respondJSON(w, http.StatusConflict, AmendImplResponse{
 				Success:   false,
 				Operation: req.Operation,
 				Error:     err.Error(),
 			})
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(AmendImplResponse{ //nolint:errcheck
+		respondJSON(w, http.StatusInternalServerError, AmendImplResponse{
 			Success:   false,
 			Operation: req.Operation,
 			Error:     err.Error(),
@@ -109,9 +102,7 @@ func (s *Server) handleAmendImpl(w http.ResponseWriter, r *http.Request) {
 
 	s.globalBroker.broadcast("impl_list_updated")
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(AmendImplResponse{ //nolint:errcheck
+	respondJSON(w, http.StatusOK, AmendImplResponse{
 		Success:       true,
 		Operation:     result.Operation,
 		NewWaveNumber: result.NewWaveNumber,

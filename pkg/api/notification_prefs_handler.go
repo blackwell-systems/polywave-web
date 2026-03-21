@@ -34,8 +34,7 @@ func (s *Server) handleGetNotificationPrefs(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		if os.IsNotExist(err) {
 			// No config file exists - return defaults
-			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(defaultNotificationPreferences()) //nolint:errcheck
+			respondJSON(w, http.StatusOK, defaultNotificationPreferences())
 			return
 		}
 		http.Error(w, "failed to read config", http.StatusInternalServerError)
@@ -54,8 +53,7 @@ func (s *Server) handleGetNotificationPrefs(w http.ResponseWriter, r *http.Reque
 		prefs = defaultNotificationPreferences()
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(prefs) //nolint:errcheck
+	respondJSON(w, http.StatusOK, prefs)
 }
 
 // handleSaveNotificationPrefs serves POST /api/notifications/preferences.
@@ -63,8 +61,8 @@ func (s *Server) handleGetNotificationPrefs(w http.ResponseWriter, r *http.Reque
 // Preserves all other config fields using atomic write pattern.
 func (s *Server) handleSaveNotificationPrefs(w http.ResponseWriter, r *http.Request) {
 	var prefs NotificationPreferences
-	if err := json.NewDecoder(r.Body).Decode(&prefs); err != nil {
-		http.Error(w, "invalid preferences JSON", http.StatusBadRequest)
+	if err := decodeJSON(r, &prefs); err != nil {
+		respondError(w, "invalid preferences JSON", http.StatusBadRequest)
 		return
 	}
 

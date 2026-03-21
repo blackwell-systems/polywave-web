@@ -28,8 +28,8 @@ type ScoutRunResponse struct {
 // JSON {"run_id": "<runID>"}.
 func (s *Server) handleScoutRun(w http.ResponseWriter, r *http.Request) {
 	var req ScoutRunRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if req.Feature == "" {
@@ -40,13 +40,11 @@ func (s *Server) handleScoutRun(w http.ResponseWriter, r *http.Request) {
 	deps := s.makeDeps()
 	runID, err := service.StartScout(deps, req.Feature, req.Repo)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		respondError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(ScoutRunResponse{RunID: runID}) //nolint:errcheck
+	respondJSON(w, http.StatusAccepted, ScoutRunResponse{RunID: runID})
 }
 
 // handleScoutEvents handles GET /api/scout/{runID}/events.
@@ -131,9 +129,7 @@ func (s *Server) handleScoutRerun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(ScoutRunResponse{RunID: runID}) //nolint:errcheck
+	respondJSON(w, http.StatusAccepted, ScoutRunResponse{RunID: runID})
 }
 
 // makeDeps constructs a service.Deps from Server state.

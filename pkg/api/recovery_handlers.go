@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -66,8 +65,8 @@ func (s *Server) handleStepRetry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req StepRetryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if req.Wave < 1 {
@@ -234,8 +233,8 @@ func (s *Server) handleStepSkip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req StepSkipRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if req.Wave < 1 {
@@ -256,8 +255,7 @@ func (s *Server) handleStepSkip(w http.ResponseWriter, r *http.Request) {
 		_ = defaultPipelineTracker.Skip(slug, req.Wave, step)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"status": "skipped",
 		"step":   string(step),
 		"reason": req.Reason,
@@ -290,8 +288,7 @@ func (s *Server) handleForceMarkComplete(w http.ResponseWriter, r *http.Request)
 		defaultPipelineTracker.Clear(slug)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "complete"})
+	respondJSON(w, http.StatusOK, map[string]string{"status": "complete"})
 }
 
 // handlePipelineState handles GET /api/wave/{slug}/pipeline.
@@ -310,8 +307,7 @@ func (s *Server) handlePipelineState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(state)
+	respondJSON(w, http.StatusOK, state)
 }
 
 // RegisterRecoveryRoutes registers the recovery control endpoints.

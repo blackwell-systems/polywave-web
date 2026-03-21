@@ -12,6 +12,7 @@ import (
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 )
 
+
 // HandleLoadManifest serves GET /api/manifest/{slug}.
 // Loads and returns the parsed YAML manifest as JSON.
 func (s *Server) HandleLoadManifest(w http.ResponseWriter, r *http.Request) {
@@ -28,11 +29,7 @@ func (s *Server) HandleLoadManifest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(manifest); err != nil {
-		// Headers already written; nothing more we can do.
-		return
-	}
+	respondJSON(w, http.StatusOK, manifest)
 }
 
 // HandleValidateManifest serves POST /api/manifest/{slug}/validate.
@@ -59,11 +56,7 @@ func (s *Server) HandleValidateManifest(w http.ResponseWriter, r *http.Request) 
 		response["errors"] = []protocol.ValidationError{}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		// Headers already written; nothing more we can do.
-		return
-	}
+	respondJSON(w, http.StatusOK, response)
 }
 
 // HandleGetManifestWave serves GET /api/manifest/{slug}/wave/{number}.
@@ -89,11 +82,7 @@ func (s *Server) HandleGetManifestWave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(wave); err != nil {
-		// Headers already written; nothing more we can do.
-		return
-	}
+	respondJSON(w, http.StatusOK, wave)
 }
 
 // HandleSetManifestCompletion serves POST /api/manifest/{slug}/completion/{agentID}.
@@ -125,8 +114,7 @@ func (s *Server) HandleSetManifestCompletion(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 // resolveManifestPath converts a slug to an absolute YAML manifest path.

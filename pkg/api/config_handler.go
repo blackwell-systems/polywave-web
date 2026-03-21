@@ -1,7 +1,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"path/filepath"
 
@@ -61,16 +60,15 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		apiCfg.Repos[i] = RepoEntry{Name: repo.Name, Path: repo.Path}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(apiCfg) //nolint:errcheck
+	respondJSON(w, http.StatusOK, apiCfg)
 }
 
 // handleSaveConfig serves POST /api/config.
 // Decodes SAWConfig JSON body and atomically writes it to saw.config.json.
 func (s *Server) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	var apiCfg SAWConfig
-	if err := json.NewDecoder(r.Body).Decode(&apiCfg); err != nil {
-		http.Error(w, "invalid config JSON", http.StatusBadRequest)
+	if err := decodeJSON(r, &apiCfg); err != nil {
+		respondError(w, "invalid config JSON", http.StatusBadRequest)
 		return
 	}
 

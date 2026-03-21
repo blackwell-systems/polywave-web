@@ -1,9 +1,7 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -48,7 +46,7 @@ func (s *Server) handleListPrograms(w http.ResponseWriter, r *http.Request) {
 	deps := s.makeDeps()
 	programs, err := service.ListPrograms(deps)
 	if err != nil {
-		http.Error(w, "failed to list programs", http.StatusInternalServerError)
+		respondError(w, "failed to list programs", http.StatusInternalServerError)
 		return
 	}
 
@@ -71,8 +69,7 @@ func (s *Server) handleListPrograms(w http.ResponseWriter, r *http.Request) {
 		Metrics:    metrics,
 		Standalone: standalone,
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // buildPipelineData builds pipeline entries and metrics from configured repos.
@@ -213,7 +210,7 @@ func (s *Server) handleGetProgramStatus(w http.ResponseWriter, r *http.Request) 
 	deps := s.makeDeps()
 	status, err := service.GetProgramStatus(deps, slug)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -246,8 +243,7 @@ func (s *Server) handleGetProgramStatus(w http.ResponseWriter, r *http.Request) 
 		ValidationErrors: validationErrors,
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	respondJSON(w, http.StatusOK, resp)
 }
 
 // handleGetTierStatus handles GET /api/program/{slug}/tier/{n}.
@@ -258,14 +254,14 @@ func (s *Server) handleGetTierStatus(w http.ResponseWriter, r *http.Request) {
 
 	tierNum, err := strconv.Atoi(tierStr)
 	if err != nil || tierNum < 1 {
-		http.Error(w, "invalid tier number", http.StatusBadRequest)
+		respondError(w, "invalid tier number", http.StatusBadRequest)
 		return
 	}
 
 	deps := s.makeDeps()
 	status, err := service.GetProgramStatus(deps, slug)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
@@ -279,12 +275,11 @@ func (s *Server) handleGetTierStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if tierStatus == nil {
-		http.Error(w, fmt.Sprintf("tier %d not found", tierNum), http.StatusNotFound)
+		respondError(w, fmt.Sprintf("tier %d not found", tierNum), http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(tierStatus)
+	respondJSON(w, http.StatusOK, tierStatus)
 }
 
 // handleExecuteTier handles POST /api/program/{slug}/tier/{n}/execute.
@@ -295,20 +290,20 @@ func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 
 	tierNum, err := strconv.Atoi(tierStr)
 	if err != nil || tierNum < 1 {
-		http.Error(w, "invalid tier number", http.StatusBadRequest)
+		respondError(w, "invalid tier number", http.StatusBadRequest)
 		return
 	}
 
 	// Decode request body (optional auto flag)
 	var body TierExecuteRequest
-	_ = json.NewDecoder(r.Body).Decode(&body)
+	_ = decodeJSON(r, &body)
 
 	deps := s.makeDeps()
 	if err := service.ExecuteTier(deps, slug, tierNum, body.Auto); err != nil {
 		if err.Error() == "program tier already executing" {
-			http.Error(w, err.Error(), http.StatusConflict)
+			respondError(w, err.Error(), http.StatusConflict)
 		} else {
-			http.Error(w, err.Error(), http.StatusNotFound)
+			respondError(w, err.Error(), http.StatusNotFound)
 		}
 		return
 	}
@@ -327,12 +322,11 @@ func (s *Server) handleGetProgramContracts(w http.ResponseWriter, r *http.Reques
 	deps := s.makeDeps()
 	status, err := service.GetProgramStatus(deps, slug)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status.ContractStatuses)
+	respondJSON(w, http.StatusOK, status.ContractStatuses)
 }
 
 // AnalyzeImplsRequest is the JSON request body for POST /api/programs/analyze-impls.
@@ -353,23 +347,22 @@ type CreateFromImplsRequest struct {
 // Accepts a list of IMPL slugs, runs CheckIMPLConflicts, returns the conflict report.
 func (s *Server) handleAnalyzeImpls(w http.ResponseWriter, r *http.Request) {
 	var req AnalyzeImplsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if len(req.Slugs) < 2 {
-		http.Error(w, "at least 2 slugs are required for conflict analysis", http.StatusBadRequest)
+		respondError(w, "at least 2 slugs are required for conflict analysis", http.StatusBadRequest)
 		return
 	}
 
 	report, err := service.AnalyzeImplConflicts(s.makeDeps(), req.Slugs, req.RepoPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(report)
+	respondJSON(w, http.StatusOK, report)
 }
 
 // handleCreateFromImpls handles POST /api/programs/create-from-impls.
@@ -377,25 +370,24 @@ func (s *Server) handleAnalyzeImpls(w http.ResponseWriter, r *http.Request) {
 // writes the PROGRAM manifest to disk, returns the result.
 func (s *Server) handleCreateFromImpls(w http.ResponseWriter, r *http.Request) {
 	var req CreateFromImplsRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &req); err != nil {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 	if len(req.Slugs) < 1 {
-		http.Error(w, "at least 1 slug is required", http.StatusBadRequest)
+		respondError(w, "at least 1 slug is required", http.StatusBadRequest)
 		return
 	}
 
 	result, err := service.CreateProgramFromIMPLs(s.makeDeps(), req.Slugs, req.Name, req.ProgramSlug, req.RepoPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		respondError(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	s.globalBroker.broadcast("program_list_updated")
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(result)
+	respondJSON(w, http.StatusOK, result)
 }
 
 // handleReplanProgram handles POST /api/program/{slug}/replan.
@@ -407,17 +399,16 @@ func (s *Server) handleReplanProgram(w http.ResponseWriter, r *http.Request) {
 		Reason     string `json:"reason"`
 		FailedTier int    `json:"failed_tier"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil && err != io.EOF {
-		http.Error(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
+	if err := decodeJSON(r, &body); err != nil && err.Error() != "request body is empty" {
+		respondError(w, "invalid request body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	deps := s.makeDeps()
 	if err := service.ReplanProgram(deps, slug, body.Reason, body.FailedTier); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		respondError(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
 	w.WriteHeader(http.StatusAccepted)
 }
-
