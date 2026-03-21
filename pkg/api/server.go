@@ -239,6 +239,9 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("PUT /api/queue/{slug}/priority", s.handleReorderQueue)
 	s.mux.HandleFunc("GET /api/autonomy", s.handleGetAutonomy)
 	s.mux.HandleFunc("PUT /api/autonomy", s.handleSaveAutonomy)
+	// Stale worktree cleanup — manual trigger across all repos
+	s.mux.HandleFunc("POST /api/worktrees/cleanup-stale", s.handleGlobalStaleCleanup)
+
 	s.mux.HandleFunc("POST /api/daemon/start", s.handleDaemonStart)
 	s.mux.HandleFunc("POST /api/daemon/stop", s.handleDaemonStop)
 	s.mux.HandleFunc("GET /api/daemon/status", s.handleDaemonStatus)
@@ -250,6 +253,9 @@ func New(cfg Config) *Server {
 	if sub != nil {
 		s.mux.Handle("/", http.FileServer(http.FS(sub)))
 	}
+
+	// Start background stale worktree cleanup loop.
+	go s.StartStaleCleanupLoop(serverCtx)
 
 	return s
 }
