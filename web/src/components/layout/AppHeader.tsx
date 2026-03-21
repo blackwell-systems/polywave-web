@@ -3,8 +3,7 @@ import { Search, Settings } from 'lucide-react'
 import DarkModeToggle from '../DarkModeToggle'
 import ThemePicker from '../ThemePicker'
 import ModelPicker from '../ModelPicker'
-
-type ModelRole = 'scout' | 'critic' | 'wave' | 'chat' | 'planner' | 'scaffold' | 'integration'
+import { ModelRole, MODEL_ROLES } from '../../types/models'
 
 export interface AppHeaderProps {
   onNewPlanClick: () => void
@@ -28,7 +27,6 @@ const ROLE_COLORS: Record<ModelRole, string> = {
   integration: 'text-rose-600 dark:text-rose-400',
 }
 
-const ROLES: ModelRole[] = ['planner', 'scout', 'critic', 'scaffold', 'wave', 'integration', 'chat']
 
 function shortModel(value: string): string {
   // Strip provider prefix and shorten model name for display
@@ -107,7 +105,7 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
       </div>
       <div className="flex items-stretch">
         {/* Individual model role buttons */}
-        {ROLES.map(role => (
+        {MODEL_ROLES.map(role => (
           <div key={role} ref={openRole === role ? pickerRef : undefined} className="relative flex items-stretch border-r border-border">
             <button
               onClick={() => setOpenRole(openRole === role ? null : role)}
