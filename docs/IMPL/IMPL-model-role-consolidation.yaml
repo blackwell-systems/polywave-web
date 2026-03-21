@@ -71,7 +71,7 @@ scaffolds:
         planner: 'claude-sonnet-4-6',
       }
     import_path: "../types/models"
-    status: pending
+    status: committed (8e62039)
 
 file_ownership:
   - file: web/src/contexts/AppContext.tsx
