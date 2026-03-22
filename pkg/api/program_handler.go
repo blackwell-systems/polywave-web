@@ -14,6 +14,19 @@ import (
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 )
 
+// SSE event types for IMPL branch lifecycle within program tier execution.
+// These are emitted when the engine creates/merges IMPL branches during
+// program-tier wave execution (E28 IMPL branch isolation).
+const (
+	// ProgramEventImplBranchCreated is emitted when an IMPL branch is created
+	// for a program-tier IMPL execution. The branch isolates wave merges from main.
+	ProgramEventImplBranchCreated = "impl_branch_created"
+
+	// ProgramEventImplBranchMerged is emitted when an IMPL branch is merged back
+	// to main after all waves for that IMPL complete successfully.
+	ProgramEventImplBranchMerged = "impl_branch_merged"
+)
+
 // ProgramStatusResponse wraps protocol.ProgramStatusResult with web-specific fields.
 type ProgramStatusResponse struct {
 	ProgramSlug      string                       `json:"program_slug"`
@@ -284,6 +297,10 @@ func (s *Server) handleGetTierStatus(w http.ResponseWriter, r *http.Request) {
 
 // handleExecuteTier handles POST /api/program/{slug}/tier/{n}/execute.
 // Launches tier execution in a background goroutine and returns 202 Accepted.
+//
+// The engine's RunTierLoop handles IMPL branch creation and MergeTarget
+// threading internally (E28). This handler emits SSE events for branch
+// lifecycle so the frontend can track IMPL branch isolation state.
 func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
 	tierStr := r.PathValue("n")
@@ -299,6 +316,21 @@ func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 	_ = decodeJSON(r, &body)
 
 	deps := s.makeDeps()
+
+	// Resolve program path to get tier IMPL slugs for branch event emission.
+	programPath, _, resolveErr := service.ResolveProgramPath(deps, slug)
+	var tierImplSlugs []string
+	if resolveErr == nil {
+		if manifest, parseErr := protocol.ParseProgramManifest(programPath); parseErr == nil {
+			for _, tier := range manifest.Tiers {
+				if tier.Number == tierNum {
+					tierImplSlugs = tier.Impls
+					break
+				}
+			}
+		}
+	}
+
 	if err := service.ExecuteTier(deps, slug, tierNum, body.Auto); err != nil {
 		if err.Error() == "program tier already executing" {
 			respondError(w, err.Error(), http.StatusConflict)
@@ -308,10 +340,36 @@ func (s *Server) handleExecuteTier(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Emit impl_branch_created events for each IMPL in the tier.
+	// The engine creates these branches internally via ProgramBranchName;
+	// we mirror that naming here for SSE consumers.
+	for _, implSlug := range tierImplSlugs {
+		branchName := protocol.ProgramBranchName(slug, tierNum, implSlug)
+		s.globalBroker.broadcastJSON(ProgramEventImplBranchCreated, map[string]interface{}{
+			"program_slug": slug,
+			"tier":         tierNum,
+			"impl_slug":    implSlug,
+			"branch":       branchName,
+		})
+	}
+
 	// Notify that execution started
 	s.globalBroker.broadcast("program_list_updated")
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+// EmitImplBranchMerged broadcasts an impl_branch_merged SSE event.
+// Called by the program runner (or engine callback) after an IMPL branch
+// is successfully merged to main during finalize-tier.
+func (s *Server) EmitImplBranchMerged(programSlug string, tierNum int, implSlug string) {
+	branchName := protocol.ProgramBranchName(programSlug, tierNum, implSlug)
+	s.globalBroker.broadcastJSON(ProgramEventImplBranchMerged, map[string]interface{}{
+		"program_slug": programSlug,
+		"tier":         tierNum,
+		"impl_slug":    implSlug,
+		"branch":       branchName,
+	})
 }
 
 // handleGetProgramContracts handles GET /api/program/{slug}/contracts.
