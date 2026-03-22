@@ -266,7 +266,7 @@ export interface SAWConfig {
       threshold: number
     }
   }
-  appearance: { theme: 'system' | 'light' | 'dark'; color_theme?: string; color_theme_dark?: string; color_theme_light?: string; favorite_themes_dark?: string[]; favorite_themes_light?: string[] }
+  appearance: { theme: 'system' | 'light' | 'dark'; contrast?: 'normal' | 'high'; color_theme?: string; color_theme_dark?: string; color_theme_light?: string; favorite_themes_dark?: string[]; favorite_themes_light?: string[] }
 }
 
 // Chat with Claude (v0.18.0-B)
