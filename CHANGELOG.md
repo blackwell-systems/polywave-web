@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.113.0] | 2026-03-22 | Nested program graph — three-level nested program dependency graph (Tier → IMPL → Agent nodes) with variable-size IMPL containers, embedded agent topology, particle animations on intra-IMPL edges, agent status indicators; shared `layoutAgentWaves()` utility in `graphLayout.ts`; backend API enriched with wave/agent data per IMPL; 25 new tests; ROADMAP.md trimmed (removed implemented items); web-wiring-gaps IMPL archived (NOT_SUITABLE) |
 | [0.112.0] | 2026-03-22 | Web app parity — ScoutCorrectionLoop, ClosedLoopGateRetry, SyncProgramStatusFromDisk, PreWaveGate, AdvanceTierAutomatically wired into web app handlers; program-tier-isolation SSE events (impl_branch_created/merged); MergeAgents 4th arg fix |
 | [0.111.0] | 2026-03-22 | NavTip tooltips — custom CSS tooltip component for all header elements (Home, New Plan, New Program, Search, model roles, theme picker, dark mode, contrast, settings, SSE status); docs updated (api-reference.md +60 endpoints, cli-reference.md +5 commands) |
 | [0.110.0] | 2026-03-22 | Stale artifact cleanup — worktree dirs, .saw-state, .saw-agent-brief files cleaned; high-contrast-mode IMPL archived |
