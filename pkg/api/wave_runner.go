@@ -502,6 +502,36 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 				})
 			}
 			if gate.Required && !gate.Passed {
+				// Attempt closed-loop gate retry (R3) before failing.
+				retryResult, retryErr := engine.ClosedLoopGateRetry(context.Background(), engine.ClosedLoopRetryOpts{
+					IMPLPath:     implPath,
+					RepoPath:     repoPath,
+					WaveNum:      waveNum,
+					AgentID:      fmt.Sprintf("wave%d", waveNum),
+					GateType:     gate.Type,
+					GateCommand:  gate.Command,
+					GateOutput:   gate.Stderr,
+					WorktreePath: repoPath,
+					OnEvent: func(ev engine.Event) {
+						publish(ev.Event, ev.Data)
+					},
+				})
+				if retryErr == nil && retryResult != nil && retryResult.Fixed {
+					// Re-run all gates to confirm after fix.
+					gateResults, err = protocol.RunGatesWithCache(manifest, waveNum, repoPath, cache)
+					if err == nil {
+						allPass := true
+						for _, g := range gateResults {
+							publish("quality_gate_result", g)
+							if g.Required && !g.Passed {
+								allPass = false
+							}
+						}
+						if allPass {
+							break // All gates pass after retry fix.
+						}
+					}
+				}
 				err := fmt.Errorf("required gate %q failed", gate.Type)
 				_ = tracker.Fail(slug, waveNum, StepRunGates, err)
 				publishPipelineStep(publish, slug, waveNum, StepRunGates, StepFailed, err.Error())

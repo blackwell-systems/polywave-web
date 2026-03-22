@@ -223,6 +223,21 @@ func runWaveLoop(
 		return
 	}
 
+	// Pre-wave gate: check readiness before proceeding.
+	if gateResult := protocol.PreWaveGate(manifest); !gateResult.Ready {
+		var failedChecks []string
+		for _, check := range gateResult.Checks {
+			if check.Status == "fail" {
+				failedChecks = append(failedChecks, check.Name+": "+check.Message)
+			}
+		}
+		publish("run_failed", map[string]interface{}{
+			"error":         "pre-wave gate failed",
+			"failed_checks": failedChecks,
+		})
+		return
+	}
+
 	// Cross-repo detection: check if the IMPL targets a different repo.
 	if targetRepos := targetRepoNames(manifest); len(targetRepos) > 0 {
 		publish("run_started", map[string]interface{}{

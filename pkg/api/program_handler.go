@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/queue"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
@@ -221,6 +223,14 @@ func (s *Server) handleGetProgramStatus(w http.ResponseWriter, r *http.Request) 
 	slug := r.PathValue("slug")
 
 	deps := s.makeDeps()
+
+	// Sync program status from disk before returning (E32).
+	if programPath, repoPath, resolveErr := service.ResolveProgramPath(deps, slug); resolveErr == nil {
+		if syncErr := engine.SyncProgramStatusFromDisk(programPath, repoPath); syncErr != nil {
+			log.Printf("handleGetProgramStatus: SyncProgramStatusFromDisk warning: %v", syncErr)
+		}
+	}
+
 	status, err := service.GetProgramStatus(deps, slug)
 	if err != nil {
 		respondError(w, err.Error(), http.StatusNotFound)

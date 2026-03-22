@@ -128,13 +128,22 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		})
 	}
 
-	execErr := engine.RunScout(ctx, engine.RunScoutOpts{
-		Feature:             feature,
-		RepoPath:            repoRoot,
-		SAWRepoPath:         sawRepo,
-		IMPLOutPath:         implOut,
-		ScoutModel:          scoutModel,
-		UseStructuredOutput: true,
+	execErr := engine.ScoutCorrectionLoop(ctx, engine.ScoutCorrectionOpts{
+		ScoutOpts: engine.RunScoutOpts{
+			Feature:             feature,
+			RepoPath:            repoRoot,
+			SAWRepoPath:         sawRepo,
+			IMPLOutPath:         implOut,
+			ScoutModel:          scoutModel,
+			UseStructuredOutput: true,
+		},
+		OnRetry: func(attempt int, errors []string) {
+			publish("scout_correction_retry", map[string]interface{}{
+				"run_id":  runID,
+				"attempt": attempt,
+				"errors":  errors,
+			})
+		},
 	}, onChunk)
 
 	if execErr != nil {
