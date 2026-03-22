@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Settings } from 'lucide-react'
 import DarkModeToggle from '../DarkModeToggle'
+import HighContrastToggle from '../HighContrastToggle'
 import ThemePicker from '../ThemePicker'
 import ModelPicker from '../ModelPicker'
 import { ModelRole, MODEL_ROLES } from '../../types/models'
@@ -134,6 +135,7 @@ export function AppHeader(props: AppHeaderProps): JSX.Element {
         ))}
         <ThemePicker />
         <DarkModeToggle />
+        <HighContrastToggle />
         <button onClick={onSettingsClick} title="Settings" className="flex items-center justify-center px-4 border-l border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
           <Settings size={16} />
         </button>
