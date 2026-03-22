@@ -28,7 +28,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
     repo: { path: '' },
     agent: { scout_model: 'claude-sonnet-4-6', wave_model: 'claude-sonnet-4-6', integration_model: 'claude-sonnet-4-6', chat_model: 'claude-sonnet-4-6' },
     quality: { require_tests: false, require_lint: false, block_on_failure: false },
-    appearance: { theme: 'system' },
+    appearance: { theme: 'system', contrast: 'normal' },
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -47,7 +47,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
           repo: c.repo ?? prev.repo,
           agent: { ...prev.agent, ...c.agent },
           quality: { ...prev.quality, ...c.quality },
-          appearance: { ...prev.appearance, theme: c.appearance?.theme || prev.appearance.theme },
+          appearance: { ...prev.appearance, ...c.appearance },
         }))
         setLoading(false)
       })
@@ -376,13 +376,25 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
           <select
             id="settings-theme"
             value={config.appearance.theme}
-            onChange={e => setConfig(c => ({ ...c, appearance: { theme: e.target.value as 'system' | 'light' | 'dark' } }))}
+            onChange={e => setConfig(c => ({ ...c, appearance: { ...c.appearance, theme: e.target.value as 'system' | 'light' | 'dark' } }))}
             className="text-sm px-3 py-1.5 rounded-md border border-border bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
           >
             <option value="system">System</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
+        </div>
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-muted-foreground" htmlFor="settings-contrast">
+            High contrast
+          </label>
+          <input
+            id="settings-contrast"
+            type="checkbox"
+            checked={config.appearance.contrast === 'high'}
+            onChange={e => setConfig(c => ({ ...c, appearance: { ...c.appearance, contrast: e.target.checked ? 'high' : 'normal' } }))}
+            className="cursor-pointer"
+          />
         </div>
       </div>
 
