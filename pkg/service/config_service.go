@@ -58,6 +58,7 @@ type CodeReviewCfg struct {
 // AppearConfig holds appearance/theme settings.
 type AppearConfig struct {
 	Theme               string   `json:"theme"`
+	Contrast            string   `json:"contrast,omitempty"`
 	ColorTheme          string   `json:"color_theme,omitempty"`
 	ColorThemeDark      string   `json:"color_theme_dark,omitempty"`
 	ColorThemeLight     string   `json:"color_theme_light,omitempty"`
