@@ -1,7 +1,6 @@
 package api
 
 import (
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -10,8 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 )
 
 // TestHandleListPrograms_Empty tests that an empty programs list returns [].
@@ -859,5 +860,243 @@ waves:
 	expectedPath := filepath.Join(repoDir, "docs", "PROGRAM-test-create.yaml")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("expected PROGRAM manifest at %s", expectedPath)
+	}
+}
+
+// TestHandleExecuteTier_IMPLBranchIsolation verifies that MergeTarget flows
+// through tier execution and that impl_branch_created SSE events are emitted
+// for each IMPL in the tier with the correct ProgramBranchName.
+func TestHandleExecuteTier_IMPLBranchIsolation(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	repoDir := filepath.Join(tmpDir, "test-repo")
+	docsDir := filepath.Join(repoDir, "docs")
+	implDir := filepath.Join(docsDir, "IMPL")
+	if err := os.MkdirAll(implDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a PROGRAM manifest with 2 IMPLs in tier 1
+	programContent := `title: Branch Isolation Test
+program_slug: branch-test
+state: PLANNING
+impls:
+  - slug: impl-alpha
+    title: Alpha
+    tier: 1
+    status: pending
+  - slug: impl-beta
+    title: Beta
+    tier: 1
+    status: pending
+tiers:
+  - number: 1
+    impls:
+      - impl-alpha
+      - impl-beta
+    description: First tier
+completion:
+  tiers_complete: 0
+  tiers_total: 1
+  impls_complete: 0
+  impls_total: 2
+  total_agents: 0
+  total_waves: 0
+`
+	if err := os.WriteFile(filepath.Join(docsDir, "PROGRAM-branch-test.yaml"), []byte(programContent), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Create stub IMPL docs so the service layer can resolve them
+	for _, slug := range []string{"impl-alpha", "impl-beta"} {
+		implContent := "title: " + slug + "\nfeature_slug: " + slug + "\n"
+		if err := os.WriteFile(filepath.Join(implDir, "IMPL-"+slug+".yaml"), []byte(implContent), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	configPath := filepath.Join(tmpDir, "saw.config.json")
+	config := SAWConfig{
+		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
+	}
+	configData, _ := json.Marshal(config)
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+
+	broker := newGlobalBroker()
+	server := &Server{
+		cfg: Config{
+			RepoPath: tmpDir,
+			IMPLDir:  docsDir,
+		},
+		broker:       &sseBroker{clients: make(map[string][]chan SSEEvent)},
+		globalBroker: broker,
+		serverCtx:    serverCtx,
+		serverCancel: serverCancel,
+	}
+
+	// Subscribe to capture SSE events
+	ch := broker.subscribe()
+	defer broker.unsubscribe(ch)
+
+	req := httptest.NewRequest("POST", "/api/program/branch-test/tier/1/execute", nil)
+	req.SetPathValue("slug", "branch-test")
+	req.SetPathValue("n", "1")
+	w := httptest.NewRecorder()
+
+	server.handleExecuteTier(w, req)
+
+	// The handler returns 202 (service.ExecuteTier launches async).
+	// It may return 404 if the service can't fully resolve, but the SSE events
+	// are emitted before the service call check, so we verify events regardless.
+
+	// Collect events emitted (with short timeout)
+	var events []string
+	timeout := time.After(500 * time.Millisecond)
+	for collecting := true; collecting; {
+		select {
+		case event := <-ch:
+			events = append(events, event)
+		case <-timeout:
+			collecting = false
+		}
+	}
+
+	// Verify impl_branch_created events were emitted for both IMPLs
+	expectedBranches := map[string]bool{
+		protocol.ProgramBranchName("branch-test", 1, "impl-alpha"): false,
+		protocol.ProgramBranchName("branch-test", 1, "impl-beta"):  false,
+	}
+
+	for _, event := range events {
+		if strings.HasPrefix(event, ProgramEventImplBranchCreated+":") {
+			for branch := range expectedBranches {
+				if strings.Contains(event, branch) {
+					expectedBranches[branch] = true
+				}
+			}
+		}
+	}
+
+	for branch, found := range expectedBranches {
+		if !found {
+			t.Errorf("expected impl_branch_created event for branch %q, but it was not emitted", branch)
+		}
+	}
+
+	// Cleanup: the service.ExecuteTier goroutine may still be running
+	service.ProgramRuns.Done("branch-test")
+}
+
+// TestHandleExecuteTier_BackwardCompat verifies that non-program wave execution
+// (standalone IMPLs not part of any program) is unaffected by the MergeTarget
+// changes. The handler should not emit impl_branch_created events when there
+// is no program context.
+func TestHandleExecuteTier_BackwardCompat(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	repoDir := filepath.Join(tmpDir, "test-repo")
+	docsDir := filepath.Join(repoDir, "docs")
+	if err := os.MkdirAll(docsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// No PROGRAM manifest — this simulates a standalone IMPL scenario
+	configPath := filepath.Join(tmpDir, "saw.config.json")
+	config := SAWConfig{
+		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
+	}
+	configData, _ := json.Marshal(config)
+	if err := os.WriteFile(configPath, configData, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	serverCtx, serverCancel := context.WithCancel(context.Background())
+	defer serverCancel()
+
+	broker := newGlobalBroker()
+	server := &Server{
+		cfg: Config{
+			RepoPath: tmpDir,
+			IMPLDir:  docsDir,
+		},
+		broker:       &sseBroker{clients: make(map[string][]chan SSEEvent)},
+		globalBroker: broker,
+		serverCtx:    serverCtx,
+		serverCancel: serverCancel,
+	}
+
+	// Subscribe to capture SSE events
+	ch := broker.subscribe()
+	defer broker.unsubscribe(ch)
+
+	req := httptest.NewRequest("POST", "/api/program/nonexistent-program/tier/1/execute", nil)
+	req.SetPathValue("slug", "nonexistent-program")
+	req.SetPathValue("n", "1")
+	w := httptest.NewRecorder()
+
+	server.handleExecuteTier(w, req)
+
+	// Should return 404 since no program exists
+	if w.Code != http.StatusNotFound {
+		t.Errorf("expected status 404 for non-program request, got %d", w.Code)
+	}
+
+	// Collect events with short timeout
+	var branchEvents []string
+	timeout := time.After(200 * time.Millisecond)
+	for collecting := true; collecting; {
+		select {
+		case event := <-ch:
+			if strings.HasPrefix(event, ProgramEventImplBranchCreated+":") {
+				branchEvents = append(branchEvents, event)
+			}
+		case <-timeout:
+			collecting = false
+		}
+	}
+
+	// No impl_branch_created events should be emitted for non-program execution
+	if len(branchEvents) != 0 {
+		t.Errorf("expected no impl_branch_created events for non-program execution, got %d: %v",
+			len(branchEvents), branchEvents)
+	}
+}
+
+// TestEmitImplBranchMerged verifies the EmitImplBranchMerged helper emits
+// the correct SSE event with ProgramBranchName.
+func TestEmitImplBranchMerged(t *testing.T) {
+	broker := newGlobalBroker()
+	server := &Server{
+		globalBroker: broker,
+	}
+
+	ch := broker.subscribe()
+	defer broker.unsubscribe(ch)
+
+	server.EmitImplBranchMerged("my-program", 2, "my-impl")
+
+	expectedBranch := protocol.ProgramBranchName("my-program", 2, "my-impl")
+
+	select {
+	case event := <-ch:
+		if !strings.HasPrefix(event, ProgramEventImplBranchMerged+":") {
+			t.Errorf("expected event prefix %q, got %q", ProgramEventImplBranchMerged+":", event)
+		}
+		if !strings.Contains(event, expectedBranch) {
+			t.Errorf("expected event to contain branch %q, got %q", expectedBranch, event)
+		}
+		if !strings.Contains(event, "my-program") {
+			t.Errorf("expected event to contain program slug, got %q", event)
+		}
+		if !strings.Contains(event, "my-impl") {
+			t.Errorf("expected event to contain impl slug, got %q", event)
+		}
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout waiting for impl_branch_merged event")
 	}
 }
