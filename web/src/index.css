@@ -50,6 +50,52 @@
     --popover-foreground: 0 0% 100%;
   }
 
+  /* High-contrast overrides — light mode (WCAG AA) */
+  .high-contrast {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 0%;
+    --muted: 0 0% 85%;
+    --muted-foreground: 0 0% 15%;
+    --border: 0 0% 0%;
+    --input: 0 0% 85%;
+    --ring: 240 100% 40%;
+    --primary: 240 100% 35%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 0%;
+    --secondary-foreground: 0 0% 100%;
+    --accent: 240 100% 35%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 100% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --card: 0 0% 95%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 95%;
+    --popover-foreground: 0 0% 0%;
+  }
+
+  /* High-contrast overrides — dark mode (WCAG AA) */
+  .dark.high-contrast {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 90%;
+    --border: 0 0% 100%;
+    --input: 0 0% 15%;
+    --ring: 60 100% 60%;
+    --primary: 60 100% 60%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 100%;
+    --secondary-foreground: 0 0% 0%;
+    --accent: 60 100% 60%;
+    --accent-foreground: 0 0% 0%;
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 0% 0%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 100%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
+  }
+
 }
 
 /* Theme vars are injected at runtime from src/lib/themes.ts via injectThemeStyles() in main.tsx */
@@ -60,6 +106,10 @@ body {
 }
 .dark body {
   background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='white' fill-opacity='0.04'/%3E%3C/svg%3E");
+}
+/* Disable dot-grid texture in high-contrast mode (noise reduces readability) */
+.high-contrast body {
+  background-image: none;
 }
 
 @layer base {
