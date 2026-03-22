@@ -50,33 +50,9 @@
     --popover-foreground: 0 0% 100%;
   }
 
-  /* High-contrast overrides — light mode. Only readability vars; theme colors preserved. */
-  .high-contrast {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 0%;
-    --muted: 0 0% 88%;
-    --muted-foreground: 0 0% 10%;
-    --border: 0 0% 0%;
-    --input: 0 0% 88%;
-    --card: 0 0% 96%;
-    --card-foreground: 0 0% 0%;
-    --popover: 0 0% 96%;
-    --popover-foreground: 0 0% 0%;
-  }
-
-  /* High-contrast overrides — dark mode. Only readability vars; theme colors preserved. */
-  .dark.high-contrast {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 100%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 92%;
-    --border: 0 0% 100%;
-    --input: 0 0% 12%;
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 100%;
-  }
+  /* High-contrast overrides are computed and injected at runtime by useContrast.ts
+     so they read the current theme's actual HSL values and boost their lightness.
+     No static overrides here — hardcoded values would fight the theme palette. */
 
 }
 
