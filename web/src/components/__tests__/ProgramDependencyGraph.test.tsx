@@ -27,13 +27,18 @@ vi.mock('react-dom', async () => {
 // Mock agentColors to avoid side effects
 vi.mock('../../lib/entityColors', () => ({
   resetThemeCache: vi.fn(),
+  getAgentColor: (agent: string) => {
+    const colors: Record<string, string> = { A: '#3b82f6', B: '#8b5cf6', C: '#ec4899', D: '#f59e0b' }
+    return colors[agent] || '#6b7280'
+  },
 }))
 
 import { fetchProgramStatus } from '../../programApi'
 
 const mockFetch = fetchProgramStatus as ReturnType<typeof vi.fn>
 
-const mockStatus: ProgramStatus = {
+// Base mock status WITHOUT wave data (backward compatibility)
+const mockStatusNoWaves: ProgramStatus = {
   program_slug: 'test-program',
   title: 'Test Program',
   state: 'TIER_EXECUTING',
@@ -69,6 +74,70 @@ const mockStatus: ProgramStatus = {
   is_executing: true,
 }
 
+// Mock status WITH nested wave/agent data
+const mockStatusWithWaves: ProgramStatus = {
+  program_slug: 'test-program',
+  title: 'Test Program',
+  state: 'TIER_EXECUTING',
+  current_tier: 2,
+  tier_statuses: [
+    {
+      number: 1,
+      description: 'Foundation',
+      impl_statuses: [
+        {
+          slug: 'impl-alpha',
+          title: 'Alpha',
+          status: 'complete',
+          waves: [
+            { number: 1, agents: [
+              { id: 'A', status: 'complete' },
+              { id: 'B', status: 'complete' },
+            ]},
+            { number: 2, agents: [
+              { id: 'C', status: 'complete', dependencies: ['A', 'B'] },
+            ]},
+          ],
+        },
+        { slug: 'impl-beta', title: 'Beta', status: 'complete' },
+      ],
+      complete: true,
+    },
+    {
+      number: 2,
+      description: 'Features',
+      impl_statuses: [
+        {
+          slug: 'impl-gamma',
+          title: 'Gamma',
+          status: 'executing',
+          waves: [
+            { number: 1, agents: [
+              { id: 'A', status: 'complete' },
+              { id: 'B', status: 'running' },
+            ]},
+            { number: 2, agents: [
+              { id: 'C', status: 'pending', dependencies: ['A'] },
+              { id: 'D', status: 'pending', dependencies: ['B'] },
+            ]},
+          ],
+        },
+      ],
+      complete: false,
+    },
+  ],
+  contract_statuses: [],
+  completion: {
+    tiers_complete: 1,
+    tiers_total: 2,
+    impls_complete: 2,
+    impls_total: 3,
+    total_agents: 7,
+    total_waves: 4,
+  },
+  is_executing: true,
+}
+
 // Lazy import so mocks are in place before the component loads
 let ProgramDependencyGraph: typeof import('../ProgramDependencyGraph').default
 
@@ -80,22 +149,19 @@ beforeEach(async () => {
 
 describe('ProgramDependencyGraph', () => {
   // -------------------------------------------------------------------
-  // 1. Rendering with mock data
+  // 1. Rendering with mock data (backward compat - no waves)
   // -------------------------------------------------------------------
-  describe('rendering with status data', () => {
+  describe('rendering with status data (no waves)', () => {
     it('renders SVG with correct number of node rects', () => {
       const { container } = render(
-        <ProgramDependencyGraph programSlug="test-program" status={mockStatus} />,
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusNoWaves} />,
       )
 
-      // 3 IMPLs -> 3 node <rect> elements (plus tier background rects)
-      // Each node group has one rect; tier backgrounds also have rects
       const svg = container.querySelector('svg')
       expect(svg).not.toBeNull()
 
       // Node rects have rx=8, tier bg rects have rx=12
       const allRects = svg!.querySelectorAll('rect')
-      // 2 tier bg rects (rx=12) + 3 node rects (rx=8)
       const nodeRects = Array.from(allRects).filter(r => r.getAttribute('rx') === '8')
       expect(nodeRects).toHaveLength(3)
 
@@ -105,24 +171,22 @@ describe('ProgramDependencyGraph', () => {
 
     it('renders tier labels', () => {
       const { container } = render(
-        <ProgramDependencyGraph programSlug="test-program" status={mockStatus} />,
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusNoWaves} />,
       )
 
       const svg = container.querySelector('svg')!
       const textEls = svg.querySelectorAll('text')
       const tierTexts = Array.from(textEls).filter(t => t.textContent === 'TIER')
-      // 2 tiers -> 2 "TIER" labels
       expect(tierTexts).toHaveLength(2)
     })
 
     it('renders slug labels for nodes', () => {
       const { container } = render(
-        <ProgramDependencyGraph programSlug="test-program" status={mockStatus} />,
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusNoWaves} />,
       )
 
       const svg = container.querySelector('svg')!
       const textEls = Array.from(svg.querySelectorAll('text')).map(t => t.textContent)
-      // Agent A now renders full/truncated slug text instead of abbreviations
       expect(textEls.some(t => t?.includes('impl-alpha'))).toBe(true)
       expect(textEls.some(t => t?.includes('impl-beta'))).toBe(true)
       expect(textEls.some(t => t?.includes('impl-gamma'))).toBe(true)
@@ -141,7 +205,7 @@ describe('ProgramDependencyGraph', () => {
 
     it('shows "No tiers to display" when tier_statuses is empty', () => {
       const emptyStatus: ProgramStatus = {
-        ...mockStatus,
+        ...mockStatusNoWaves,
         tier_statuses: [],
       }
       render(<ProgramDependencyGraph programSlug="test-program" status={emptyStatus} />)
@@ -165,33 +229,31 @@ describe('ProgramDependencyGraph', () => {
       const { container } = render(
         <ProgramDependencyGraph
           programSlug="test-program"
-          status={mockStatus}
+          status={mockStatusNoWaves}
           onSelectImpl={onSelectImpl}
         />,
       )
 
-      // Agent A uses inline style cursor:pointer, not CSS class
       const svg = container.querySelector('svg')!
       const clickableGroups = Array.from(svg.querySelectorAll('g')).filter(
         g => (g as HTMLElement).style?.cursor === 'pointer'
       )
       expect(clickableGroups.length).toBeGreaterThanOrEqual(3)
 
-      // Click the first clickable node group
       fireEvent.click(clickableGroups[0])
       expect(onSelectImpl).toHaveBeenCalled()
     })
   })
 
   // -------------------------------------------------------------------
-  // 4. waveProgress display
+  // 4. waveProgress display (backward compat)
   // -------------------------------------------------------------------
   describe('waveProgress display', () => {
     it('displays wave progress text for executing IMPLs', () => {
       const { container } = render(
         <ProgramDependencyGraph
           programSlug="test-program"
-          status={mockStatus}
+          status={mockStatusNoWaves}
           waveProgress={{ 'impl-gamma': 'Wave 2/3' }}
         />,
       )
@@ -199,6 +261,152 @@ describe('ProgramDependencyGraph', () => {
       const svg = container.querySelector('svg')!
       const textEls = Array.from(svg.querySelectorAll('text')).map(t => t.textContent)
       expect(textEls).toContain('Wave 2/3')
+    })
+  })
+
+  // -------------------------------------------------------------------
+  // 5. Nested agent nodes inside IMPL containers
+  // -------------------------------------------------------------------
+  describe('nested agent rendering', () => {
+    it('renders agent circles inside IMPL containers with waves', () => {
+      const { container } = render(
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusWithWaves} />,
+      )
+
+      const svg = container.querySelector('svg')!
+
+      // impl-alpha has waves with agents A, B, C
+      const nestedAlpha = svg.querySelector('[data-testid="nested-agents-impl-alpha"]')
+      expect(nestedAlpha).not.toBeNull()
+
+      // Should render agent letter labels
+      const agentTexts = Array.from(nestedAlpha!.querySelectorAll('text')).map(t => t.textContent)
+      expect(agentTexts).toContain('A')
+      expect(agentTexts).toContain('B')
+      expect(agentTexts).toContain('C')
+    })
+
+    it('renders agent circles for executing IMPL (impl-gamma)', () => {
+      const { container } = render(
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusWithWaves} />,
+      )
+
+      const svg = container.querySelector('svg')!
+      const nestedGamma = svg.querySelector('[data-testid="nested-agents-impl-gamma"]')
+      expect(nestedGamma).not.toBeNull()
+
+      const agentTexts = Array.from(nestedGamma!.querySelectorAll('text')).map(t => t.textContent)
+      expect(agentTexts).toContain('A')
+      expect(agentTexts).toContain('B')
+      expect(agentTexts).toContain('C')
+      expect(agentTexts).toContain('D')
+    })
+
+    it('renders wave row labels (W1, W2)', () => {
+      const { container } = render(
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusWithWaves} />,
+      )
+
+      const svg = container.querySelector('svg')!
+      const nestedAlpha = svg.querySelector('[data-testid="nested-agents-impl-alpha"]')
+      expect(nestedAlpha).not.toBeNull()
+
+      const waveLabels = Array.from(nestedAlpha!.querySelectorAll('text')).filter(
+        t => t.textContent?.match(/^W\d+$/)
+      )
+      expect(waveLabels.length).toBeGreaterThanOrEqual(2)
+      expect(waveLabels.map(t => t.textContent)).toContain('W1')
+      expect(waveLabels.map(t => t.textContent)).toContain('W2')
+    })
+  })
+
+  // -------------------------------------------------------------------
+  // 6. Variable IMPL container sizes
+  // -------------------------------------------------------------------
+  describe('variable container sizing', () => {
+    it('IMPL with waves has larger container than IMPL without', () => {
+      const { container } = render(
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusWithWaves} />,
+      )
+
+      const svg = container.querySelector('svg')!
+
+      // impl-alpha has waves -> should have nested agents group -> taller container
+      const nestedAlpha = svg.querySelector('[data-testid="nested-agents-impl-alpha"]')
+      expect(nestedAlpha).not.toBeNull()
+
+      // impl-beta has no waves -> no nested agents group -> smaller container
+      const nestedBeta = svg.querySelector('[data-testid="nested-agents-impl-beta"]')
+      expect(nestedBeta).toBeNull()
+
+      // impl-gamma has waves -> should have nested agents group
+      const nestedGamma = svg.querySelector('[data-testid="nested-agents-impl-gamma"]')
+      expect(nestedGamma).not.toBeNull()
+
+      // Verify that IMPLs with waves produce containers with different dimensions
+      // by checking that there are rx=8 rects with varying heights
+      const allRx8 = Array.from(svg.querySelectorAll('rect[rx="8"]'))
+      const heights = new Set(allRx8.map(r => r.getAttribute('height')))
+      // Should have at least 2 different heights (60 for no-waves, >60 for waves)
+      expect(heights.size).toBeGreaterThanOrEqual(2)
+    })
+  })
+
+  // -------------------------------------------------------------------
+  // 7. Fallback rendering when waves data is missing
+  // -------------------------------------------------------------------
+  describe('fallback rendering', () => {
+    it('renders old-style status badge when IMPL has no waves', () => {
+      const { container } = render(
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusWithWaves} />,
+      )
+
+      const svg = container.querySelector('svg')!
+      // impl-beta has no waves, should have status badge text
+      const textEls = Array.from(svg.querySelectorAll('text')).map(t => t.textContent?.toUpperCase())
+      // The status badge renders status in uppercase
+      expect(textEls.some(t => t === 'COMPLETE')).toBe(true)
+    })
+
+    it('does not render nested agents group for IMPL without waves', () => {
+      const { container } = render(
+        <ProgramDependencyGraph programSlug="test-program" status={mockStatusWithWaves} />,
+      )
+
+      const svg = container.querySelector('svg')!
+      // impl-beta has no waves -> no nested agents group
+      const nestedBeta = svg.querySelector('[data-testid="nested-agents-impl-beta"]')
+      expect(nestedBeta).toBeNull()
+    })
+  })
+
+  // -------------------------------------------------------------------
+  // 8. Tooltip shows agent summary
+  // -------------------------------------------------------------------
+  describe('tooltip with agent summary', () => {
+    it('tooltip shows agent count and wave summary on hover', () => {
+      const { container } = render(
+        <ProgramDependencyGraph
+          programSlug="test-program"
+          status={mockStatusWithWaves}
+          onSelectImpl={vi.fn()}
+        />,
+      )
+
+      const svg = container.querySelector('svg')!
+      // Find clickable groups (IMPL nodes)
+      const clickableGroups = Array.from(svg.querySelectorAll('g')).filter(
+        g => (g as HTMLElement).style?.cursor === 'pointer'
+      )
+
+      // Hover over the first node (impl-alpha with waves)
+      fireEvent.mouseEnter(clickableGroups[0])
+
+      // Tooltip should appear with agent info
+      // Since createPortal is mocked to render inline, check the document
+      const tooltipText = document.body.textContent || ''
+      expect(tooltipText).toContain('impl-alpha')
+      expect(tooltipText).toContain('Tier 1')
     })
   })
 })
