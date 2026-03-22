@@ -568,7 +568,7 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		_ = tracker.Start(slug, waveNum, StepMergeAgents)
 		publishPipelineStep(publish, slug, waveNum, StepMergeAgents, StepRunning, "")
 
-		mergeResult, err := protocol.MergeAgents(implPath, waveNum, repoPath)
+		mergeResult, err := protocol.MergeAgents(implPath, waveNum, repoPath, "")
 		if err != nil {
 			_ = tracker.Fail(slug, waveNum, StepMergeAgents, err)
 			publishPipelineStep(publish, slug, waveNum, StepMergeAgents, StepFailed, err.Error())

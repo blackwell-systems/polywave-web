@@ -194,7 +194,7 @@ func executeStep(step PipelineStep, implPath, repoPath string, wave int) error {
 		return err
 
 	case StepMergeAgents:
-		_, err := protocol.MergeAgents(implPath, wave, repoPath)
+		_, err := protocol.MergeAgents(implPath, wave, repoPath, "")
 		return err
 
 	case StepFixGoMod:
