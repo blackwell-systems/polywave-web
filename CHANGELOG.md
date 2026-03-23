@@ -2,6 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
+| [0.120.0] | 2026-03-23 | Completion banner — ReviewScreen shows green banner with "Mark Complete" button when all waves merged but IMPL not archived; calls `close-impl` (archive + CONTEXT.md + cleanup) |
 | [0.119.0] | 2026-03-23 | Bedrock SSO device auth — OIDC device authorization flow (`pkg/service/sso_service.go`): RegisterClient + StartDeviceAuthorization + CreateToken polling + SSO token caching; `pkg/api/sso_handler.go` (start + poll endpoints); `SSOLoginButton.tsx` (6-state machine with verification URL, user code, countdown timer); route wiring in `server.go` + SettingsScreen integration |
 | [0.118.0] | 2026-03-23 | VS Code-style Settings UI — sidebar navigation with 6 sections (Repos, Providers, Agent, Quality, Appearance, Notifications); resizable drawer (800px default, drag left edge); icons via lucide-react; replaced single-scroll layout with focused section views |
 | [0.117.0] | 2026-03-23 | Provider credentials — `ProvidersConfig` types + `POST /api/config/providers/{provider}/validate` endpoints for Anthropic, OpenAI, Bedrock; `ProviderCard.tsx` with password masking + Test Connection; AWS Profile field for SSO; `BedrockProviderConfig.Profile` round-trip; baseline fixes (pkg/types→protocol migration, program handler test) |
