@@ -235,6 +235,12 @@ waves:
       - id: A
         files: ["test.go"]
         task: "test"
+quality_gates:
+  level: standard
+  gates:
+    - type: build
+      command: go build ./...
+      required: true
 `
 	if err := os.WriteFile(implPath, []byte(implContent), 0o644); err != nil {
 		t.Fatal(err)
