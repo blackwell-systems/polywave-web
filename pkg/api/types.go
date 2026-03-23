@@ -1,6 +1,29 @@
 package api
 
-import "github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+import (
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+)
+
+// APIResponse wraps an API handler result using the unified result.Result[T] type.
+// Handlers that previously returned ad-hoc success/error structs should return
+// result.Result[T] where T is the data payload type defined in this package.
+//
+// Usage in handlers:
+//
+//	func handleFoo(...) result.Result[FooData] {
+//	    data, err := doFoo()
+//	    if err != nil {
+//	        return result.NewFailure[FooData]([]result.StructuredError{{
+//	            Code: "E001", Message: err.Error(), Severity: "fatal",
+//	        }})
+//	    }
+//	    return result.NewSuccess(data)
+//	}
+type APIResponse[T any] = result.Result[T]
+
+// APIError is an alias for result.StructuredError, used in API handler return values.
+type APIError = result.StructuredError
 
 // PreMortemRowEntry is one row of the pre-mortem risk table.
 type PreMortemRowEntry struct {
