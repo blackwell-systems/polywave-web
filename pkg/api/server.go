@@ -304,9 +304,6 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("POST /api/interview/{runID}/answer", s.handleInterviewAnswer)
 	s.mux.HandleFunc("POST /api/interview/{runID}/cancel", s.handleInterviewCancel)
 
-	// Validation routes — integration gap and wiring gap checks
-	s.mux.HandleFunc("GET /api/impl/{slug}/validate-integration", s.handleValidateIntegration)
-	s.mux.HandleFunc("GET /api/impl/{slug}/validate-wiring", s.handleValidateWiring)
 
 	// Import route — bulk IMPL import into a program
 	s.mux.HandleFunc("POST /api/impl/import", s.handleImportIMPLs)
