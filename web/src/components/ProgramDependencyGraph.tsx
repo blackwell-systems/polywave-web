@@ -5,7 +5,7 @@ import { resetThemeCache, getAgentColor } from '../lib/entityColors'
 import { getNodeFillColors } from '../lib/statusColors'
 import { fetchProgramStatus } from '../programApi'
 import { ProgramStatus, ImplTierStatus, ImplWaveInfo } from '../types/program'
-import { layoutAgentWaves, type AgentNode } from '../lib/graphLayout'
+import { layoutAgentWaves } from '../lib/graphLayout'
 
 interface ProgramDependencyGraphProps {
   programSlug: string
@@ -210,22 +210,6 @@ function truncateSlug(slug: string, maxWidth: number): string {
   return slug.substring(0, maxChars - 1) + '\u2026'
 }
 
-/**
- * Get fill color for an agent based on status.
- */
-function getAgentFill(agentId: string, status: string): { fill: string; stroke: string; className: string } {
-  const color = getAgentColor(agentId)
-  switch (status) {
-    case 'running':
-      return { fill: `${color}40`, stroke: color, className: 'exec-node-running' }
-    case 'complete':
-      return { fill: `${color}80`, stroke: `${color}cc`, className: '' }
-    case 'failed':
-      return { fill: '#f8514920', stroke: '#f85149', className: '' }
-    default: // pending
-      return { fill: '#6b728025', stroke: '#6b728060', className: '' }
-  }
-}
 
 export default function ProgramDependencyGraph({
   programSlug,

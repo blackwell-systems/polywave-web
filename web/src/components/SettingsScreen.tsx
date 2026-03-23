@@ -81,7 +81,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
           appearance: { ...prev.appearance, ...c.appearance },
         }))
         // Initialize providers from config if present
-        const p = (c as Record<string, unknown>).providers as ProvidersConfig | undefined
+        const p = c.providers
         if (p) {
           setProviders({
             anthropic: { ...EMPTY_PROVIDERS.anthropic, ...p.anthropic },
