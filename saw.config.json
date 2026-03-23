@@ -44,5 +44,13 @@
     "theme": "dark",
     "color_theme_dark": "windows-10",
     "color_theme_light": "shapeshifter"
+  },
+  "providers": {
+    "anthropic": {},
+    "openai": {},
+    "bedrock": {
+      "region": "us-west-2",
+      "profile": "dev-profile"
+    }
   }
 }

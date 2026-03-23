@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"time"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
@@ -48,6 +49,7 @@ type BedrockProviderConfig struct {
 	AccessKeyID    string `json:"access_key_id,omitempty"`
 	SecretAccessKey string `json:"secret_access_key,omitempty"`
 	SessionToken   string `json:"session_token,omitempty"`
+	Profile        string `json:"profile,omitempty"`
 }
 
 // SAWConfig is the shape of saw.config.json and the GET/POST /api/config body.
@@ -265,23 +267,39 @@ func ValidateOpenAICredentials(apiKey string) error {
 
 // ValidateBedrockCredentials validates AWS credentials by calling STS
 // GetCallerIdentity. Returns the caller identity ARN on success.
-func ValidateBedrockCredentials(region, accessKeyID, secretKey, sessionToken string) (string, error) {
-	if region == "" {
-		return "", fmt.Errorf("region is required")
-	}
-	if accessKeyID == "" || secretKey == "" {
-		return "", fmt.Errorf("access key ID and secret key are required")
-	}
-
+func ValidateBedrockCredentials(region, accessKeyID, secretKey, sessionToken, profile string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), validationTimeout)
 	defer cancel()
 
-	creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretKey, sessionToken)
-	stsClient := sts.New(sts.Options{
-		Region:           region,
-		Credentials:      creds,
-		RetryMaxAttempts: 1,
-	})
+	var stsClient *sts.Client
+
+	if profile != "" {
+		// Use named profile (SSO, assume-role, etc.)
+		var opts []func(*awsconfig.LoadOptions) error
+		opts = append(opts, awsconfig.WithSharedConfigProfile(profile))
+		if region != "" {
+			opts = append(opts, awsconfig.WithRegion(region))
+		}
+		cfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
+		if err != nil {
+			return "", fmt.Errorf("failed to load profile %q: %w", profile, err)
+		}
+		stsClient = sts.NewFromConfig(cfg)
+	} else {
+		// Static credentials path
+		if region == "" {
+			return "", fmt.Errorf("region is required")
+		}
+		if accessKeyID == "" || secretKey == "" {
+			return "", fmt.Errorf("access key ID and secret key are required")
+		}
+		creds := credentials.NewStaticCredentialsProvider(accessKeyID, secretKey, sessionToken)
+		stsClient = sts.New(sts.Options{
+			Region:           region,
+			Credentials:      creds,
+			RetryMaxAttempts: 1,
+		})
+	}
 
 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {

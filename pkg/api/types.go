@@ -253,6 +253,7 @@ type BedrockProviderConfig struct {
 	AccessKeyID    string `json:"access_key_id,omitempty"`
 	SecretAccessKey string `json:"secret_access_key,omitempty"`
 	SessionToken   string `json:"session_token,omitempty"`
+	Profile        string `json:"profile,omitempty"`
 }
 
 // ProviderValidationResponse is the response from POST /api/config/providers/{provider}/validate.

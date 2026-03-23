@@ -64,6 +64,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 				AccessKeyID:    cfg.Providers.Bedrock.AccessKeyID,
 				SecretAccessKey: cfg.Providers.Bedrock.SecretAccessKey,
 				SessionToken:   cfg.Providers.Bedrock.SessionToken,
+				Profile:        cfg.Providers.Bedrock.Profile,
 			},
 		},
 	}
@@ -122,6 +123,7 @@ func (s *Server) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 				AccessKeyID:    apiCfg.Providers.Bedrock.AccessKeyID,
 				SecretAccessKey: apiCfg.Providers.Bedrock.SecretAccessKey,
 				SessionToken:   apiCfg.Providers.Bedrock.SessionToken,
+				Profile:        apiCfg.Providers.Bedrock.Profile,
 			},
 		},
 	}
@@ -192,13 +194,14 @@ func (s *Server) handleValidateProvider(w http.ResponseWriter, r *http.Request) 
 			AccessKeyID    string `json:"access_key_id"`
 			SecretAccessKey string `json:"secret_access_key"`
 			SessionToken   string `json:"session_token"`
+			Profile        string `json:"profile"`
 		}
 		if err := decodeJSON(r, &body); err != nil {
 			respondError(w, "invalid request body", http.StatusBadRequest)
 			return
 		}
 		identity, err := service.ValidateBedrockCredentials(
-			body.Region, body.AccessKeyID, body.SecretAccessKey, body.SessionToken,
+			body.Region, body.AccessKeyID, body.SecretAccessKey, body.SessionToken, body.Profile,
 		)
 		if err != nil {
 			respondJSON(w, http.StatusOK, ProviderValidationResponse{

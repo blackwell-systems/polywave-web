@@ -267,6 +267,7 @@ export interface BedrockProviderConfig {
   access_key_id?: string
   secret_access_key?: string
   session_token?: string
+  profile?: string
 }
 
 export interface ProvidersConfig {

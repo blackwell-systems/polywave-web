@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { fetchImpl, approveImpl, rejectImpl, startWave, deleteImpl } from './api'
-import { IMPLDocResponse } from './types'
+import { IMPLDocResponse, RepoEntry } from './types'
 import ReviewScreen from './components/ReviewScreen'
 import { LiveView } from './components/LiveRail'
 import LiveRail from './components/LiveRail'
@@ -21,6 +21,49 @@ import { AppHeader } from './components/layout/AppHeader'
 import { SidebarNav } from './components/layout/SidebarNav'
 import { useAppContext } from './contexts/AppContext'
 
+
+function SettingsDrawer({ onClose, onReposChange, onBackdropClick }: {
+  onClose: () => void
+  onReposChange: (repos: RepoEntry[]) => void
+  onBackdropClick: () => void
+}): JSX.Element {
+  const [width, setWidth] = useState(800)
+  const dragging = useRef(false)
+
+  function onMouseDown(e: React.MouseEvent) {
+    e.preventDefault()
+    dragging.current = true
+    const move = (ev: MouseEvent) => {
+      setWidth(Math.max(480, Math.min(window.innerWidth * 0.9, window.innerWidth - ev.clientX)))
+    }
+    const up = () => {
+      dragging.current = false
+      document.removeEventListener('mousemove', move)
+      document.removeEventListener('mouseup', up)
+    }
+    document.addEventListener('mousemove', move)
+    document.addEventListener('mouseup', up)
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/20" onClick={onBackdropClick} />
+      <div
+        className="fixed inset-y-0 right-0 z-50 flex bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-700 shadow-2xl"
+        style={{ width }}
+      >
+        {/* Resize handle */}
+        <div
+          onMouseDown={onMouseDown}
+          className="w-1 shrink-0 cursor-col-resize hover:bg-primary/30 transition-colors"
+        />
+        <div className="flex-1 min-w-0">
+          <SettingsScreen onClose={onClose} onReposChange={onReposChange} />
+        </div>
+      </div>
+    </>
+  )
+}
 
 function WelcomeCard({ onOpenSettings }: { onOpenSettings: () => void }): JSX.Element {
   return (
@@ -418,17 +461,7 @@ export default function App() {
       />
 
       {settingsModal.isOpen && createPortal(
-        <>
-          {/* Backdrop */}
-          <div className="fixed inset-0 z-40 bg-black/20" onClick={settingsModal.portalProps.onBackdropClick} />
-          {/* Drawer */}
-          <div className="fixed inset-y-0 right-0 z-50 w-[560px] max-w-[90vw] bg-white dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-700 shadow-2xl overflow-y-auto">
-            <SettingsScreen
-              onClose={handleSettingsClose}
-              onReposChange={handleReposChange}
-            />
-          </div>
-        </>,
+        <SettingsDrawer onClose={handleSettingsClose} onReposChange={handleReposChange} onBackdropClick={settingsModal.portalProps.onBackdropClick} />,
         document.body
       )}
 
