@@ -183,6 +183,7 @@ func New(cfg Config) *Server {
 	s.RegisterConflictRoutes()
 	s.RegisterAmendRoutes()
 	s.RegisterCriticRoutes()
+	s.RegisterValidationRoutes()
 	s.mux.HandleFunc("POST /api/wave/{slug}/test", s.handleWaveTest)
 	s.mux.HandleFunc("GET /api/impl/{slug}/raw", s.handleGetImplRaw)
 	s.mux.HandleFunc("PUT /api/impl/{slug}/raw", s.handlePutImplRaw)
