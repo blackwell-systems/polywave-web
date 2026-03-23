@@ -9,6 +9,7 @@ import (
 
 	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
 )
 
 // ProgramRuns is the package-level RunTracker for program tier executions.
@@ -352,7 +353,7 @@ func AnalyzeImplConflicts(deps Deps, slugs []string, repoPath string) (*protocol
 
 // CreateProgramFromIMPLs wraps protocol.GenerateProgramFromIMPLs with
 // multi-repo resolution and config reading.
-func CreateProgramFromIMPLs(deps Deps, slugs []string, name string, programSlug string, repoPath string) (*protocol.GenerateProgramResult, error) {
+func CreateProgramFromIMPLs(deps Deps, slugs []string, name string, programSlug string, repoPath string) (result.Result[protocol.GenerateProgramData], error) {
 	if repoPath == "" {
 		repos := GetConfiguredRepos(deps)
 		if len(repos) > 0 {
@@ -360,7 +361,7 @@ func CreateProgramFromIMPLs(deps Deps, slugs []string, name string, programSlug 
 		}
 	}
 	if repoPath == "" {
-		return nil, fmt.Errorf("no repo path configured")
+		return result.Result[protocol.GenerateProgramData]{}, fmt.Errorf("no repo path configured")
 	}
 	opts := protocol.GenerateProgramOpts{
 		ImplSlugs:   slugs,
@@ -368,7 +369,7 @@ func CreateProgramFromIMPLs(deps Deps, slugs []string, name string, programSlug 
 		ProgramSlug: programSlug,
 		Title:       name,
 	}
-	return protocol.GenerateProgramFromIMPLs(opts)
+	return protocol.GenerateProgramFromIMPLs(opts), nil
 }
 
 // ResolveIMPLPathForProgram searches for an IMPL doc by slug in the repository.

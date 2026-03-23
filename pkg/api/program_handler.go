@@ -539,15 +539,23 @@ func (s *Server) handleCreateFromImpls(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := service.CreateProgramFromIMPLs(s.makeDeps(), req.Slugs, req.Name, req.ProgramSlug, req.RepoPath)
+	res, err := service.CreateProgramFromIMPLs(s.makeDeps(), req.Slugs, req.Name, req.ProgramSlug, req.RepoPath)
 	if err != nil {
 		respondError(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if !res.IsSuccess() {
+		msg := "generate program failed"
+		if len(res.Errors) > 0 {
+			msg = res.Errors[0].Message
+		}
+		respondError(w, msg, http.StatusInternalServerError)
 		return
 	}
 
 	s.globalBroker.broadcast("program_list_updated")
 
-	respondJSON(w, http.StatusOK, result)
+	respondJSON(w, http.StatusOK, res.GetData())
 }
 
 // handleReplanProgram handles POST /api/program/{slug}/replan.

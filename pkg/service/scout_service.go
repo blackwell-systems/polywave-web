@@ -174,7 +174,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 	}
 
 	// Finalize warnings are non-fatal — IMPL doc still usable.
-	if !finalizeResult.Success {
+	if !finalizeResult.IsSuccess() {
 		publish("scout_finalize", map[string]string{
 			"run_id":  runID,
 			"status":  "warning",
@@ -184,7 +184,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		publish("scout_finalize", map[string]string{
 			"run_id":         runID,
 			"status":         "complete",
-			"agents_updated": fmt.Sprintf("%d", finalizeResult.GatePopulation.AgentsUpdated),
+			"agents_updated": fmt.Sprintf("%d", finalizeResult.GetData().GatePopulation.AgentsUpdated),
 		})
 	}
 

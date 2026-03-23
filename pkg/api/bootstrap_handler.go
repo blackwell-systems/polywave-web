@@ -167,7 +167,7 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 	}
 
 	// Finalize warnings are non-fatal — IMPL doc still usable.
-	if !finalizeResult.Success {
+	if !finalizeResult.IsSuccess() {
 		publish("scout_finalize", map[string]string{
 			"run_id":  runID,
 			"status":  "warning",
@@ -177,7 +177,7 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 		publish("scout_finalize", map[string]string{
 			"run_id":         runID,
 			"status":         "complete",
-			"agents_updated": fmt.Sprintf("%d", finalizeResult.GatePopulation.AgentsUpdated),
+			"agents_updated": fmt.Sprintf("%d", finalizeResult.GetData().GatePopulation.AgentsUpdated),
 		})
 	}
 

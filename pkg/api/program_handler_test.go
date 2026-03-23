@@ -845,7 +845,7 @@ waves:
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var result protocol.GenerateProgramResult
+	var result protocol.GenerateProgramData
 	if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}

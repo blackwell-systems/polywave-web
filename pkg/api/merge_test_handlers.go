@@ -107,8 +107,8 @@ func (s *Server) handleWaveMerge(w http.ResponseWriter, r *http.Request) {
 
 		if cleanupResult, cleanErr := protocol.Cleanup(implPath, wave, repoPath); cleanErr != nil {
 			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleanup warning: %v\n", cleanErr)})
-		} else if cleanupResult != nil {
-			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleaned up %d worktrees\n", len(cleanupResult.Agents))})
+		} else if cleanupResult.IsSuccess() {
+			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleaned up %d worktrees\n", len(cleanupResult.GetData().Agents))})
 		}
 
 		publish("merge_complete", map[string]interface{}{
@@ -401,8 +401,8 @@ func (s *Server) handleResolveConflicts(w http.ResponseWriter, r *http.Request) 
 
 		if cleanupResult, cleanErr := protocol.Cleanup(implPath, wave, repoPath); cleanErr != nil {
 			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleanup warning: %v\n", cleanErr)})
-		} else if cleanupResult != nil {
-			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleaned up %d worktrees\n", len(cleanupResult.Agents))})
+		} else if cleanupResult.IsSuccess() {
+			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleaned up %d worktrees\n", len(cleanupResult.GetData().Agents))})
 		}
 
 		publish("merge_complete", map[string]interface{}{

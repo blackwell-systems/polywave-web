@@ -329,10 +329,10 @@ waves:
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if result == nil {
-		t.Fatal("expected non-nil result")
+	if !result.IsSuccess() {
+		t.Fatalf("expected successful result, got: %v", result.Errors)
 	}
-	if result.ManifestPath == "" {
+	if result.GetData().ManifestPath == "" {
 		t.Error("expected manifest_path to be set")
 	}
 

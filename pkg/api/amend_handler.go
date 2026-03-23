@@ -1,7 +1,6 @@
 package api
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
@@ -82,32 +81,33 @@ func (s *Server) handleAmendImpl(w http.ResponseWriter, r *http.Request) {
 		opts.NewTask = req.NewTask
 	}
 
-	result, err := protocol.AmendImpl(opts)
-	if err != nil {
-		if errors.Is(err, protocol.ErrAmendBlocked) {
-			respondJSON(w, http.StatusConflict, AmendImplResponse{
-				Success:   false,
-				Operation: req.Operation,
-				Error:     err.Error(),
-			})
-			return
+	res := protocol.AmendImpl(opts)
+	if !res.IsSuccess() {
+		msg := "amend failed"
+		if len(res.Errors) > 0 {
+			msg = res.Errors[0].Message
 		}
-		respondJSON(w, http.StatusInternalServerError, AmendImplResponse{
+		status := http.StatusInternalServerError
+		if len(res.Errors) > 0 && res.Errors[0].Code == "AMEND_BLOCKED" {
+			status = http.StatusConflict
+		}
+		respondJSON(w, status, AmendImplResponse{
 			Success:   false,
 			Operation: req.Operation,
-			Error:     err.Error(),
+			Error:     msg,
 		})
 		return
 	}
 
 	s.globalBroker.broadcast("impl_list_updated")
 
+	data := res.GetData()
 	respondJSON(w, http.StatusOK, AmendImplResponse{
 		Success:       true,
-		Operation:     result.Operation,
-		NewWaveNumber: result.NewWaveNumber,
-		AgentID:       result.AgentID,
-		Warnings:      result.Warnings,
+		Operation:     data.Operation,
+		NewWaveNumber: data.NewWaveNumber,
+		AgentID:       data.AgentID,
+		Warnings:      data.Warnings,
 	})
 }
 
