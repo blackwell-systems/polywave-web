@@ -54,6 +54,48 @@ type Server struct {
 	obsStoreInstance observability.Store      // observability event store (may be nil)
 }
 
+// ssoServiceAdapter bridges the api.SSOService interface to the package-level
+// functions in pkg/service.  It converts between the api and service request/
+// response types so the SSO HTTP handlers can call the real AWS implementation.
+type ssoServiceAdapter struct{}
+
+func (a *ssoServiceAdapter) StartSSODeviceAuth(ctx context.Context, req SSOStartRequest) (*SSOStartResponse, error) {
+	svcReq := service.SSOStartRequest{
+		Profile: req.Profile,
+		Region:  req.Region,
+	}
+	svcResp, err := service.StartSSODeviceAuth(ctx, svcReq)
+	if err != nil {
+		return nil, err
+	}
+	return &SSOStartResponse{
+		VerificationURI:         svcResp.VerificationURI,
+		VerificationURIComplete: svcResp.VerificationURIComplete,
+		UserCode:                svcResp.UserCode,
+		DeviceCode:              svcResp.DeviceCode,
+		ClientID:                svcResp.ClientID,
+		ClientSecret:            svcResp.ClientSecret,
+		ExpiresIn:               svcResp.ExpiresIn,
+		Interval:                svcResp.Interval,
+		PollID:                  svcResp.PollID,
+	}, nil
+}
+
+func (a *ssoServiceAdapter) PollSSODeviceAuth(ctx context.Context, req SSOPollRequest) (*SSOPollResponse, error) {
+	svcReq := service.SSOPollRequest{
+		PollID: req.PollID,
+	}
+	svcResp, err := service.PollSSODeviceAuth(ctx, svcReq)
+	if err != nil {
+		return nil, err
+	}
+	return &SSOPollResponse{
+		Status:   svcResp.Status,
+		Identity: svcResp.Identity,
+		Error:    svcResp.Error,
+	}, nil
+}
+
 // getConfiguredRepos reads saw.config.json and returns the list of configured
 // repos. Falls back to a single entry using s.cfg.RepoPath if no config or
 // no repos are configured.
@@ -174,6 +216,10 @@ func New(cfg Config) *Server {
 	s.mux.HandleFunc("POST /api/config", s.handleSaveConfig)
 	s.mux.HandleFunc("POST /api/config/validate-repo", s.handleValidateRepoPath)
 	s.mux.HandleFunc("POST /api/config/providers/{provider}/validate", s.handleValidateProvider)
+
+	// AWS SSO device auth flow
+	SetSSOService(&ssoServiceAdapter{})
+	s.RegisterSSORoutes()
 
 	// Bootstrap — greenfield project initialization
 	s.mux.HandleFunc("POST /api/bootstrap/run", s.handleBootstrapRun)
