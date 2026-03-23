@@ -253,6 +253,34 @@ export interface RepoEntry {
   path: string   // absolute filesystem path
 }
 
+// Provider credential configuration (provider-credentials)
+export interface AnthropicProviderConfig {
+  api_key?: string
+}
+
+export interface OpenAIProviderConfig {
+  api_key?: string
+}
+
+export interface BedrockProviderConfig {
+  region?: string
+  access_key_id?: string
+  secret_access_key?: string
+  session_token?: string
+}
+
+export interface ProvidersConfig {
+  anthropic: AnthropicProviderConfig
+  openai: OpenAIProviderConfig
+  bedrock: BedrockProviderConfig
+}
+
+export interface ProviderValidationResponse {
+  valid: boolean
+  error?: string
+  identity?: string
+}
+
 /** Updated SAWConfig — repos replaces the old repo.path singleton. */
 export interface SAWConfig {
   repos: RepoEntry[]                             // NEW: named repo registry
@@ -271,6 +299,7 @@ export interface SAWConfig {
     }
   }
   appearance: { theme: 'system' | 'light' | 'dark'; contrast?: 'normal' | 'high'; color_theme?: string; color_theme_dark?: string; color_theme_light?: string; favorite_themes_dark?: string[]; favorite_themes_light?: string[] }
+  providers?: ProvidersConfig
 }
 
 // Chat with Claude (v0.18.0-B)
