@@ -6,16 +6,18 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 )
 
 // programTestDeps creates a Deps struct for testing with optional repos config.
-func programTestDeps(t *testing.T, repos []RepoEntry) Deps {
+func programTestDeps(t *testing.T, repos []config.RepoEntry) Deps {
 	t.Helper()
 	tmpDir := t.TempDir()
 
 	if repos != nil {
 		type sawConfig struct {
-			Repos []RepoEntry `json:"repos,omitempty"`
+			Repos []config.RepoEntry `json:"repos,omitempty"`
 		}
 		cfg := sawConfig{Repos: repos}
 		data, _ := json.Marshal(cfg)
@@ -165,7 +167,7 @@ func TestProgramGetConfiguredRepos_Fallback(t *testing.T) {
 }
 
 func TestGetConfiguredRepos_FromConfig(t *testing.T) {
-	configuredRepos := []RepoEntry{
+	configuredRepos := []config.RepoEntry{
 		{Name: "repo1", Path: "/tmp/repo1"},
 		{Name: "repo2", Path: "/tmp/repo2"},
 	}
@@ -245,7 +247,7 @@ waves:
 	os.WriteFile(filepath.Join(implDir, "IMPL-impl-one.yaml"), []byte(impl1), 0644)
 	os.WriteFile(filepath.Join(implDir, "IMPL-impl-two.yaml"), []byte(impl2), 0644)
 
-	deps := programTestDeps(t, []RepoEntry{{Name: "test", Path: dir}})
+	deps := programTestDeps(t, []config.RepoEntry{{Name: "test", Path: dir}})
 
 	report, err := AnalyzeImplConflicts(deps, []string{"impl-one", "impl-two"}, "")
 	if err != nil {

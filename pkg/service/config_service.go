@@ -15,30 +15,6 @@ import (
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
 )
 
-// Type aliases for backward compatibility. Other files in the service package
-// and in pkg/api/ reference these types by their old local names.
-// These aliases allow a gradual migration: callers continue to use
-// service.SAWConfig, service.RepoEntry, etc. while the canonical definitions
-// live in the SDK's config package.
-type (
-	SAWConfig              = config.SAWConfig
-	RepoEntry              = config.RepoEntry
-	ProvidersConfig        = config.ProvidersConfig
-	AnthropicProviderConfig = config.AnthropicProvider
-	OpenAIProviderConfig   = config.OpenAIProvider
-	BedrockProviderConfig  = config.BedrockProvider
-	AgentConfig            = config.AgentConfig
-	QualityConfig          = config.QualityConfig
-	CodeReviewCfg          = config.CodeReviewCfg
-	AppearConfig           = config.AppearConfig
-)
-
-// RepoConfig is kept for backward-compat JSON deserialization of old configs.
-// The SDK's config.Load handles legacy repo.path migration internally.
-type RepoConfig struct {
-	Path string `json:"path"`
-}
-
 // ValidateModelName ensures a model name contains only safe characters.
 // Returns nil for empty strings (falls back to defaults).
 func ValidateModelName(model string) error {

@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 )
 
@@ -112,18 +113,18 @@ func ListImpls(deps Deps) ([]ImplListEntry, error) {
 
 // GetImpl loads and parses a single IMPL manifest by slug.
 // Returns the manifest, matched repo name, and repo entry.
-func GetImpl(deps Deps, slug string) (*protocol.IMPLManifest, string, RepoEntry, error) {
+func GetImpl(deps Deps, slug string) (*protocol.IMPLManifest, string, config.RepoEntry, error) {
 	implPath, repo, err := FindImplPath(deps, slug)
 	if err != nil {
-		return nil, "", RepoEntry{}, err
+		return nil, "", config.RepoEntry{}, err
 	}
 
 	manifest, loadErr := protocol.Load(implPath)
 	if loadErr != nil {
 		if os.IsNotExist(loadErr) {
-			return nil, "", RepoEntry{}, fmt.Errorf("IMPL doc not found for slug: %s", slug)
+			return nil, "", config.RepoEntry{}, fmt.Errorf("IMPL doc not found for slug: %s", slug)
 		}
-		return nil, "", RepoEntry{}, fmt.Errorf("failed to load IMPL manifest: %w", loadErr)
+		return nil, "", config.RepoEntry{}, fmt.Errorf("failed to load IMPL manifest: %w", loadErr)
 	}
 
 	repoName := repo.Name
@@ -195,7 +196,7 @@ func ArchiveImpl(deps Deps, slug string) error {
 
 // FindImplPath searches all configured repos for an IMPL doc by slug.
 // Returns the absolute file path and matched repo entry, or error if not found.
-func FindImplPath(deps Deps, slug string) (string, RepoEntry, error) {
+func FindImplPath(deps Deps, slug string) (string, config.RepoEntry, error) {
 	repos := GetConfiguredRepos(deps)
 
 	for _, repo := range repos {
@@ -206,7 +207,7 @@ func FindImplPath(deps Deps, slug string) (string, RepoEntry, error) {
 			}
 		}
 	}
-	return "", RepoEntry{}, fmt.Errorf("IMPL doc not found for slug: %s", slug)
+	return "", config.RepoEntry{}, fmt.Errorf("IMPL doc not found for slug: %s", slug)
 }
 
 // ResolveIMPLPath searches all configured repos for the IMPL doc with the

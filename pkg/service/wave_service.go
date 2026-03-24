@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 )
@@ -24,7 +24,7 @@ var ActiveWaves sync.Map
 
 // FallbackSAWConfig is populated once from the server's default repo path.
 // StartWave uses it when the target repo has no saw.config.json of its own.
-var FallbackSAWConfig *SAWConfig
+var FallbackSAWConfig *config.SAWConfig
 
 // StartWave loads the IMPL manifest for the given slug, resolves paths,
 // and launches wave execution in a background goroutine. It returns
@@ -465,33 +465,7 @@ func makePublish(deps Deps, slug string) func(event string, data interface{}) {
 // resolveIMPLPath searches all configured repositories for the IMPL doc
 // with the given slug. Returns (implPath, repoPath, nil) on success.
 func resolveIMPLPath(deps Deps, slug string) (string, string, error) {
-	// Read saw.config.json to get the list of repos
-	configPath := deps.ConfigPath(deps.RepoPath)
-	configData, err := os.ReadFile(configPath)
-
-	type repoEntry struct {
-		Name string `json:"name"`
-		Path string `json:"path"`
-	}
-	type cfgShape struct {
-		Repos []repoEntry `json:"repos,omitempty"`
-	}
-
-	var repos []repoEntry
-	if err == nil {
-		var cfg cfgShape
-		if json.Unmarshal(configData, &cfg) == nil && len(cfg.Repos) > 0 {
-			repos = cfg.Repos
-		}
-	}
-
-	// Fallback: if no config or no repos, use the startup RepoPath
-	if len(repos) == 0 {
-		repos = []repoEntry{{
-			Name: filepath.Base(deps.RepoPath),
-			Path: deps.RepoPath,
-		}}
-	}
+	repos := GetConfiguredRepos(deps)
 
 	// Search all repos for the IMPL doc (both active and complete directories)
 	for _, repo := range repos {
@@ -513,14 +487,11 @@ func resolveIMPLPath(deps Deps, slug string) (string, string, error) {
 // resolveModels reads model configuration from saw.config.json in the
 // given repo, falling back to FallbackSAWConfig for missing values.
 func resolveModels(deps Deps, repoPath string) (waveModel, scaffoldModel, integrationModel string) {
-	configPath := deps.ConfigPath(repoPath)
-	if cfgData, err := os.ReadFile(configPath); err == nil {
-		var sawCfg SAWConfig
-		if json.Unmarshal(cfgData, &sawCfg) == nil {
-			waveModel = sawCfg.Agent.WaveModel
-			scaffoldModel = sawCfg.Agent.ScaffoldModel
-			integrationModel = sawCfg.Agent.IntegrationModel
-		}
+	if r := config.Load(repoPath); r.IsSuccess() {
+		sawCfg := r.GetData()
+		waveModel = sawCfg.Agent.WaveModel
+		scaffoldModel = sawCfg.Agent.ScaffoldModel
+		integrationModel = sawCfg.Agent.IntegrationModel
 	}
 	if FallbackSAWConfig != nil {
 		if waveModel == "" {
@@ -539,13 +510,11 @@ func resolveModels(deps Deps, repoPath string) (waveModel, scaffoldModel, integr
 // resolveModelsFromPath reads model configuration directly from a repo path,
 // without needing Deps (used by runWaveLoop which doesn't receive Deps).
 func resolveModelsFromPath(repoPath string) (waveModel, scaffoldModel, integrationModel string) {
-	if cfgData, err := os.ReadFile(filepath.Join(repoPath, "saw.config.json")); err == nil {
-		var sawCfg SAWConfig
-		if json.Unmarshal(cfgData, &sawCfg) == nil {
-			waveModel = sawCfg.Agent.WaveModel
-			scaffoldModel = sawCfg.Agent.ScaffoldModel
-			integrationModel = sawCfg.Agent.IntegrationModel
-		}
+	if r := config.Load(repoPath); r.IsSuccess() {
+		sawCfg := r.GetData()
+		waveModel = sawCfg.Agent.WaveModel
+		scaffoldModel = sawCfg.Agent.ScaffoldModel
+		integrationModel = sawCfg.Agent.IntegrationModel
 	}
 	if FallbackSAWConfig != nil {
 		if waveModel == "" {
@@ -648,21 +617,11 @@ func resolveTargetRepoFromManifest(manifest *protocol.IMPLManifest, repoPath str
 
 	// Target repo differs -- attempt resolution.
 	// 1. Try saw.config.json repos list.
-	if cfgPath := filepath.Join(repoPath, "saw.config.json"); cfgPath != "" {
-		if cfgData, err := os.ReadFile(cfgPath); err == nil {
-			var cfg struct {
-				Repos []struct {
-					Name string `json:"name"`
-					Path string `json:"path"`
-				} `json:"repos,omitempty"`
-			}
-			if json.Unmarshal(cfgData, &cfg) == nil {
-				for _, r := range cfg.Repos {
-					if r.Name == targetRepo && r.Path != "" {
-						if info, err := os.Stat(r.Path); err == nil && info.IsDir() {
-							return r.Path, targetRepo, true
-						}
-					}
+	if r := config.Load(repoPath); r.IsSuccess() {
+		for _, repo := range r.GetData().Repos {
+			if repo.Name == targetRepo && repo.Path != "" {
+				if info, err := os.Stat(repo.Path); err == nil && info.IsDir() {
+					return repo.Path, targetRepo, true
 				}
 			}
 		}
