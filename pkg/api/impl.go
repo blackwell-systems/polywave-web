@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
 )
@@ -125,11 +126,11 @@ func (s *Server) InvalidateImplCache() {
 // findImplPath is a helper that searches all configured repos for an IMPL doc by slug.
 // Returns the absolute file path and matched repo, or empty string if not found.
 // This is kept in the API layer for backward compatibility with other handlers.
-func (s *Server) findImplPath(slug string) (string, service.RepoEntry) {
+func (s *Server) findImplPath(slug string) (string, config.RepoEntry) {
 	deps := s.makeDeps()
 	path, repo, err := service.FindImplPath(deps, slug)
 	if err != nil {
-		return "", service.RepoEntry{}
+		return "", config.RepoEntry{}
 	}
 	return path, repo
 }
