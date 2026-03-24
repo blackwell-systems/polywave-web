@@ -2,14 +2,13 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/observability"
 	"github.com/blackwell-systems/scout-and-wave-web/build"
 	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
@@ -96,16 +95,17 @@ func (a *ssoServiceAdapter) PollSSODeviceAuth(ctx context.Context, req SSOPollRe
 	}, nil
 }
 
-// getConfiguredRepos reads saw.config.json and returns the list of configured
-// repos. Falls back to a single entry using s.cfg.RepoPath if no config or
-// no repos are configured.
+// getConfiguredRepos reads saw.config.json using the SDK config package and
+// returns the list of configured repos. Falls back to a single entry using
+// s.cfg.RepoPath if no config or no repos are configured.
 func (s *Server) getConfiguredRepos() []RepoEntry {
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
-	if data, err := os.ReadFile(configPath); err == nil {
-		var cfg SAWConfig
-		if json.Unmarshal(data, &cfg) == nil && len(cfg.Repos) > 0 {
-			return cfg.Repos
+	sdkCfg := config.LoadOrDefault(s.cfg.RepoPath)
+	if len(sdkCfg.Repos) > 0 {
+		entries := make([]RepoEntry, len(sdkCfg.Repos))
+		for i, r := range sdkCfg.Repos {
+			entries[i] = RepoEntry{Name: r.Name, Path: r.Path}
 		}
+		return entries
 	}
 	return []RepoEntry{{
 		Name: filepath.Base(s.cfg.RepoPath),
@@ -149,12 +149,9 @@ func New(cfg Config) *Server {
 
 	// Populate fallback config so runWaveLoop can use it for cross-repo IMPLs
 	// that don't have their own saw.config.json.
-	if cfgData, err := os.ReadFile(filepath.Join(cfg.RepoPath, "saw.config.json")); err == nil {
-		var sawCfg SAWConfig
-		if json.Unmarshal(cfgData, &sawCfg) == nil {
-			fallbackSAWConfig = &sawCfg
-		}
-	}
+	sdkCfg := config.LoadOrDefault(cfg.RepoPath)
+	apiCfg := sdkConfigToAPI(sdkCfg)
+	fallbackSAWConfig = &apiCfg
 
 	// Set the package-level pipeline tracker so runFinalizeSteps can use it.
 	defaultPipelineTracker = s.pipelineTracker
