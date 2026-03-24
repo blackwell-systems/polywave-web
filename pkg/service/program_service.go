@@ -1,12 +1,12 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
@@ -106,18 +106,8 @@ func ReplanProgram(deps Deps, slug string, reason string, failedTier int) error 
 
 	// Read planner model from config
 	plannerModel := ""
-	configPath := deps.ConfigPath(repoPath)
-	if cfgData, err := os.ReadFile(configPath); err == nil {
-		type agentCfg struct {
-			PlannerModel string `json:"planner_model"`
-		}
-		type sawCfg struct {
-			Agent agentCfg `json:"agent"`
-		}
-		var cfg sawCfg
-		if json.Unmarshal(cfgData, &cfg) == nil {
-			plannerModel = cfg.Agent.PlannerModel
-		}
+	if r := config.Load(repoPath); r.IsSuccess() {
+		plannerModel = r.GetData().Agent.PlannerModel
 	}
 
 	publish := makeProgramPublisher(deps, slug)
