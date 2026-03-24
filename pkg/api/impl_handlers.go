@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
 )
 
 // LoadManifest loads a YAML manifest using the Protocol SDK.
@@ -19,7 +20,7 @@ func LoadManifest(yamlPath string) (*protocol.IMPLManifest, error) {
 // ValidateManifest validates a YAML manifest and returns structured errors.
 // Returns nil slice if validation passes, or a slice of validation errors.
 // Returns a non-nil error only if the file cannot be loaded.
-func ValidateManifest(yamlPath string) ([]protocol.ValidationError, error) {
+func ValidateManifest(yamlPath string) ([]result.SAWError, error) {
 	manifest, err := protocol.Load(yamlPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load manifest for validation: %w", err)

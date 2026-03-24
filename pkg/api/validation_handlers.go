@@ -28,7 +28,7 @@ type ValidateWiringResponse struct {
 // toIntegrationResult wraps a protocol.ValidateIntegration return into Result[T].
 func toIntegrationResult(report *protocol.IntegrationReport, err error) result.Result[protocol.IntegrationReport] {
 	if err != nil {
-		return result.NewFailure[protocol.IntegrationReport]([]result.StructuredError{
+		return result.NewFailure[protocol.IntegrationReport]([]result.SAWError{
 			{Code: "E_INTEGRATION_VALIDATE", Message: err.Error(), Severity: "fatal"},
 		})
 	}

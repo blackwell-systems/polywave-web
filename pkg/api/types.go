@@ -14,7 +14,7 @@ import (
 //	func handleFoo(...) result.Result[FooData] {
 //	    data, err := doFoo()
 //	    if err != nil {
-//	        return result.NewFailure[FooData]([]result.StructuredError{{
+//	        return result.NewFailure[FooData]([]result.SAWError{{
 //	            Code: "E001", Message: err.Error(), Severity: "fatal",
 //	        }})
 //	    }
@@ -22,8 +22,8 @@ import (
 //	}
 type APIResponse[T any] = result.Result[T]
 
-// APIError is an alias for result.StructuredError, used in API handler return values.
-type APIError = result.StructuredError
+// APIError is an alias for result.SAWError, used in API handler return values.
+type APIError = result.SAWError
 
 // PreMortemRowEntry is one row of the pre-mortem risk table.
 type PreMortemRowEntry struct {

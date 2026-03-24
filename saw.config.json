@@ -15,6 +15,10 @@
     {
       "name": "shelfctl",
       "path": "/Users/dayna.blackwell/code/shelfctl"
+    },
+    {
+      "name": "vaultmux-server",
+      "path": "/Users/dayna.blackwell/code/vaultmux-server"
     }
   ],
   "repo": {
@@ -42,7 +46,7 @@
   },
   "appearance": {
     "theme": "dark",
-    "color_theme_dark": "windows-10",
+    "color_theme_dark": "ros-pine",
     "color_theme_light": "shapeshifter"
   },
   "providers": {

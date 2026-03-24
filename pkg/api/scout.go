@@ -42,7 +42,7 @@ func (s *Server) handleScoutRun(w http.ResponseWriter, r *http.Request) {
 	runID, err := service.StartScout(deps, req.Feature, req.Repo)
 	var startResult result.Result[string]
 	if err != nil {
-		startResult = result.NewFailure[string]([]result.StructuredError{{
+		startResult = result.NewFailure[string]([]result.SAWError{{
 			Code:     "E001",
 			Message:  err.Error(),
 			Severity: "fatal",
@@ -137,7 +137,7 @@ func (s *Server) handleScoutRerun(w http.ResponseWriter, r *http.Request) {
 	runID, err := service.StartScout(deps, feature, "")
 	var rerunResult result.Result[string]
 	if err != nil {
-		rerunResult = result.NewFailure[string]([]result.StructuredError{{
+		rerunResult = result.NewFailure[string]([]result.SAWError{{
 			Code:     "E001",
 			Message:  err.Error(),
 			Severity: "fatal",

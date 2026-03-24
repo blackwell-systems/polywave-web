@@ -291,7 +291,7 @@ func entryExists(entries []PipelineEntry, slug string) bool {
 func loadManifestResult(path string) result.Result[protocol.IMPLManifest] {
 	m, err := protocol.Load(path)
 	if err != nil || m == nil {
-		return result.NewFailure[protocol.IMPLManifest]([]result.StructuredError{
+		return result.NewFailure[protocol.IMPLManifest]([]result.SAWError{
 			{
 				Code:     "E001",
 				Message:  "failed to load IMPL manifest",

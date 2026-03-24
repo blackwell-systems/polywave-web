@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
 )
 
 
@@ -53,7 +54,7 @@ func (s *Server) HandleValidateManifest(w http.ResponseWriter, r *http.Request) 
 		"errors": validationErrs,
 	}
 	if validationErrs == nil {
-		response["errors"] = []protocol.ValidationError{}
+		response["errors"] = []result.SAWError{}
 	}
 
 	respondJSON(w, http.StatusOK, response)

@@ -102,18 +102,23 @@ export default function ThemePicker(): JSX.Element {
     }).catch(() => {})
   }, [dark])
 
-  // Apply theme
+  // Apply theme (or preview if hovering)
   useEffect(() => {
-    applyTheme(theme)
-  }, [theme])
+    const activeTheme = hoveredTheme?.id ?? theme
+    applyTheme(activeTheme)
+  }, [theme, hoveredTheme])
 
-  // Close popover on outside click
+  // Close popover on outside click and clear hover state
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setHoveredTheme(null)
+      return
+    }
     const handler = (e: MouseEvent) => {
       if (!popoverRef.current?.contains(e.target as Node) &&
           !btnRef.current?.contains(e.target as Node)) {
         setOpen(false)
+        setHoveredTheme(null)
       }
     }
     document.addEventListener('mousedown', handler)
