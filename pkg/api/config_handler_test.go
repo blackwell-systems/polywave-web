@@ -47,8 +47,9 @@ func TestConfigMigration_LegacyRepoPath(t *testing.T) {
 	if len(got.Repos) != 1 {
 		t.Fatalf("expected 1 repo entry, got %d", len(got.Repos))
 	}
-	if got.Repos[0].Name != "repo" {
-		t.Errorf("expected repos[0].name = %q, got %q", "repo", got.Repos[0].Name)
+	// SDK config.Load uses filepath.Base of the legacy path as the name.
+	if got.Repos[0].Name != "testrepo" {
+		t.Errorf("expected repos[0].name = %q, got %q", "testrepo", got.Repos[0].Name)
 	}
 	if got.Repos[0].Path != "/tmp/testrepo" {
 		t.Errorf("expected repos[0].path = %q, got %q", "/tmp/testrepo", got.Repos[0].Path)
