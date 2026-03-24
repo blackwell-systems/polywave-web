@@ -57,7 +57,7 @@ type TierStatusDetailWithWaves struct {
 	Complete     bool                      `json:"complete"`
 }
 
-// ProgramStatusResponse wraps protocol.ProgramStatusResult with web-specific fields.
+// ProgramStatusResponse wraps protocol.ProgramStatusData with web-specific fields.
 type ProgramStatusResponse struct {
 	ProgramSlug      string                      `json:"program_slug"`
 	Title            string                      `json:"title"`

@@ -119,15 +119,16 @@ func runProgramTier(
 	}
 
 	log.Printf("runProgramTier: running tier gates for tier %d", tierNumber)
-	gateResult, err := protocol.RunTierGate(manifest, tierNumber, repoPath)
-	if err != nil {
+	gateRes := protocol.RunTierGate(manifest, tierNumber, repoPath)
+	if gateRes.IsFatal() {
 		publish("program_blocked", map[string]interface{}{
 			"program_slug": programSlug,
 			"tier":         tierNumber,
-			"reason":       fmt.Sprintf("tier gate error: %v", err),
+			"reason":       fmt.Sprintf("tier gate error: %v", gateRes.Errors),
 		})
-		return fmt.Errorf("tier gate error: %w", err)
+		return fmt.Errorf("tier gate error: %v", gateRes.Errors)
 	}
+	gateResult := gateRes.GetData()
 
 	if !gateResult.Passed {
 		publish("program_blocked", map[string]interface{}{
@@ -140,15 +141,16 @@ func runProgramTier(
 	}
 
 	log.Printf("runProgramTier: freezing contracts at tier %d", tierNumber)
-	freezeResult, err := protocol.FreezeContracts(manifest, tierNumber, repoPath)
-	if err != nil {
+	freezeRes := protocol.FreezeContracts(manifest, tierNumber, repoPath)
+	if freezeRes.IsFatal() {
 		publish("program_blocked", map[string]interface{}{
 			"program_slug": programSlug,
 			"tier":         tierNumber,
-			"reason":       fmt.Sprintf("contract freeze error: %v", err),
+			"reason":       fmt.Sprintf("contract freeze error: %v", freezeRes.Errors),
 		})
-		return fmt.Errorf("contract freeze error: %w", err)
+		return fmt.Errorf("contract freeze error: %v", freezeRes.Errors)
 	}
+	freezeResult := freezeRes.GetData()
 
 	if !freezeResult.Success {
 		publish("program_blocked", map[string]interface{}{

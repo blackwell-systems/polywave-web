@@ -282,7 +282,8 @@ func runWaveLoop(
 			// the wave. The engine's FinalizeWaveResult does not carry a WiringReport,
 			// so we run it inline here.
 			if manifest != nil && len(manifest.Wiring) > 0 {
-				if wiringResult, wiringErr := protocol.ValidateWiringDeclarations(manifest, repoPath); wiringErr == nil {
+				if wiringRes := protocol.ValidateWiringDeclarations(manifest, repoPath); wiringRes.IsSuccess() || wiringRes.IsPartial() {
+					wiringResult := wiringRes.GetData()
 					if wiringResult != nil && !wiringResult.Valid {
 						for _, gap := range wiringResult.Gaps {
 							publish("wiring_gap", map[string]interface{}{
@@ -570,26 +571,28 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 	// Emit per-gap and summary SSE events so the UI can surface wiring gaps.
 	// Does NOT block the pipeline — wiring gaps are advisory at this stage.
 	if len(manifest.Wiring) > 0 {
-		wiringResult, wiringErr := protocol.ValidateWiringDeclarations(manifest, repoPath)
-		if wiringErr != nil {
-			log.Printf("runFinalizeSteps: validate-wiring non-fatal error: %v", wiringErr)
-		} else if wiringResult != nil && !wiringResult.Valid {
-			for _, gap := range wiringResult.Gaps {
-				publish("wiring_gap", map[string]interface{}{
-					"wave":                waveNum,
-					"symbol":              gap.Declaration.Symbol,
-					"defined_in":          gap.Declaration.DefinedIn,
-					"must_be_called_from": gap.Declaration.MustBeCalledFrom,
-					"agent":               gap.Declaration.Agent,
-					"reason":              gap.Reason,
-					"severity":            gap.Severity,
+		wiringRes := protocol.ValidateWiringDeclarations(manifest, repoPath)
+		if wiringRes.IsFatal() {
+			log.Printf("runFinalizeSteps: validate-wiring non-fatal error: %v", wiringRes.Errors)
+		} else if wiringRes.IsSuccess() || wiringRes.IsPartial() {
+			if wiringData := wiringRes.GetData(); wiringData != nil && !wiringData.Valid {
+				for _, gap := range wiringData.Gaps {
+					publish("wiring_gap", map[string]interface{}{
+						"wave":                waveNum,
+						"symbol":              gap.Declaration.Symbol,
+						"defined_in":          gap.Declaration.DefinedIn,
+						"must_be_called_from": gap.Declaration.MustBeCalledFrom,
+						"agent":               gap.Declaration.Agent,
+						"reason":              gap.Reason,
+						"severity":            gap.Severity,
+					})
+				}
+				publish("wiring_gaps_summary", map[string]interface{}{
+					"wave":      waveNum,
+					"gap_count": len(wiringData.Gaps),
+					"summary":   wiringData.Summary,
 				})
 			}
-			publish("wiring_gaps_summary", map[string]interface{}{
-				"wave":      waveNum,
-				"gap_count": len(wiringResult.Gaps),
-				"summary":   wiringResult.Summary,
-			})
 		}
 	}
 

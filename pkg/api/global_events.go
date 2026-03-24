@@ -233,7 +233,7 @@ func (s *Server) implWatchDirs(fallbackDir string) []string {
 
 // EmitCriticReviewComplete broadcasts a critic_review_complete SSE event
 // to all connected clients. Called after sawtools run-critic completes.
-func (s *Server) EmitCriticReviewComplete(slug string, result *protocol.CriticResult) {
+func (s *Server) EmitCriticReviewComplete(slug string, result *protocol.CriticData) {
 	s.globalBroker.broadcastJSON("critic_review_complete", map[string]interface{}{
 		"slug":   slug,
 		"result": result,

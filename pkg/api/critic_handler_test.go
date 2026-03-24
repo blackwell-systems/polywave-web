@@ -79,7 +79,7 @@ func TestHandleGetCriticReview_NoReview(t *testing.T) {
 }
 
 // TestHandleGetCriticReview_WithReview verifies that GET /api/impl/{slug}/critic-review
-// returns 200 with the correct JSON CriticResult after a review has been written.
+// returns 200 with the correct JSON CriticData after a review has been written.
 func TestHandleGetCriticReview_WithReview(t *testing.T) {
 	dir := t.TempDir()
 	implDir := filepath.Join(dir, "docs", "IMPL")
@@ -91,7 +91,7 @@ func TestHandleGetCriticReview_WithReview(t *testing.T) {
 	implPath := makeMinimalIMPL(t, implDir, slug)
 
 	// Write a critic review to the IMPL doc.
-	review := protocol.CriticResult{
+	review := protocol.CriticData{
 		Verdict: "PASS",
 		Summary: "All agents passed review.",
 		AgentReviews: map[string]protocol.AgentCriticReview{
@@ -126,7 +126,7 @@ func TestHandleGetCriticReview_WithReview(t *testing.T) {
 		t.Errorf("expected Content-Type application/json, got %q", ct)
 	}
 
-	var got protocol.CriticResult
+	var got protocol.CriticData
 	if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -385,7 +385,7 @@ func TestHandleGetCriticReview_NotFound(t *testing.T) {
 func makeIMPLWithCriticReport(t *testing.T, implDir, slug string, reviews map[string]protocol.AgentCriticReview) string {
 	t.Helper()
 	implPath := makeMinimalIMPL(t, implDir, slug)
-	result := protocol.CriticResult{
+	result := protocol.CriticData{
 		Verdict:      protocol.CriticVerdictIssues,
 		Summary:      "Issues found",
 		AgentReviews: reviews,

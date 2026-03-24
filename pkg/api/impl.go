@@ -523,7 +523,7 @@ func convertKnownIssues(issues []protocol.KnownIssue) []KnownIssue {
 
 // formatStubReports converts persisted stub scan results into a markdown string
 // for the StubReportPanel. Returns empty string if no reports exist.
-func formatStubReports(reports map[string]*protocol.ScanStubsResult) string {
+func formatStubReports(reports map[string]*protocol.ScanStubsData) string {
 	if len(reports) == 0 {
 		return ""
 	}

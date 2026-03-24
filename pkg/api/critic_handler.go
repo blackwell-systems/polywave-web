@@ -154,7 +154,7 @@ func (s *Server) runCriticAsync(slug, implPath string) {
 
 // handleFixCritic serves PATCH /api/impl/{slug}/fix-critic.
 // Accepts a CriticFix JSON body, applies the fix to the IMPL manifest YAML,
-// re-validates with sawtools validate --fix, and returns the updated CriticResult.
+// re-validates with sawtools validate --fix, and returns the updated CriticData.
 // Emits impl_updated SSE event so other panels refresh.
 func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
@@ -267,7 +267,7 @@ type AutoFixCriticRequest struct {
 type AutoFixCriticResponse struct {
 	FixesApplied []AppliedFix           `json:"fixes_applied"`
 	FixesFailed  []FailedFix            `json:"fixes_failed"`
-	NewResult    *protocol.CriticResult `json:"new_result,omitempty"` // nil if dry_run
+	NewResult    *protocol.CriticData `json:"new_result,omitempty"` // nil if dry_run
 	AllResolved  bool                   `json:"all_resolved"`
 }
 

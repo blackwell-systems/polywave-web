@@ -40,7 +40,7 @@ func ListPrograms(deps Deps) ([]protocol.ProgramDiscovery, error) {
 }
 
 // GetProgramStatus returns comprehensive status for a PROGRAM manifest.
-func GetProgramStatus(deps Deps, slug string) (*protocol.ProgramStatusResult, error) {
+func GetProgramStatus(deps Deps, slug string) (*protocol.ProgramStatusData, error) {
 	programPath, repoPath, err := ResolveProgramPath(deps, slug)
 	if err != nil {
 		return nil, err
@@ -51,12 +51,12 @@ func GetProgramStatus(deps Deps, slug string) (*protocol.ProgramStatusResult, er
 		return nil, fmt.Errorf("failed to parse program manifest: %w", err)
 	}
 
-	status, err := protocol.GetProgramStatus(manifest, repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get program status: %w", err)
+	res := protocol.GetProgramStatus(manifest, repoPath)
+	if !res.IsSuccess() {
+		return nil, fmt.Errorf("failed to get program status: %v", res.Errors)
 	}
 
-	return status, nil
+	return res.GetData(), nil
 }
 
 // ExecuteTier guards against concurrent execution and launches tier execution
@@ -278,15 +278,16 @@ func runProgramTier(
 
 	// Run tier gates
 	log.Printf("runProgramTier: running tier gates for tier %d", tierNumber)
-	gateResult, err := protocol.RunTierGate(manifest, tierNumber, repoPath)
-	if err != nil {
+	gateRes := protocol.RunTierGate(manifest, tierNumber, repoPath)
+	if gateRes.IsFatal() {
 		publish("program_blocked", map[string]interface{}{
 			"program_slug": programSlug,
 			"tier":         tierNumber,
-			"reason":       fmt.Sprintf("tier gate error: %v", err),
+			"reason":       fmt.Sprintf("tier gate error: %v", gateRes.Errors),
 		})
-		return fmt.Errorf("tier gate error: %w", err)
+		return fmt.Errorf("tier gate error: %v", gateRes.Errors)
 	}
+	gateResult := gateRes.GetData()
 
 	if !gateResult.Passed {
 		publish("program_blocked", map[string]interface{}{
@@ -300,15 +301,16 @@ func runProgramTier(
 
 	// Freeze contracts
 	log.Printf("runProgramTier: freezing contracts at tier %d", tierNumber)
-	freezeResult, err := protocol.FreezeContracts(manifest, tierNumber, repoPath)
-	if err != nil {
+	freezeRes := protocol.FreezeContracts(manifest, tierNumber, repoPath)
+	if freezeRes.IsFatal() {
 		publish("program_blocked", map[string]interface{}{
 			"program_slug": programSlug,
 			"tier":         tierNumber,
-			"reason":       fmt.Sprintf("contract freeze error: %v", err),
+			"reason":       fmt.Sprintf("contract freeze error: %v", freezeRes.Errors),
 		})
-		return fmt.Errorf("contract freeze error: %w", err)
+		return fmt.Errorf("contract freeze error: %v", freezeRes.Errors)
 	}
+	freezeResult := freezeRes.GetData()
 
 	if !freezeResult.Success {
 		publish("program_blocked", map[string]interface{}{

@@ -49,22 +49,23 @@ func (s *Server) runStaleCleanup() {
 		// Auto-clean all three reasons: completed_impl, orphaned, merged_but_not_cleaned.
 		// SAW worktrees use a known branch format so orphaned SAW worktrees are
 		// definitively stale debris.
-		result, err := protocol.CleanStaleWorktrees(stale, false)
-		if err != nil {
-			log.Printf("[stale-cleanup] error cleaning %s: %v", repo.Path, err)
+		res := protocol.CleanStaleWorktrees(stale, false)
+		if res.IsFatal() {
+			log.Printf("[stale-cleanup] error cleaning %s: %v", repo.Path, res.Errors)
 			continue
 		}
+		cleanData := res.GetData()
 
-		if len(result.Cleaned) > 0 {
-			allStale = append(allStale, result.Cleaned...)
+		if len(cleanData.Cleaned) > 0 {
+			allStale = append(allStale, cleanData.Cleaned...)
 			cleanedRepos = append(cleanedRepos, repo.Name)
 		}
 
-		if len(result.Skipped) > 0 {
+		if len(cleanData.Skipped) > 0 {
 			log.Printf("[stale-cleanup] skipped %d worktrees in %s (uncommitted changes)",
-				len(result.Skipped), repo.Name)
+				len(cleanData.Skipped), repo.Name)
 		}
-		for _, e := range result.Errors {
+		for _, e := range cleanData.Errors {
 			log.Printf("[stale-cleanup] error removing %s: %s", e.Worktree.WorktreePath, e.Error)
 		}
 	}
@@ -112,31 +113,32 @@ func (s *Server) handleGlobalStaleCleanup(w http.ResponseWriter, r *http.Request
 			continue
 		}
 
-		result, err := protocol.CleanStaleWorktrees(stale, false)
-		if err != nil {
+		res := protocol.CleanStaleWorktrees(stale, false)
+		if res.IsFatal() {
 			results = append(results, repoResult{
 				Repo: repo.Name,
 				Errors: []struct {
 					Worktree protocol.StaleWorktree `json:"worktree"`
 					Error    string                 `json:"error"`
-				}{{Error: fmt.Sprintf("clean: %v", err)}},
+				}{{Error: fmt.Sprintf("clean: %v", res.Errors)}},
 			})
 			continue
 		}
+		cleanData := res.GetData()
 
 		rr := repoResult{
 			Repo:    repo.Name,
-			Cleaned: result.Cleaned,
-			Skipped: result.Skipped,
+			Cleaned: cleanData.Cleaned,
+			Skipped: cleanData.Skipped,
 		}
 		// Copy errors with matching struct type
-		for _, e := range result.Errors {
+		for _, e := range cleanData.Errors {
 			rr.Errors = append(rr.Errors, struct {
 				Worktree protocol.StaleWorktree `json:"worktree"`
 				Error    string                 `json:"error"`
 			}{Worktree: e.Worktree, Error: e.Error})
 		}
-		totalCleaned += len(result.Cleaned)
+		totalCleaned += len(cleanData.Cleaned)
 		results = append(results, rr)
 	}
 

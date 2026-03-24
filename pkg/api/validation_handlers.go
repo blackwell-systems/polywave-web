@@ -35,14 +35,17 @@ func toIntegrationResult(report *protocol.IntegrationReport, err error) result.R
 	return result.NewSuccess(*report)
 }
 
-// toWiringResult wraps a protocol.ValidateWiringDeclarations return into Result[T].
-func toWiringResult(wr *protocol.WiringValidationResult, err error) result.Result[protocol.WiringValidationResult] {
-	if err != nil {
-		return result.NewFailure[protocol.WiringValidationResult]([]result.StructuredError{
-			{Code: "E_WIRING_VALIDATE", Message: err.Error(), Severity: "fatal"},
-		})
+// toWiringResult wraps a protocol.ValidateWiringDeclarations result.Result into Result[WiringValidationData].
+// Handles SUCCESS (all wiring satisfied) and PARTIAL (gaps found but data present).
+func toWiringResult(res result.Result[*protocol.WiringValidationData]) result.Result[protocol.WiringValidationData] {
+	if res.IsSuccess() || res.IsPartial() {
+		data := *res.GetData()
+		if res.IsPartial() {
+			return result.NewPartial(data, res.Errors)
+		}
+		return result.NewSuccess(data)
 	}
-	return result.NewSuccess(*wr)
+	return result.NewFailure[protocol.WiringValidationData](res.Errors)
 }
 
 // handleValidateIntegration serves GET /api/impl/{slug}/validate-integration?wave=N.
@@ -120,7 +123,7 @@ func (s *Server) handleValidateWiring(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wiringResult := toWiringResult(protocol.ValidateWiringDeclarations(manifest, repoPath))
-	if !wiringResult.IsSuccess() {
+	if !wiringResult.IsSuccess() && !wiringResult.IsPartial() {
 		msg := wiringResult.Errors[0].Message
 		respondError(w, fmt.Sprintf("wiring validation failed: %s", msg), http.StatusInternalServerError)
 		return
