@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/autonomy"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/queue"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
@@ -251,8 +251,9 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 
 	// 4. Load autonomy config (from primary repo)
 	autonomyLevel := "gated"
-	if cfg, err := autonomy.LoadConfig(s.cfg.RepoPath); err == nil {
-		autonomyLevel = string(cfg.Level)
+	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
+	if sawCfg != nil && sawCfg.Autonomy.Level != "" {
+		autonomyLevel = sawCfg.Autonomy.Level
 	}
 
 	// 5. Build metrics
