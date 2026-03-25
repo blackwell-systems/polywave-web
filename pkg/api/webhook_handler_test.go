@@ -44,7 +44,7 @@ func TestWebhookHandler_GetAdapters_WithConfig(t *testing.T) {
 		"webhooks": WebhookConfig{
 			Enabled: true,
 			Adapters: []WebhookAdapterConfig{
-				{Type: "slack", WebhookURL: "https://hooks.slack.com/test", Channel: "#saw"},
+				{Type: "slack", Mode: "webhook", WebhookURL: "https://hooks.slack.com/test", Destination: "#saw"},
 			},
 		},
 	}
@@ -76,8 +76,8 @@ func TestWebhookHandler_GetAdapters_WithConfig(t *testing.T) {
 	if wc.Adapters[0].Type != "slack" {
 		t.Errorf("expected adapter type slack, got %s", wc.Adapters[0].Type)
 	}
-	if wc.Adapters[0].Channel != "#saw" {
-		t.Errorf("expected channel #saw, got %s", wc.Adapters[0].Channel)
+	if wc.Adapters[0].Destination != "#saw" {
+		t.Errorf("expected destination #saw, got %s", wc.Adapters[0].Destination)
 	}
 }
 

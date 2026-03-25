@@ -2,10 +2,10 @@ import { useState, useEffect, useCallback } from 'react'
 
 export interface WebhookAdapter {
   type: 'slack' | 'discord' | 'telegram'
+  mode?: 'webhook' | 'token'
   webhook_url?: string
-  channel?: string
-  bot_token?: string
-  chat_id?: string
+  token?: string
+  destination?: string
 }
 
 export interface WebhookConfig {
@@ -107,9 +107,14 @@ export function useWebhooks(): UseWebhooksReturn {
   }, [])
 
   const addAdapter = useCallback((type: WebhookAdapter['type']) => {
+    const newAdapter: WebhookAdapter = { type }
+    // Slack supports both modes; default to webhook
+    if (type === 'slack') {
+      newAdapter.mode = 'webhook'
+    }
     setConfig((prev) => ({
       ...prev,
-      adapters: [...prev.adapters, { type }],
+      adapters: [...prev.adapters, newAdapter],
     }))
   }, [])
 

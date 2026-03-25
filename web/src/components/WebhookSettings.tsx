@@ -17,21 +17,25 @@ const ADAPTER_TYPE_COLORS: Record<WebhookAdapter['type'], string> = {
 interface AdapterFieldDef {
   key: keyof WebhookAdapter
   label: string
-  placeholder: string
+  placeholder?: string
+  type?: 'text' | 'select'
+  options?: string[]
+  showWhen?: Record<string, string>
 }
 
 const ADAPTER_FIELDS: Record<WebhookAdapter['type'], AdapterFieldDef[]> = {
   slack: [
-    { key: 'webhook_url', label: 'Webhook URL (or leave empty for bot token mode)', placeholder: 'https://hooks.slack.com/services/...' },
-    { key: 'bot_token', label: 'Bot Token (alternative to webhook URL)', placeholder: 'xoxb-...' },
-    { key: 'channel', label: 'Channel (required for bot token, optional for webhook)', placeholder: '#saw-notifications' },
+    { key: 'mode', label: 'Mode', type: 'select', options: ['webhook', 'token'] },
+    { key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://hooks.slack.com/services/...', showWhen: { mode: 'webhook' } },
+    { key: 'token', label: 'Bot Token', placeholder: 'xoxb-...', showWhen: { mode: 'token' } },
+    { key: 'destination', label: 'Channel', placeholder: '#saw-notifications', showWhen: { mode: 'token' } },
   ],
   discord: [
     { key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://discord.com/api/webhooks/...' },
   ],
   telegram: [
-    { key: 'bot_token', label: 'Bot Token', placeholder: '123456:ABC-DEF...' },
-    { key: 'chat_id', label: 'Chat ID', placeholder: '-1001234567890' },
+    { key: 'token', label: 'Bot Token', placeholder: '123456:ABC-DEF...' },
+    { key: 'destination', label: 'Chat ID', placeholder: '-1001234567890' },
   ],
 }
 
@@ -176,25 +180,51 @@ export default function WebhookSettings(): JSX.Element {
             </div>
 
             {/* Config fields */}
-            {fields.map((field) => (
-              <div key={field.key} className="flex flex-col gap-1">
-                <label
-                  htmlFor={`adapter-${index}-${field.key}`}
-                  className="text-sm text-gray-700 dark:text-gray-300"
-                >
-                  {field.label}
-                </label>
-                <input
-                  id={`adapter-${index}-${field.key}`}
-                  type="text"
-                  value={(adapter[field.key] as string) ?? ''}
-                  onChange={(e) => handleFieldChange(index, field.key, e.target.value)}
-                  placeholder={field.placeholder}
-                  disabled={!config.enabled || saving}
-                  className="text-sm px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 placeholder:text-gray-400 dark:placeholder:text-gray-600"
-                />
-              </div>
-            ))}
+            {fields.map((field) => {
+              // Check showWhen conditions — skip field if conditions not met
+              if (field.showWhen) {
+                const visible = Object.entries(field.showWhen).every(
+                  ([k, v]) => (adapter as unknown as Record<string, unknown>)[k] === v
+                )
+                if (!visible) return null
+              }
+
+              return (
+                <div key={field.key} className="flex flex-col gap-1">
+                  <label
+                    htmlFor={`adapter-${index}-${field.key}`}
+                    className="text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    {field.label}
+                  </label>
+                  {field.type === 'select' ? (
+                    <select
+                      id={`adapter-${index}-${field.key}`}
+                      value={(adapter[field.key] as string) ?? ''}
+                      onChange={(e) => handleFieldChange(index, field.key, e.target.value)}
+                      disabled={!config.enabled || saving}
+                      className="text-sm px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50"
+                    >
+                      {field.options?.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={`adapter-${index}-${field.key}`}
+                      type="text"
+                      value={(adapter[field.key] as string) ?? ''}
+                      onChange={(e) => handleFieldChange(index, field.key, e.target.value)}
+                      placeholder={field.placeholder}
+                      disabled={!config.enabled || saving}
+                      className="text-sm px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:opacity-50 placeholder:text-gray-400 dark:placeholder:text-gray-600"
+                    />
+                  )}
+                </div>
+              )
+            })}
 
             {/* Test button + result */}
             <div className="flex items-center gap-3 pt-1">
