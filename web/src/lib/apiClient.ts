@@ -134,6 +134,7 @@ export interface SawClient {
     start(description: string, opts?: { maxQuestions?: number; projectPath?: string }): Promise<{ runId: string }>
     subscribeEvents(runId: string): EventSource
     answer(runId: string, answer: string): Promise<void>
+    resume(docPath: string): Promise<{ runId: string }>
   }
   wave: {
     start(slug: string): Promise<void>
@@ -475,6 +476,17 @@ export function createHttpClient(): SawClient {
           body: JSON.stringify({ answer }),
         })
         if (!r.ok) throw new Error(await r.text())
+      },
+
+      async resume(docPath: string): Promise<{ runId: string }> {
+        const r = await fetch('/api/interview/resume', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doc_path: docPath }),
+        })
+        await check(r)
+        const data = await r.json() as { run_id: string }
+        return { runId: data.run_id }
       },
     },
 
