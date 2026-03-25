@@ -29,6 +29,11 @@ var gateChannels sync.Map
 // runWaveLoop uses it when the target repo has no saw.config.json of its own.
 var fallbackSAWConfig *config.SAWConfig
 
+// pkgNotificationBus is the package-level notification bus, set by Server.New().
+// Used by standalone functions (runWaveLoop, runFinalizeSteps) that don't have
+// access to the Server receiver. Nil-safe: NotificationBus.Notify is a no-op on nil.
+var pkgNotificationBus *NotificationBus
+
 // runWaveLoopFunc is the seam used by handleWaveStart. Tests can replace this
 // to inject a no-op and avoid real git/API calls in unit tests.
 var runWaveLoopFunc = runWaveLoop
@@ -153,9 +158,23 @@ func runWaveLoop(
 		}); err != nil {
 			onStage(StageScaffold, StageStatusFailed, 0, err.Error())
 			publish("run_failed", map[string]string{"error": err.Error()})
+			pkgNotificationBus.Notify(NotificationEvent{
+				Type:     NotifyRunFailed,
+				Slug:     slug,
+				Title:    "Scaffold Failed",
+				Message:  err.Error(),
+				Severity: "error",
+			})
 			return
 		}
 		onStage(StageScaffold, StageStatusComplete, 0, "")
+		pkgNotificationBus.Notify(NotificationEvent{
+			Type:     NotifyScaffoldComplete,
+			Slug:     slug,
+			Title:    "Scaffolds Committed",
+			Message:  "Interface contracts materialized and committed to HEAD",
+			Severity: "success",
+		})
 	}
 
 	waves := manifest.Waves
@@ -266,6 +285,13 @@ func runWaveLoop(
 			if err := orch.RunWave(waveNum); err != nil {
 				onStage(StageWaveExecute, StageStatusFailed, waveNum, err.Error())
 				publish("run_failed", map[string]string{"error": err.Error()})
+				pkgNotificationBus.Notify(NotificationEvent{
+					Type:     NotifyAgentFailed,
+					Slug:     slug,
+					Title:    fmt.Sprintf("Wave %d Agent Failed", waveNum),
+					Message:  err.Error(),
+					Severity: "error",
+				})
 				return
 			}
 			onStage(StageWaveExecute, StageStatusComplete, waveNum, "")
@@ -336,6 +362,14 @@ func runWaveLoop(
 			}
 		}
 		onStage(StageWaveMerge, StageStatusComplete, waveNum, "")
+
+		pkgNotificationBus.Notify(NotificationEvent{
+			Type:     NotifyWaveComplete,
+			Slug:     slug,
+			Title:    fmt.Sprintf("Wave %d Complete", waveNum),
+			Message:  fmt.Sprintf("All agents merged and verified for wave %d", waveNum),
+			Severity: "success",
+		})
 
 		completedLetters := make([]string, 0, len(wave.Agents))
 		for _, ag := range wave.Agents {
@@ -684,10 +718,24 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 				verifyBuildResult.Data.TestPassed, verifyBuildResult.Data.LintPassed)
 			_ = tracker.Fail(slug, waveNum, StepVerifyBuild, err)
 			publishPipelineStep(publish, slug, waveNum, StepVerifyBuild, StepFailed, err.Error())
+			pkgNotificationBus.Notify(NotificationEvent{
+				Type:     NotifyBuildVerifyFail,
+				Slug:     slug,
+				Title:    fmt.Sprintf("Wave %d Build Failed", waveNum),
+				Message:  err.Error(),
+				Severity: "error",
+			})
 			return err
 		}
 		_ = tracker.Complete(slug, waveNum, StepVerifyBuild)
 		publishPipelineStep(publish, slug, waveNum, StepVerifyBuild, StepComplete, "")
+		pkgNotificationBus.Notify(NotificationEvent{
+			Type:     NotifyBuildVerifyPass,
+			Slug:     slug,
+			Title:    fmt.Sprintf("Wave %d Build Verified", waveNum),
+			Message:  "Tests and lint passed after merge",
+			Severity: "success",
+		})
 	}
 
 	// --- Step 7.5: CodeReview (non-fatal unless blocking) ---

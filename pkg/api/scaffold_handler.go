@@ -77,5 +77,13 @@ func (s *Server) runScaffoldAgent(ctx context.Context, slug, runID, implPath str
 			})
 		}
 		// scaffold_failed already published by engine; no double-publish needed.
+	} else {
+		s.notificationBus.Notify(NotificationEvent{
+			Type:     NotifyScaffoldComplete,
+			Slug:     slug,
+			Title:    "Scaffolds Committed",
+			Message:  "Interface contracts materialized and committed to HEAD",
+			Severity: "success",
+		})
 	}
 }

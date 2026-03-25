@@ -35,9 +35,12 @@ func NewNotificationBus(broker *globalBroker) *NotificationBus {
 // The event is marshaled to JSON and sent with the "notification" event type.
 // This method is safe to call concurrently from multiple goroutines.
 func (nb *NotificationBus) Notify(event NotificationEvent) {
+	if nb == nil {
+		return
+	}
 	nb.mu.Lock()
 	defer nb.mu.Unlock()
-	
+
 	// Broadcast the notification event as JSON via the global broker
 	nb.broker.broadcastJSON("notification", event)
 }

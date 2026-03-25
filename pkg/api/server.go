@@ -150,6 +150,10 @@ func New(cfg Config) *Server {
 	// Set the package-level pipeline tracker so runFinalizeSteps can use it.
 	defaultPipelineTracker = s.pipelineTracker
 
+	// Expose notification bus at package level for standalone functions
+	// (runWaveLoop, runFinalizeSteps) that don't have the Server receiver.
+	pkgNotificationBus = s.notificationBus
+
 	// Watch the IMPL directory for new/changed docs so connected clients
 	// get an impl_list_updated event without needing to poll or refresh.
 	s.startIMPLWatcher(cfg.IMPLDir)
