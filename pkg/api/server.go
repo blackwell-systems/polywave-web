@@ -374,14 +374,14 @@ func initWebhookBridge(configPath string) *WebhookBridge {
 		if ac.WebhookURL != "" {
 			cfg["webhook_url"] = ac.WebhookURL
 		}
-		if ac.Channel != "" {
-			cfg["channel"] = ac.Channel
+		if ac.Token != "" {
+			cfg["token"] = ac.Token
 		}
-		if ac.BotToken != "" {
-			cfg["bot_token"] = ac.BotToken
+		if ac.Destination != "" {
+			cfg["destination"] = ac.Destination
 		}
-		if ac.ChatID != "" {
-			cfg["chat_id"] = ac.ChatID
+		if ac.Mode != "" {
+			cfg["mode"] = ac.Mode
 		}
 		adapter, err := notify.NewFromConfig(ac.Type, cfg)
 		if err != nil {

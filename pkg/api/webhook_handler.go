@@ -13,11 +13,11 @@ import (
 
 // WebhookAdapterConfig represents a single adapter entry in the config file.
 type WebhookAdapterConfig struct {
-	Type       string `json:"type"`
-	WebhookURL string `json:"webhook_url,omitempty"`
-	Channel    string `json:"channel,omitempty"`
-	BotToken   string `json:"bot_token,omitempty"`
-	ChatID     string `json:"chat_id,omitempty"`
+	Type        string `json:"type"`
+	Mode        string `json:"mode,omitempty"`
+	WebhookURL  string `json:"webhook_url,omitempty"`
+	Token       string `json:"token,omitempty"`
+	Destination string `json:"destination,omitempty"`
 }
 
 // WebhookConfig holds the top-level webhooks config section.
@@ -176,14 +176,14 @@ func (s *Server) handleTestWebhook(w http.ResponseWriter, r *http.Request) {
 	if ac.WebhookURL != "" {
 		cfg["webhook_url"] = ac.WebhookURL
 	}
-	if ac.Channel != "" {
-		cfg["channel"] = ac.Channel
+	if ac.Token != "" {
+		cfg["token"] = ac.Token
 	}
-	if ac.BotToken != "" {
-		cfg["bot_token"] = ac.BotToken
+	if ac.Destination != "" {
+		cfg["destination"] = ac.Destination
 	}
-	if ac.ChatID != "" {
-		cfg["chat_id"] = ac.ChatID
+	if ac.Mode != "" {
+		cfg["mode"] = ac.Mode
 	}
 
 	// Create adapter from registry
