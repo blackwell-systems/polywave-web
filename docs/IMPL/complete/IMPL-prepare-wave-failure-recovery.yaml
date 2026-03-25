@@ -1,0 +1,656 @@
+completion_date: "2026-03-24"
+title: PrepareWave Failure Recovery UI
+feature_slug: prepare-wave-failure-recovery
+verdict: SUITABLE
+suitability_assessment: |
+    1. File decomposition: 7+ distinct files changing across Go backend and React
+       frontend. No two agents need conflicting modifications to the same file.
+       Clear separation: backend SSE emission (Go), state management (reducer),
+       SSE listener wiring (TS), new component (TSX), WaveBoard integration (TSX),
+       API client additions (TS), tests.
+
+    2. Investigation-first: Not required. The PrepareWave step names and failure
+       classes are fully defined in engine/prepare.go. The recovery actions map
+       to existing endpoints (fix-build, scaffold rerun, cleanup-stale, critic).
+
+    3. Interface discoverability: Yes. The prepare_step SSE event shape is defined
+       by engine.StepResult (step, status, detail). Recovery action mapping is a
+       pure frontend concern with known step names from prepare.go.
+
+    4. Pre-implementation status: prepare_step SSE event does not exist in the web
+       app yet. WaveRecoveryPanel exists for post-merge failures but has no
+       pre-wave failure handling. The PIPELINE_STEP reducer action exists but
+       handles finalize steps, not prepare steps.
+
+    5. Parallelization value: High. 4 agents across 2 waves, Go + TS build/test
+       cycles (>30s each). Agents are largely independent in wave 1 (backend SSE,
+       frontend state, new component). Wave 2 integrates into WaveBoard.
+
+    Estimated times:
+    - Scout phase: ~8 min
+    - Agent execution: ~12 min (4 agents, 2 waves, ~6 min avg with parallelism)
+    - Merge & verification: ~4 min
+    Total SAW time: ~24 min
+
+    Sequential baseline: ~40 min (4 agents x 10 min avg)
+    Time savings: ~16 min (40% faster)
+
+    Recommendation: Clear speedup. Proceed.
+test_command: go test ./... && cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+lint_command: go vet ./...
+file_ownership:
+    - file: pkg/service/wave_service.go
+      agent: A
+      wave: 1
+      action: modify
+    - file: web/src/types.ts
+      agent: B
+      wave: 1
+      action: modify
+    - file: web/src/hooks/waveEventsReducer.ts
+      agent: B
+      wave: 1
+      action: modify
+    - file: web/src/lib/waveEventListeners.ts
+      agent: B
+      wave: 1
+      action: modify
+    - file: web/src/components/wave/WavePrepFailurePanel.tsx
+      agent: C
+      wave: 1
+      action: new
+    - file: web/src/components/wave/WavePrepFailurePanel.test.tsx
+      agent: C
+      wave: 1
+      action: new
+    - file: web/src/components/WaveBoard.tsx
+      agent: D
+      wave: 2
+      action: modify
+interface_contracts:
+    - name: prepare_step SSE event
+      description: |
+        New SSE event type emitted by the Go backend during PrepareWave execution.
+        Each step in engine.PrepareWave fires an OnEvent callback; the wave_service
+        must translate these into SSE events on the wave channel.
+      definition: |
+        // SSE event name: "prepare_step"
+        // Payload shape (JSON):
+        {
+          "slug": string,
+          "wave": number,
+          "step": string,      // e.g. "baseline_gates", "i1_disjoint", "scaffold_validation"
+          "status": string,    // "success" | "failed" | "warning" | "skipped"
+          "detail": string     // human-readable detail from engine
+        }
+      location: pkg/service/wave_service.go
+    - name: PrepareStepInfo TypeScript type
+      description: |
+        Frontend type representing a single prepare step's state, consumed by
+        WavePrepFailurePanel and the reducer.
+      definition: |
+        export interface PrepareStepInfo {
+          step: string
+          status: 'pending' | 'running' | 'success' | 'failed' | 'warning' | 'skipped'
+          detail?: string
+        }
+      location: web/src/types.ts
+    - name: WavePrepFailurePanel component
+      description: |
+        React component that displays PrepareWave step progress and maps failed
+        steps to recovery action buttons. Follows WaveRecoveryPanel pattern.
+      definition: |
+        interface WavePrepFailurePanelProps {
+          slug: string
+          wave: number
+          steps: PrepareStepInfo[]
+          onFixBuild: () => void
+          onEditPlan: (section?: string) => void
+          onRunScaffold: () => void
+          onRerunCritic: () => void
+          onCleanup: () => void
+          onRetryPrepare: () => void
+        }
+        export function WavePrepFailurePanel(props: WavePrepFailurePanelProps): JSX.Element
+      location: web/src/components/wave/WavePrepFailurePanel.tsx
+    - name: PREPARE_STEP reducer action
+      description: |
+        New action type for the waveEventsReducer to track prepare step progress.
+      definition: |
+        // Added to WaveAction union:
+        | { type: 'PREPARE_STEP'; step: string; status: string; detail?: string; wave: number }
+
+        // New field on AppWaveState:
+        prepareSteps: PrepareStepInfo[]  // ordered list of prepare steps
+        prepareStatus: 'idle' | 'running' | 'failed' | 'complete'
+      location: web/src/hooks/waveEventsReducer.ts
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |
+            ## Backend: Add prepare_failed SSE event to wave_service.go
+
+            **Context:** The `runWaveLoop` function in `pkg/service/wave_service.go`
+            already calls `engine.PrepareWave()` with an `OnEvent` callback that
+            publishes `prepare_step` SSE events (this was added by IMPL-web-prepare-wave-migration).
+            The `prepare_step` events are already flowing to the frontend.
+
+            **What to implement (net-new work only):**
+
+            1. **Add `prepare_failed` SSE event on PrepareWave failure.** Currently when
+               PrepareWave fails, the code publishes only `run_failed`. Add a
+               `prepare_failed` event BEFORE `run_failed` that includes the partial
+               step results so the frontend can show which step failed and offer
+               the correct recovery action:
+
+               ```go
+               if prepErr != nil {
+                   // NEW: publish prepare_failed with step details for recovery UI
+                   failedSteps := []map[string]string{}
+                   if prepResult != nil {
+                       for _, s := range prepResult.Steps {
+                           failedSteps = append(failedSteps, map[string]string{
+                               "step": s.Step, "status": s.Status, "detail": s.Detail,
+                           })
+                       }
+                   }
+                   publish("prepare_failed", map[string]interface{}{
+                       "slug":  slug,
+                       "wave":  waveNum,
+                       "error": prepErr.Error(),
+                       "steps": failedSteps,
+                   })
+                   publish("run_failed", map[string]string{"error": "prepare failed: " + prepErr.Error()})
+                   return
+               }
+               ```
+
+            2. **Do the same in `pkg/api/wave_runner.go` runWaveLoop** — find the
+               PrepareWave error handling path and add the same `prepare_failed`
+               event before `run_failed`. NOTE: wave_runner.go is NOT in your file
+               list. Check if this file is already handled — if the api-layer
+               runWaveLoop also has PrepareWave, it needs the same fix. If it's
+               not in your ownership, document it as a wiring gap.
+
+               Actually, wave_runner.go IS NOT in your file list. Skip it — just
+               handle wave_service.go. The api-layer gap will be caught by
+               integration validation.
+
+            3. **Verify the existing `startWave` endpoint handles retry after prepare
+               failure.** When PrepareWave fails and `run_failed` is published, the
+               `ActiveWaves` map should be cleaned up so the user can retry. Check
+               that the existing error path cleans up `ActiveWaves[slug]`. If not,
+               add cleanup.
+
+            **Interfaces:**
+            - SSE event `prepare_failed`: `{slug, wave, error, steps[]}` where steps
+              is an array of `{step, status, detail}` objects from PrepareWaveResult
+            - `prepare_step` events already exist (no changes needed)
+
+            **Tests:**
+            - Add test verifying `prepare_failed` event is published when PrepareWave
+              fails, and that the event includes step details.
+
+            **Verification gate:**
+            ```
+            go build ./... && go test ./pkg/service/...
+            ```
+
+            **Constraints:**
+            - Do NOT modify any frontend files.
+            - Do NOT change the existing PrepareWave + orchestrator.RunWave call path;
+              only add the `prepare_failed` event emission in the error handling block.
+            - The change must be backward-compatible: existing `run_failed` event still
+              fires after `prepare_failed` so frontends that don't handle the new event
+              still work.
+          files:
+            - pkg/service/wave_service.go
+        - id: B
+          task: |
+            ## Frontend State: Add prepare_step event handling to reducer and SSE listeners
+
+            **What to implement:**
+
+            1. In `web/src/types.ts`, add the `PrepareStepInfo` interface:
+               ```typescript
+               export interface PrepareStepInfo {
+                 step: string
+                 status: 'pending' | 'running' | 'success' | 'failed' | 'warning' | 'skipped'
+                 detail?: string
+               }
+               ```
+
+            2. In `web/src/hooks/waveEventsReducer.ts`:
+               - Add new fields to `AppWaveState`:
+                 ```typescript
+                 prepareSteps: PrepareStepInfo[]
+                 prepareStatus: 'idle' | 'running' | 'failed' | 'complete'
+                 ```
+               - Add to `initialWaveState`:
+                 ```typescript
+                 prepareSteps: [],
+                 prepareStatus: 'idle',
+                 ```
+               - Add new action types to `WaveAction` union:
+                 ```typescript
+                 | { type: 'PREPARE_STEP'; step: string; status: string; detail?: string; wave: number }
+                 | { type: 'PREPARE_FAILED'; error: string; steps: Array<{step: string; status: string; detail?: string}>; wave: number }
+                 | { type: 'PREPARE_COMPLETE'; wave: number }
+                 ```
+               - Handle in reducer:
+                 - `PREPARE_STEP`: Upsert step into `prepareSteps` array by step name.
+                   Set `prepareStatus: 'running'`. If status is 'failed', also set
+                   `prepareStatus: 'failed'`.
+                 - `PREPARE_FAILED`: Set `prepareStatus: 'failed'`, populate
+                   `prepareSteps` from the steps array in the action.
+                 - `PREPARE_COMPLETE`: Set `prepareStatus: 'complete'`.
+               - On `RESET` action, reset prepareSteps to [] and prepareStatus to 'idle'.
+
+            3. In `web/src/lib/waveEventListeners.ts`:
+               - Add listener for `prepare_step` SSE event:
+                 ```typescript
+                 es.addEventListener('prepare_step', (event: MessageEvent) => {
+                   const data = JSON.parse(event.data) as {
+                     slug: string; wave: number; step: string; status: string; detail?: string
+                   }
+                   dispatch({ type: 'PREPARE_STEP', step: data.step, status: data.status, detail: data.detail, wave: data.wave })
+                 })
+                 ```
+               - Add listener for `prepare_failed` SSE event:
+                 ```typescript
+                 es.addEventListener('prepare_failed', (event: MessageEvent) => {
+                   const data = JSON.parse(event.data) as {
+                     slug: string; wave: number; error: string;
+                     steps: Array<{step: string; status: string; detail?: string}>
+                   }
+                   dispatch({ type: 'PREPARE_FAILED', error: data.error, steps: data.steps, wave: data.wave })
+                 })
+                 ```
+
+            **Tests:**
+            - Add test cases to `web/src/hooks/__tests__/waveEventsReducer.test.ts`:
+              - PREPARE_STEP action upserts step correctly
+              - PREPARE_STEP with status 'failed' sets prepareStatus to 'failed'
+              - PREPARE_FAILED populates steps array
+              - PREPARE_COMPLETE sets prepareStatus to 'complete'
+              - RESET clears prepare state
+
+            **Verification gate:**
+            ```
+            cd web && npx tsc --noEmit && node_modules/.bin/vitest run --reporter=verbose
+            ```
+
+            **Constraints:**
+            - Do NOT modify any Go files.
+            - Do NOT create new component files.
+            - Follow exact field names from the interface contract (PrepareStepInfo).
+            - Maintain backward compat: existing WaveAction consumers must not break.
+          files:
+            - web/src/types.ts
+            - web/src/hooks/waveEventsReducer.ts
+            - web/src/lib/waveEventListeners.ts
+        - id: C
+          task: |
+            ## New Component: WavePrepFailurePanel
+
+            **What to implement:**
+
+            Create `web/src/components/wave/WavePrepFailurePanel.tsx` — a React component
+            that displays PrepareWave step progress and maps each failed step to a
+            specific recovery action button. Follow the pattern of the existing
+            `WaveRecoveryPanel.tsx` and `RecoveryControlsPanel.tsx`.
+
+            **Step name to recovery action mapping:**
+
+            | Step Name | Recovery Button | Handler |
+            |-----------|----------------|---------|
+            | `baseline_gates` | "Fix Build" | `onFixBuild()` |
+            | `cross_repo_baseline` | "Fix Build" | `onFixBuild()` |
+            | `i1_disjoint` | "Edit Plan" | `onEditPlan('file-ownership')` |
+            | `type_collision` | "Edit Plan" | `onEditPlan('file-ownership')` |
+            | `scaffold_validation` | "Run Scaffold" | `onRunScaffold()` |
+            | `critic_verdict` | "Re-run Critic" | `onRerunCritic()` |
+            | `stale_cleanup` | "Clean Up" | `onCleanup()` |
+            | `resume_detection` | "Clean Up" | `onCleanup()` |
+            | `file_existence` | "Edit Plan" | `onEditPlan('file-ownership')` |
+            | `dep_check` | "View Dependencies" (link to status) | `onEditPlan('dependency-graph')` |
+            | `dep_outputs` | "View Dependencies" | `onEditPlan('dependency-graph')` |
+            | `freeze_check` | "Edit Plan" | `onEditPlan('interface-contracts')` |
+            | `wiring_ownership` | "Edit Plan" | `onEditPlan('wiring')` |
+            | `pre_wave_gate` | "Edit Plan" | `onEditPlan()` |
+
+            For any step not in the table, show a generic "Retry" button calling
+            `onRetryPrepare()`.
+
+            **Component structure:**
+
+            1. Step progress list: Show all steps in order received, with status icons
+               (checkmark for success, X for failed, spinner for running, dash for pending,
+               arrow for skipped, warning triangle for warning). Use the same
+               `StatusIcon` pattern from `RecoveryControlsPanel.tsx`.
+
+            2. Failed step detail: When a step fails, show its `detail` string and the
+               mapped recovery button.
+
+            3. Summary bar at bottom: "Retry Preparation" button (calls `onRetryPrepare`)
+               and total step count (X/Y passed).
+
+            **Step labels (human-readable):**
+            ```typescript
+            const STEP_LABELS: Record<string, string> = {
+              resume_detection: 'Resume Detection',
+              dep_check: 'Dependency Check',
+              load_manifest: 'Load Manifest',
+              critic_verdict: 'Critic Review (E37)',
+              stale_cleanup: 'Stale Worktree Cleanup',
+              repo_match: 'Repository Match',
+              dep_outputs: 'Dependency Outputs (H2)',
+              ownership_coverage: 'Ownership Coverage (H1)',
+              file_existence: 'File Existence',
+              merge_target_checkout: 'Merge Target Checkout',
+              baseline_gates: 'Baseline Gates (E21A)',
+              cross_repo_baseline: 'Cross-Repo Baseline (E21B)',
+              wiring_ownership: 'Wiring Ownership (E35)',
+              scaffold_validation: 'Scaffold Validation (I2)',
+              freeze_check: 'Freeze Check (I2)',
+              i1_disjoint: 'Disjoint Ownership (I1)',
+              type_collision: 'Type Collision (E41)',
+              pre_wave_gate: 'Pre-Wave Gate (C7)',
+              create_worktrees: 'Create Worktrees',
+              verify_hooks: 'Verify Hooks (H10)',
+              extract_briefs: 'Extract Agent Briefs',
+            }
+            ```
+
+            **Props interface:**
+            ```typescript
+            interface WavePrepFailurePanelProps {
+              slug: string
+              wave: number
+              steps: PrepareStepInfo[]  // import from '../../types'
+              onFixBuild: () => void
+              onEditPlan: (section?: string) => void
+              onRunScaffold: () => void
+              onRerunCritic: () => void
+              onCleanup: () => void
+              onRetryPrepare: () => void
+            }
+            ```
+
+            **Styling:** Use the same Tailwind classes as WaveRecoveryPanel — red-50/red-200
+            border for failed state, amber for warnings. Dark mode support required.
+
+            **Tests:**
+            Create `WavePrepFailurePanel.test.tsx` with:
+            - Renders all steps with correct status icons
+            - Shows recovery button matching the failed step name
+            - Calls correct handler when recovery button clicked
+            - Shows detail text for failed steps
+
+            **Verification gate:**
+            ```
+            cd web && npx tsc --noEmit && node_modules/.bin/vitest run src/components/wave/WavePrepFailurePanel.test.tsx
+            ```
+
+            **Constraints:**
+            - Do NOT modify any existing files.
+            - Import `PrepareStepInfo` from `../../types` (will be added by Agent B).
+              For development, define a local copy of the type if needed, but the final
+              import must reference `../../types`.
+            - Follow the existing component patterns in `web/src/components/wave/`.
+          files:
+            - web/src/components/wave/WavePrepFailurePanel.tsx
+            - web/src/components/wave/WavePrepFailurePanel.test.tsx
+      base_commit: 03d6e4b817734fff0f8577bc96e3b8c605a3c239
+    - number: 2
+      agents:
+        - id: D
+          task: |
+            ## Integration: Wire WavePrepFailurePanel into WaveBoard
+
+            **What to implement:**
+
+            Modify `web/src/components/WaveBoard.tsx` to display the
+            `WavePrepFailurePanel` when PrepareWave fails, and show real-time
+            prepare step progress during wave preparation.
+
+            **Changes:**
+
+            1. Import the new component and types:
+               ```typescript
+               import { WavePrepFailurePanel } from './wave/WavePrepFailurePanel'
+               import type { PrepareStepInfo } from '../types'
+               ```
+
+            2. Read prepare state from `useWaveEvents`:
+               The `state` object from `useWaveEvents(slug)` now includes:
+               - `state.prepareSteps: PrepareStepInfo[]`
+               - `state.prepareStatus: 'idle' | 'running' | 'failed' | 'complete'`
+
+            3. Add prepare progress display: Between the "Start Execution" button and
+               the wave rows, show a prepare step timeline when `prepareStatus` is
+               'running' or 'failed'. Use a collapsible section:
+
+               ```tsx
+               {(state.prepareStatus === 'running' || state.prepareStatus === 'failed') && (
+                 <div className="bg-card border border-border rounded-none shadow-sm p-4">
+                   <h3 className="text-sm font-semibold text-foreground mb-3">
+                     {state.prepareStatus === 'running' ? 'Preparing Wave...' : 'Preparation Failed'}
+                   </h3>
+                   {state.prepareStatus === 'failed' ? (
+                     <WavePrepFailurePanel
+                       slug={slug}
+                       wave={/* current wave number */}
+                       steps={state.prepareSteps}
+                       onFixBuild={() => void handleFixBuild()}
+                       onEditPlan={(section) => {/* navigate to ReviewScreen with section */}}
+                       onRunScaffold={() => void rerunScaffold(slug)}
+                       onRerunCritic={() => {/* call critic */}}
+                       onCleanup={() => void batchDeleteWorktrees(slug, { branches: state.staleBranches?.branches ?? [], force: true })}
+                       onRetryPrepare={() => void startWave(slug)}
+                     />
+                   ) : (
+                     /* Simple step list showing progress */
+                     <ul className="space-y-1 text-xs">
+                       {state.prepareSteps.map(s => (
+                         <li key={s.step} className="flex items-center gap-2">
+                           <span className={`w-2 h-2 rounded-full ${s.status === 'success' ? 'bg-green-500' : s.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'}`} />
+                           <span>{STEP_LABELS[s.step] ?? s.step}</span>
+                         </li>
+                       ))}
+                     </ul>
+                   )}
+                 </div>
+               )}
+               ```
+
+            4. Wire the `onEditPlan` callback: Use the existing navigation pattern.
+               The WaveBoard receives `onRescout` as a prop; similarly, add an
+               `onEditPlan` prop (optional) or navigate via URL. Since the App.tsx
+               uses a single-page layout with slug-based state, the simplest approach
+               is to dispatch a custom event or use a callback prop:
+               ```typescript
+               // Add to WaveBoardProps:
+               onEditPlan?: (section?: string) => void
+               ```
+
+            5. Import `rerunScaffold` from the api module for the scaffold recovery
+               button.
+
+            6. For the "Re-run Critic" button, use the `runCritic` function from
+               `useCriticState` (already used in WaveBoard for the pre-execution
+               critic gate).
+
+            **Prepare status display rules:**
+            - `idle`: Show nothing (default state before wave starts)
+            - `running`: Show step progress list with spinner
+            - `failed`: Show WavePrepFailurePanel with recovery actions
+            - `complete`: Show nothing (preparation succeeded, agents will start)
+
+            **Tests:**
+            No new test file needed. The WaveBoard does not currently have unit tests
+            (it's an integration-level component tested via E2E). The WavePrepFailurePanel
+            has its own tests from Agent C.
+
+            **Verification gate:**
+            ```
+            cd web && npx tsc --noEmit && node_modules/.bin/vitest run
+            ```
+
+            **Constraints:**
+            - Do NOT modify waveEventsReducer.ts, waveEventListeners.ts, or types.ts
+              (those are owned by Agent B in wave 1).
+            - Do NOT modify WavePrepFailurePanel.tsx (owned by Agent C in wave 1).
+            - Do NOT modify any Go files.
+            - The panel must degrade gracefully: if `prepareSteps` is empty and
+              `prepareStatus` is 'idle', render nothing.
+          files:
+            - web/src/components/WaveBoard.tsx
+          dependencies:
+            - B
+            - C
+      base_commit: 03d6e4b817734fff0f8577bc96e3b8c605a3c239
+quality_gates:
+    level: standard
+    gates:
+        - type: build
+          command: go build ./...
+          required: true
+        - type: lint
+          command: go vet ./...
+          required: true
+        - type: test
+          command: go test ./...
+          required: true
+        - type: build
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+          required: true
+          description: TypeScript type check
+        - type: test
+          command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+          required: true
+          description: Frontend tests (Vitest)
+post_merge_checklist:
+    groups:
+        - title: Build and Deploy
+          items:
+            - description: Rebuild frontend assets before binary rebuild
+              command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npm run build
+            - description: Rebuild the saw binary after Go changes (go:embed requires rebuild)
+              command: cd /Users/dayna.blackwell/code/scout-and-wave-web && go build -o saw ./cmd/saw
+        - title: Integration Verification
+          items:
+            - description: Verify prepare_step SSE events appear in browser DevTools Network tab when starting a wave
+            - description: Verify WavePrepFailurePanel renders when PrepareWave fails (simulate by breaking baseline gates)
+            - description: Verify recovery buttons trigger correct actions (Fix Build, Edit Plan, Run Scaffold, etc.)
+        - title: Follow-up
+          items:
+            - description: After IMPL-web-prepare-wave-migration lands, wire emitPrepareSteps into the main wave execution path
+completion_reports:
+    A:
+        status: complete
+        branch: saw/prepare-wave-failure-recovery/wave1-agent-A
+        commit: d7c7a56
+        files_changed:
+            - pkg/service/wave_service.go
+            - pkg/service/wave_service_test.go
+        tests_added:
+            - TestRunWaveLoop_PrepareWaveFailure_EventContainsStepDetails
+        verification: PASS
+    B:
+        status: complete
+        branch: saw/prepare-wave-failure-recovery/wave1-agent-B
+        commit: 4382ea8
+        files_changed:
+            - web/src/types.ts
+            - web/src/hooks/waveEventsReducer.ts
+            - web/src/lib/waveEventListeners.ts
+            - web/src/hooks/__tests__/waveEventsReducer.test.ts
+        tests_added:
+            - PREPARE_STEP upserts step
+            - PREPARE_STEP sets failed status
+            - PREPARE_FAILED populates steps
+            - PREPARE_COMPLETE sets complete
+            - RESET clears prepare state
+        verification: PASS
+    C:
+        status: complete
+        branch: saw/prepare-wave-failure-recovery/wave1-agent-C
+        commit: a417e59
+        files_changed:
+            - web/src/components/wave/WavePrepFailurePanel.tsx
+            - web/src/components/wave/WavePrepFailurePanel.test.tsx
+        files_created:
+            - web/src/components/wave/WavePrepFailurePanel.tsx
+            - web/src/components/wave/WavePrepFailurePanel.test.tsx
+        tests_added:
+            - renders all steps with correct status icons
+            - shows recovery button matching the failed step name
+            - calls correct handler when recovery button clicked
+            - shows detail text for failed steps
+            - shows generic Retry button for unknown step names
+            - shows summary bar with pass count and retry button
+            - shows warning detail text for warning steps
+        verification: PASS
+    D:
+        status: complete
+        branch: saw/prepare-wave-failure-recovery/wave2-agent-D
+        commit: 2fd1c87
+        files_changed:
+            - web/src/components/WaveBoard.tsx
+        verification: 'PASS (TS errors expected: Wave 1 types not yet merged)'
+pre_mortem:
+    overall_risk: medium
+    rows:
+        - scenario: |
+            engine.PrepareWave is not yet called in the web app's wave_service.go
+            (IMPL-web-prepare-wave-migration has not landed). Agent A's changes may
+            not be exercisable until that migration completes.
+          likelihood: high
+          impact: low
+          mitigation: |
+            The prepare-wave migration has already landed. Agent A's task is purely
+            additive: emit a prepare_failed event in the existing PrepareWave error
+            handling block. The existing orchestrator.RunWave path is not affected.
+        - scenario: |
+            Agent C creates WavePrepFailurePanel importing PrepareStepInfo from
+            types.ts, but Agent B hasn't merged yet (same wave). TypeScript compile
+            will fail in Agent C's worktree.
+          likelihood: medium
+          impact: medium
+          mitigation: |
+            Agent C defines a local copy of PrepareStepInfo in the component file
+            with a TODO comment to switch to the import from types.ts. The wave 2
+            agent (D) ensures the import is from the canonical location. Alternatively,
+            agents in the same wave can compile independently since worktrees are
+            isolated.
+        - scenario: |
+            The step names in engine/prepare.go change between now and when
+            IMPL-web-prepare-wave-migration lands.
+          likelihood: low
+          impact: medium
+          mitigation: |
+            Step names are string constants derived from the engine code. The
+            STEP_LABELS map in WavePrepFailurePanel gracefully falls back to
+            displaying the raw step name for unknown steps. Recovery buttons
+            use a default "Retry" for unmapped steps.
+critic_report:
+    verdict: PASS
+    agent_reviews:
+        A:
+            agent_id: A
+            verdict: PASS
+        B:
+            agent_id: B
+            verdict: PASS
+        C:
+            agent_id: C
+            verdict: PASS
+        D:
+            agent_id: D
+            verdict: PASS
+    summary: All agent briefs verified after corrections. Agent A core task (prepare_failed event) is valid. Stale RunSingleWave/emitPrepareSteps constraints removed. Agents B, C accurate. Agent D StatusDot cosmetic mismatch resolved (inline Tailwind used instead).
+    reviewed_at: "2026-03-25T05:11:00Z"
+    issue_count: 0
+state: COMPLETE

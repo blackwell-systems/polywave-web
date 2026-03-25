@@ -77,3 +77,7 @@ lint_command: go vet ./...
   - IMPL doc: docs/IMPL/complete/IMPL-high-contrast-mode.yaml
 - **nested-program-graph**: completed 2026-03-22, 2 waves, 4 agents
   - IMPL doc: docs/IMPL/complete/IMPL-nested-program-graph.yaml
+- **web-engine-migration**: completed 2026-03-24, 1 waves, 2 agents
+  - IMPL doc: docs/IMPL/complete/IMPL-web-engine-migration.yaml
+- **prepare-wave-failure-recovery**: completed 2026-03-24, 2 waves, 4 agents
+  - IMPL doc: docs/IMPL/complete/IMPL-prepare-wave-failure-recovery.yaml

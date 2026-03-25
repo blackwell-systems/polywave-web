@@ -69,6 +69,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
   const [staleDismissed, setStaleDismissed] = useState(false)
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const [fileActivityExpanded, setFileActivityExpanded] = useState(false)
+  const [retryError, setRetryError] = useState<string | undefined>()
 
   const state = useWaveEvents(slug)
   const liveStatus = useFileActivity(state)
@@ -144,9 +145,12 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
   async function handleRetryFinalize(waveNum?: number): Promise<void> {
     const wave = waveNum ?? Math.max(...state.waves.map(w => w.wave), 1)
+    setRetryError(undefined)
     try {
       await retryFinalize(slug, wave)
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      setRetryError(msg)
       console.error('retryFinalize request failed:', err)
     }
   }
@@ -334,6 +338,7 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
             onRetryFinalize={() => void handleRetryFinalize()}
             onFixBuild={() => void handleFixBuild()}
             onRescout={onRescout}
+            retryError={retryError}
           />
         )}
 

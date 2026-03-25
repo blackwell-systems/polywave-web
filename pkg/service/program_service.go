@@ -144,10 +144,12 @@ func ResolveProgramPath(deps Deps, slug string) (string, string, error) {
 
 	for _, repo := range repos {
 		docsDir := filepath.Join(repo.Path, "docs")
-		programPath := filepath.Join(docsDir, fmt.Sprintf("PROGRAM-%s.yaml", slug))
-
-		if _, err := os.Stat(programPath); err == nil {
-			return programPath, repo.Path, nil
+		// Check docs/PROGRAM/ first (current convention), then docs/ (legacy)
+		for _, dir := range []string{filepath.Join(docsDir, "PROGRAM"), docsDir} {
+			programPath := filepath.Join(dir, fmt.Sprintf("PROGRAM-%s.yaml", slug))
+			if _, err := os.Stat(programPath); err == nil {
+				return programPath, repo.Path, nil
+			}
 		}
 	}
 

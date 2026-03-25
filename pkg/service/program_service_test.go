@@ -338,7 +338,7 @@ waves:
 		t.Error("expected manifest_path to be set")
 	}
 
-	expectedPath := filepath.Join(dir, "docs", "PROGRAM-my-program.yaml")
+	expectedPath := filepath.Join(dir, "docs", "PROGRAM", "PROGRAM-my-program.yaml")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("expected PROGRAM manifest at %s", expectedPath)
 	}

@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import type { AppWaveState } from '../../hooks/useWaveEvents'
 import RecoveryControlsPanel from '../RecoveryControlsPanel'
+import LiveOutputPanel from '../LiveOutputPanel'
 import { retryStep, skipStep, forceMarkComplete } from '../../api'
 
 export interface WaveRecoveryPanelProps {
@@ -8,11 +10,13 @@ export interface WaveRecoveryPanelProps {
   onRetryFinalize: () => void
   onFixBuild: () => void
   onRescout?: () => void
+  retryError?: string
 }
 
 /** Run-failed displays — both prominent (no waves) and inline banner (with waves). */
-export function WaveRecoveryPanel({ slug, state, onRetryFinalize, onFixBuild }: WaveRecoveryPanelProps): JSX.Element {
+export function WaveRecoveryPanel({ slug, state, onRetryFinalize, onFixBuild, retryError }: WaveRecoveryPanelProps): JSX.Element {
   const maxWave = Math.max(...state.waves.map(w => w.wave), 1)
+  const [fixOutputOpen, setFixOutputOpen] = useState(false)
 
   return (
     <>
@@ -24,21 +28,44 @@ export function WaveRecoveryPanel({ slug, state, onRetryFinalize, onFixBuild }: 
           </div>
           <h2 className="text-base font-semibold text-red-800 dark:text-red-300 mb-2">Wave Execution Failed</h2>
           <p className="text-sm text-red-700 dark:text-red-400 max-w-md break-words">{state.runFailed}</p>
-          {state.runFailed?.includes('FinalizeWave') && (
-            <div className="flex gap-2 mt-4">
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={onRetryFinalize}
+              className="text-sm font-medium px-4 py-2 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+            >
+              &#x21BA; Retry Finalization
+            </button>
+            <div className="flex">
               <button
-                onClick={onRetryFinalize}
-                className="text-sm font-medium px-4 py-2 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors"
-              >
-                &#x21BA; Retry Finalization
-              </button>
-              <button
-                onClick={onFixBuild}
+                onClick={() => { onFixBuild(); setFixOutputOpen(true) }}
                 disabled={state.fixBuildStatus === 'running'}
-                className="text-sm font-medium px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="text-sm font-medium px-4 py-2 rounded-l-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {state.fixBuildStatus === 'running' ? 'Fixing\u2026' : '\u2726 Fix with AI'}
               </button>
+              <button
+                onClick={() => setFixOutputOpen(o => !o)}
+                className={`text-sm font-medium px-2 py-2 rounded-r-md border-l border-blue-500 transition-colors ${fixOutputOpen ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                title="Toggle AI fix output"
+              >
+                Watch
+              </button>
+            </div>
+          </div>
+          {retryError && (
+            <p className="text-xs text-red-500 mt-2">{retryError}</p>
+          )}
+          {fixOutputOpen && state.fixBuildStatus !== 'idle' && (
+            <div className="mt-3 w-full max-w-md">
+              <LiveOutputPanel
+                status={state.fixBuildStatus as 'running' | 'complete' | 'failed' | 'idle'}
+                output={state.fixBuildOutput + (state.fixBuildError ? `\n\nError: ${state.fixBuildError}` : '')}
+                runningLabel="\u2B24 AI fixing\u2026"
+                doneLabel="\u2726 AI fix complete"
+                failedLabel="\u2726 AI fix failed"
+                accentColor="blue"
+                onClose={() => setFixOutputOpen(false)}
+              />
             </div>
           )}
           {Object.keys(state.pipelineSteps ?? {}).length > 0 && (
@@ -63,24 +90,47 @@ export function WaveRecoveryPanel({ slug, state, onRetryFinalize, onFixBuild }: 
         <>
           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-800 text-sm dark:bg-red-950 dark:border-red-800 dark:text-red-400 flex items-center justify-between gap-2">
             <span><span className="font-medium">Wave failed:</span> {state.runFailed}</span>
-            {state.runFailed?.includes('FinalizeWave') && (
-              <div className="flex gap-2 shrink-0">
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={onRetryFinalize}
+                className="text-xs font-medium px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors"
+              >
+                &#x21BA; Retry
+              </button>
+              <div className="flex">
                 <button
-                  onClick={onRetryFinalize}
-                  className="text-xs font-medium px-3 py-1.5 rounded-md bg-amber-600 text-white hover:bg-amber-700 transition-colors"
-                >
-                  &#x21BA; Retry
-                </button>
-                <button
-                  onClick={onFixBuild}
+                  onClick={() => { onFixBuild(); setFixOutputOpen(true) }}
                   disabled={state.fixBuildStatus === 'running'}
-                  className="text-xs font-medium px-3 py-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="text-xs font-medium px-3 py-1.5 rounded-l-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
                 >
                   {state.fixBuildStatus === 'running' ? 'Fixing\u2026' : '\u2726 Fix with AI'}
                 </button>
+                <button
+                  onClick={() => setFixOutputOpen(o => !o)}
+                  className={`text-xs font-medium px-2 py-1.5 rounded-r-md border-l border-blue-500 transition-colors ${fixOutputOpen ? 'bg-blue-700 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  title="Toggle AI fix output"
+                >
+                  Watch
+                </button>
               </div>
-            )}
+            </div>
           </div>
+          {retryError && (
+            <p className="text-xs text-red-400 mt-1">{retryError}</p>
+          )}
+          {fixOutputOpen && state.fixBuildStatus !== 'idle' && (
+            <div className="mt-2 w-full">
+              <LiveOutputPanel
+                status={state.fixBuildStatus as 'running' | 'complete' | 'failed' | 'idle'}
+                output={state.fixBuildOutput + (state.fixBuildError ? `\n\nError: ${state.fixBuildError}` : '')}
+                runningLabel="\u2B24 AI fixing\u2026"
+                doneLabel="\u2726 AI fix complete"
+                failedLabel="\u2726 AI fix failed"
+                accentColor="blue"
+                onClose={() => setFixOutputOpen(false)}
+              />
+            </div>
+          )}
           {Object.keys(state.pipelineSteps ?? {}).length > 0 && (
             <RecoveryControlsPanel
               slug={slug}

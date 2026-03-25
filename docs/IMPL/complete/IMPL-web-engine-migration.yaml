@@ -1,0 +1,454 @@
+completion_date: "2026-03-24"
+title: Migrate web app to engine step functions
+feature_slug: web-engine-migration
+verdict: SUITABLE
+suitability_assessment: |
+    SUITABLE. The work decomposes cleanly across 4 files in 2 packages with no
+    conflicting ownership. All files are in the web repo only.
+
+    1. File decomposition: 4 target files across pkg/api/ and pkg/service/, plus
+       2 test files. Each file has a distinct responsibility (wave runner finalization,
+       wave service inline finalization, merge service post-merge cleanup, merge/test
+       handlers). No two agents need conflicting modifications to the same file.
+
+    2. Investigation-first items: None. The engine step functions are already
+       implemented and tested in scout-and-wave-go. The duplicate code in the web
+       app is clearly identified in the parallel-systems-audit Finding #1.
+
+    3. Interface discoverability: Yes. The engine functions have stable, documented
+       signatures (FinalizeWave, FinalizeWaveOpts, FinalizeWaveResult, MergeWave,
+       RunMergeOpts). No new interfaces needed -- we are consuming existing ones.
+
+    4. Pre-implementation status: The engine decomposition (IMPL-engine-decomposition)
+       is complete. The engine functions exist and are tested. The web app still uses
+       the old inline implementations.
+
+    5. Parallelization value: Build+test cycle is ~45s (go test ./... + vitest).
+       2 agents with 2-3 files each. Clear speedup over sequential. The two packages
+       (api/ and service/) are independent -- agent changes do not overlap.
+
+    Estimated times:
+    - Scout phase: ~8 min
+    - Agent execution: ~8 min (2 agents x 8 min avg, Wave 1 parallel)
+    - Merge & verification: ~3 min
+    Total SAW time: ~19 min
+
+    Sequential baseline: ~22 min (2 agents x 11 min avg sequential)
+    Time savings: ~3 min (14% faster)
+
+    Recommendation: Clear speedup, plus coordination value for tracking the
+    cross-package migration. The files are in separate packages with zero import
+    dependencies on each other, making this a clean single-wave parallel execution.
+test_command: go test ./... && cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+lint_command: go vet ./...
+file_ownership:
+    - file: pkg/api/wave_runner.go
+      agent: A
+      wave: 1
+      action: modify
+    - file: pkg/api/wave_runner_test.go
+      agent: A
+      wave: 1
+      action: modify
+    - file: pkg/api/merge_test_handlers.go
+      agent: B
+      wave: 1
+      action: modify
+    - file: pkg/api/merge_test_handlers_test.go
+      agent: B
+      wave: 1
+      action: modify
+    - file: pkg/service/merge_service.go
+      agent: B
+      wave: 1
+      action: modify
+    - file: pkg/service/merge_service_test.go
+      agent: B
+      wave: 1
+      action: modify
+    - file: pkg/service/wave_service.go
+      agent: B
+      wave: 1
+      action: modify
+    - file: pkg/service/wave_service_test.go
+      agent: B
+      wave: 1
+      action: modify
+interface_contracts:
+    - name: engine.FinalizeWave
+      description: |
+        Full post-agent finalization pipeline. Already exists in scout-and-wave-go.
+        Web app should call this instead of reimplementing steps inline.
+      definition: |
+        func FinalizeWave(ctx context.Context, opts FinalizeWaveOpts) (*FinalizeWaveResult, error)
+
+        type FinalizeWaveOpts struct {
+            IMPLPath    string
+            RepoPath    string
+            WaveNum     int
+            MergeTarget string
+            ObsEmitter  *observability.Emitter
+            EnforceIntegrationValidation bool
+            RequireNoStubs bool
+            SkipMerge bool
+        }
+
+        type FinalizeWaveResult struct {
+            Wave           int
+            VerifyCommits  *protocol.VerifyCommitsData
+            StubReport     *protocol.ScanStubsData
+            GateResults    []protocol.GateResult
+            IntegrationReport *protocol.IntegrationReport
+            MergeResult    *protocol.MergeAgentsData
+            VerifyBuild    *protocol.VerifyBuildData
+            BuildDiagnosis *builddiag.Diagnosis
+            CleanupResult  *protocol.CleanupData
+            BuildPassed    bool
+            Success        bool
+        }
+      location: github.com/blackwell-systems/scout-and-wave-go/pkg/engine/finalize.go
+    - name: engine.MergeWave
+      description: |
+        Standalone merge function. Already exists. The web handlers
+        (handleWaveMerge, MergeWave service) call this but then duplicate
+        post-merge cleanup that FinalizeWave already handles.
+      definition: |
+        func MergeWave(ctx context.Context, opts RunMergeOpts) error
+
+        type RunMergeOpts struct {
+            IMPLPath    string
+            RepoPath    string
+            WaveNum     int
+            MergeTarget string
+        }
+      location: github.com/blackwell-systems/scout-and-wave-go/pkg/engine/runner.go
+    - name: postMergeCleanup helper
+      description: |
+        New local helper function to consolidate the duplicated go.mod fixup +
+        worktree cleanup pattern that appears in 3 places (handleWaveMerge,
+        service.MergeWave, handleResolveConflicts). This is a web-app-local
+        helper, not an engine function.
+      definition: |
+        // In pkg/service/merge_service.go:
+        func postMergeCleanup(
+            implPath string,
+            wave int,
+            repoPath string,
+            publish func(string, interface{}),
+            slug string,
+        )
+      location: pkg/service/merge_service.go
+waves:
+    - number: 1
+      agents:
+        - id: A
+          task: |
+            ## Agent A: Migrate wave_runner.go finalization to engine.FinalizeWave
+
+            ### What to implement
+
+            Replace the inline `runFinalizeSteps()` function in `pkg/api/wave_runner.go`
+            (lines 400-720) with a call to `engine.FinalizeWave()`. The current code
+            reimplements all 9 finalization steps (VerifyCommits, ScanStubs, RunGates,
+            ValidateIntegration, ValidateWiring, MergeAgents, FixGoMod, VerifyBuild,
+            Cleanup) using direct protocol-level calls. The engine's `FinalizeWave()`
+            already does all of this in a single call.
+
+            **Key changes:**
+
+            1. **Replace `runFinalizeSteps()` body** with a call to `engine.FinalizeWave()`:
+               ```go
+               finalizeResult, err := engine.FinalizeWave(ctx, engine.FinalizeWaveOpts{
+                   IMPLPath: implPath,
+                   RepoPath: repoPath,
+                   WaveNum:  waveNum,
+               })
+               ```
+
+            2. **Preserve SSE event publishing** after the engine call returns. Extract
+               results from `FinalizeWaveResult` and publish the same SSE events the
+               current code publishes:
+               - `stub_report` from `finalizeResult.StubReport`
+               - `quality_gate_result` for each gate in `finalizeResult.GateResults`
+               - `gate_cache_hit` for cached gates
+               - Pipeline step tracking via `publishPipelineStep()` and `defaultPipelineTracker`
+
+            3. **Preserve pipeline tracker integration.** The tracker's `Start/Complete/Fail/Skip`
+               calls should still fire for each logical step. Map the engine result fields
+               to tracker steps:
+               - `finalizeResult.VerifyCommits != nil` -> StepVerifyCommits complete
+               - `finalizeResult.StubReport` -> StepScanStubs complete
+               - `finalizeResult.GateResults` -> StepRunGates complete
+               - `finalizeResult.IntegrationReport` -> StepValidateIntegration complete
+               - `finalizeResult.MergeResult` -> StepMergeAgents complete
+               - `finalizeResult.VerifyBuild` -> StepVerifyBuild complete
+               - `finalizeResult.CleanupResult` -> StepCleanup complete
+
+            4. **Preserve resume support.** The `shouldSkip()` logic and `resumeAfter`
+               pattern can be simplified: if the engine's FinalizeWave already ran some
+               steps in a previous attempt, the tracker records where it stopped.
+               On resume, use `FinalizeWaveOpts.SkipMerge = true` when the tracker shows
+               merge already completed.
+
+            5. **Preserve wiring gap validation** (E35 Layer 3B). The wiring validation
+               currently runs inline between steps 4 and 5. After migration, run it
+               separately after the engine call since FinalizeWave doesn't include wiring
+               validation. Keep the existing `manifest.Wiring` check and
+               `protocol.ValidateWiringDeclarations()` call, publishing `wiring_gap` and
+               `wiring_gaps_summary` SSE events.
+
+            6. **Preserve closed-loop gate retry** (R3). Currently in step 3, when a
+               required gate fails, `engine.ClosedLoopGateRetry()` is called. The engine's
+               `FinalizeWave()` does NOT include closed-loop retry. After migration, if
+               `FinalizeWave()` returns an error indicating a gate failure, extract the
+               gate info from `finalizeResult.GateResults` and run the closed-loop retry
+               externally, then re-call `FinalizeWave()` with `SkipMerge` based on what
+               already completed.
+
+            7. **Preserve IntegrationAgent step** (E26). Currently step 8 runs
+               `engine.RunIntegrationAgent()` if integration gaps are found. This stays
+               as-is since it's not part of engine.FinalizeWave. Keep it after the
+               engine call, using `finalizeResult.IntegrationReport`.
+
+            8. **Preserve CodeReview step.** Currently step 7.5 runs `runCodeReviewStep()`.
+               This stays as-is since it's not part of engine.FinalizeWave. Keep it after
+               the engine call, before IntegrationAgent.
+
+            9. **Remove duplicate `waveAgentsHaveCommitsWithManifest` function.** This
+               function is duplicated character-for-character between wave_runner.go and
+               wave_service.go. After migration, keep only the wave_runner.go version
+               (or move to a shared location if service still needs it -- check callers).
+
+            10. **Remove monolithic fallback path.** The current code in `runWaveLoop()`
+                has a fallback path (lines 252-305) for when `defaultPipelineTracker` is nil
+                that calls `engine.FinalizeWave()` directly. After migration, the primary
+                path also uses `engine.FinalizeWave()`, so the fallback distinction disappears.
+                Simplify to a single code path.
+
+            ### Interfaces
+
+            Consume `engine.FinalizeWave()` and `engine.FinalizeWaveOpts` from
+            `github.com/blackwell-systems/scout-and-wave-go/pkg/engine`. No new
+            interfaces created.
+
+            ### Tests
+
+            Update `pkg/api/wave_runner_test.go`:
+            - Existing `TestRunWaveLoop_PublishesRunFailed_OnBadPath` should still pass
+              (it tests error path, not finalization).
+            - Add test verifying that `runFinalizeSteps()` calls engine.FinalizeWave
+              (use a seam/mock pattern consistent with existing `mergeWaveFunc` seam).
+
+            ### Verification gate
+
+            ```
+            go build ./... && go vet ./... && go test ./pkg/api/ -run TestRunWaveLoop -count=1 -v
+            ```
+
+            ### Constraints
+
+            - Do NOT modify any files in `pkg/service/` -- that is Agent B's scope.
+            - Do NOT change SSE event names or payload shapes -- frontend depends on them.
+            - Do NOT remove the `defaultPipelineTracker` type or `PipelineStep` constants --
+              they are used by other code (pipeline_handler.go, pipeline_state.go).
+            - The `runFinalizeSteps` function signature can change but must still be
+              callable from both `runWaveLoop` and `handleWaveFinalize`.
+          files:
+            - pkg/api/wave_runner.go
+            - pkg/api/wave_runner_test.go
+        - id: B
+          task: |
+            ## Agent B: Consolidate merge/test service layer and API handlers
+
+            ### What to implement
+
+            Eliminate duplicated post-merge cleanup and test execution across
+            `pkg/service/merge_service.go`, `pkg/service/wave_service.go`, and
+            `pkg/api/merge_test_handlers.go`.
+
+            **Key changes:**
+
+            1. **Extract `postMergeCleanup` helper in `pkg/service/merge_service.go`.**
+               The following pattern appears 3 times (merge_service.go MergeWave,
+               merge_service.go ResolveConflicts, and merge_test_handlers.go
+               handleWaveMerge + handleResolveConflicts):
+               ```go
+               if fixed, fixErr := protocol.FixGoModReplacePaths(repoPath); fixErr != nil {
+                   publish(...)
+               } else if fixed {
+                   publish(...)
+               }
+               if cleanupResult, cleanErr := protocol.Cleanup(implPath, wave, repoPath); cleanErr != nil {
+                   publish(...)
+               } else if cleanupResult.IsSuccess() {
+                   publish(...)
+               }
+               ```
+               Extract this into a single `postMergeCleanup()` function in
+               `merge_service.go` and call it from all 3 locations.
+
+            2. **Replace service.MergeWave post-merge cleanup** (merge_service.go lines
+               103-114) with a call to the new `postMergeCleanup()` helper.
+
+            3. **Replace service.ResolveConflicts post-resolve cleanup** (merge_service.go
+               lines 325-336) with a call to the new `postMergeCleanup()` helper.
+
+            4. **Replace handleWaveMerge post-merge cleanup** (merge_test_handlers.go lines
+               99-114) with a call to `postMergeCleanup()`. Import it from the service
+               package, OR inline the same helper in the api package if the publish function
+               signatures differ. Check: the api handlers use `s.makePublisher(slug)` which
+               returns `func(string, interface{})`, same signature as service's
+               `makeServicePublisher`. So the helper can be shared.
+
+            5. **Replace handleResolveConflicts post-resolve cleanup**
+               (merge_test_handlers.go lines 393-404) with the same helper call.
+
+            6. **Eliminate duplicate `extractConflictingFiles`**. This function exists in
+               BOTH `merge_test_handlers.go` (line 285) and `merge_service.go` (line 371).
+               Keep one copy in `merge_service.go` and export it as `ExtractConflictingFiles`.
+               Update `merge_test_handlers.go` to call `service.ExtractConflictingFiles()`.
+               Alternatively, keep the api-package copy and remove the service one if
+               the service package doesn't use it directly -- check callers.
+
+            7. **Consolidate test execution.** `service.RunTests()` (merge_service.go lines
+               130-177) and `handleWaveTest()` (merge_test_handlers.go lines 124-257)
+               both implement test command execution. The service version uses simple
+               `cmd.CombinedOutput()` while the API handler uses `io.Pipe` + line-by-line
+               streaming. The API handler version is more sophisticated (streaming, process
+               group cleanup). Consolidate by:
+               - Moving the streaming implementation into `service.RunTests()`
+               - Having `handleWaveTest()` delegate to `service.RunTests()` (same pattern
+                 as handleWaveMerge delegates to service.MergeWave)
+
+            8. **Remove duplicate `runTestCommand` from service layer.**
+               `merge_service.go` has a `runTestCommand()` helper (lines 387-418) that
+               does simple `exec.CommandContext` + `CombinedOutput`. After consolidation,
+               this can be removed if RunTests uses the streaming version.
+
+            9. **Clean up wave_service.go FinalizeWave.** The `service.FinalizeWave()`
+               function (wave_service.go lines 138-188) already calls `engine.FinalizeWave()`
+               correctly. No changes needed to the engine call itself. But verify the SSE
+               event publishing matches what the UI expects (merge_started, quality_gate_result,
+               merge_failed, merge_complete).
+
+            ### Interfaces
+
+            New exported helper:
+            ```go
+            // In pkg/service/merge_service.go
+            func PostMergeCleanup(implPath string, wave int, repoPath string, publish func(string, interface{}), slug string)
+            ```
+
+            Export `ExtractConflictingFiles` from whichever package keeps the canonical copy.
+
+            ### Tests
+
+            Update `pkg/service/merge_service_test.go`:
+            - Add test for `PostMergeCleanup` (mock protocol.FixGoModReplacePaths and
+              protocol.Cleanup -- may need seam injection).
+            - Existing `TestRunTracker_TryStart` and merge concurrency tests should still pass.
+
+            Update `pkg/api/merge_test_handlers_test.go`:
+            - Existing `TestHandleWaveMerge_Returns409WhenAlreadyMerging` and
+              `TestHandleWaveMerge_Returns202` should still pass.
+            - Verify the refactored handlers still publish the same SSE events.
+
+            Update `pkg/service/wave_service_test.go`:
+            - Existing tests should still pass.
+
+            ### Verification gate
+
+            ```
+            go build ./... && go vet ./... && go test ./pkg/service/ ./pkg/api/ -run "TestMerge|TestRunTracker|TestHandleWave" -count=1 -v
+            ```
+
+            ### Constraints
+
+            - Do NOT modify `pkg/api/wave_runner.go` -- that is Agent A's scope.
+            - Do NOT change SSE event names or payload shapes -- frontend depends on them.
+            - Keep the `MergeFunc` and `ResolveConflictsFunc` seam variables for test
+              injection -- existing tests depend on them.
+            - Keep `AbortMerge` and `FixBuild` functions unchanged -- they are not
+              part of this migration.
+            - The `handleFixBuild` handler in merge_test_handlers.go should NOT be
+              modified -- it already delegates cleanly to `engine.FixBuildFailure`.
+          files:
+            - pkg/service/merge_service.go
+            - pkg/service/merge_service_test.go
+            - pkg/service/wave_service.go
+            - pkg/service/wave_service_test.go
+            - pkg/api/merge_test_handlers.go
+            - pkg/api/merge_test_handlers_test.go
+      base_commit: 90d8d9ffa8e2ed72d3300ae7aa7cf327425dad10
+quality_gates:
+    level: standard
+    gates:
+        - type: build
+          command: go build ./...
+          required: true
+        - type: lint
+          command: go vet ./...
+          required: true
+        - type: test
+          command: go test ./pkg/api/ ./pkg/service/
+          required: true
+completion_reports:
+    A:
+        status: complete
+        branch: saw/web-engine-migration/wave1-agent-A
+        commit: b811634
+        files_changed:
+            - pkg/api/wave_runner.go
+            - pkg/api/wave_runner_test.go
+        tests_added:
+            - TestRunFinalizeSteps_DelegatesToEngineFinalizeWave
+            - TestRunFinalizeSteps_ResumeWithSkipMerge
+        verification: PASS
+    B:
+        status: complete
+        branch: saw/web-engine-migration/wave1-agent-B
+        commit: 4de91e3
+        files_changed:
+            - pkg/service/merge_service.go
+            - pkg/service/merge_service_test.go
+            - pkg/api/merge_test_handlers.go
+        tests_added:
+            - TestPostMergeCleanup_PublishesEvents
+        verification: PASS
+pre_mortem:
+    overall_risk: medium
+    rows:
+        - scenario: SSE event payload shape changes break frontend
+          likelihood: medium
+          impact: high
+          mitigation: |
+            Agents must preserve exact event names and payload shapes.
+            Run frontend tests (vitest) as part of verification.
+        - scenario: Pipeline tracker state machine breaks on resume
+          likelihood: medium
+          impact: medium
+          mitigation: |
+            Agent A must preserve the tracker Start/Complete/Fail/Skip calls
+            even when using engine.FinalizeWave. Map engine results to tracker
+            state transitions.
+        - scenario: Closed-loop gate retry logic lost during migration
+          likelihood: medium
+          impact: high
+          mitigation: |
+            Agent A must explicitly preserve the R3 closed-loop retry path.
+            The engine FinalizeWave does not include it, so it must remain
+            as post-engine-call logic in runFinalizeSteps.
+        - scenario: extractConflictingFiles removal causes compile error
+          likelihood: low
+          impact: low
+          mitigation: |
+            Agent B must check all callers before removing either copy.
+            grep for extractConflictingFiles across the entire web codebase.
+        - scenario: Test streaming behavior changes when consolidating RunTests
+          likelihood: medium
+          impact: medium
+          mitigation: |
+            Agent B should keep the more sophisticated streaming implementation
+            (io.Pipe + line-by-line) and verify test_output SSE events still
+            stream incrementally, not as a single chunk.
+state: COMPLETE

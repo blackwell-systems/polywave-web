@@ -30,45 +30,28 @@ func runValidate(args []string) error {
 
 	manifestPath := fs.Arg(0)
 
-	// Load the manifest
-	manifest, err := protocol.Load(manifestPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return fmt.Errorf("validate: manifest file not found: %s", manifestPath)
-		}
-		return fmt.Errorf("validate: %w", err)
-	}
+	res := protocol.FullValidate(manifestPath, protocol.FullValidateOpts{
+		AutoFix: *autoFix,
+	})
 
-	// Auto-fix correctable issues before validation
-	totalFixed := 0
-	if *autoFix {
-		totalFixed += protocol.FixGateTypes(manifest)
-		if totalFixed > 0 {
-			if err := protocol.Save(manifest, manifestPath); err != nil {
-				return fmt.Errorf("validate --fix: failed to write corrections: %w", err)
-			}
-		}
-	}
+	data := res.GetData()
 
-	// Run validation
-	validationErrors := protocol.Validate(manifest)
-
-	if len(validationErrors) == 0 {
-		if totalFixed > 0 {
-			fmt.Printf("✓ Manifest valid (auto-fixed %d issue(s))\n", totalFixed)
+	if data.Valid {
+		if data.Fixed > 0 {
+			fmt.Printf("✓ Manifest valid (auto-fixed %d issue(s))\n", data.Fixed)
 		} else {
 			fmt.Println("✓ Manifest valid")
 		}
 		return nil
 	}
 
-	// Invalid manifest: output JSON array to stderr and exit 1
-	errJSON, err := json.MarshalIndent(validationErrors, "", "  ")
+	// Invalid manifest: output JSON error array to stderr and exit 1
+	errJSON, err := json.MarshalIndent(data.Errors, "", "  ")
 	if err != nil {
 		return fmt.Errorf("validate: manifest has validation errors but failed to marshal JSON: %w", err)
 	}
 
 	fmt.Fprintln(os.Stderr, string(errJSON))
 	os.Exit(1)
-	return nil // unreachable, but satisfies the function signature
+	return nil // unreachable
 }

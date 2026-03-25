@@ -101,7 +101,11 @@ completion:
   total_agents: 0
   total_waves: 0
 `
-	if err := os.WriteFile(filepath.Join(docsDir, "PROGRAM-test-program.yaml"), []byte(programContent), 0644); err != nil {
+	programDir := filepath.Join(docsDir, "PROGRAM")
+	if err := os.MkdirAll(programDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(programDir, "PROGRAM-test-program.yaml"), []byte(programContent), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -855,7 +859,7 @@ waves:
 	}
 
 	// Verify file on disk
-	expectedPath := filepath.Join(repoDir, "docs", "PROGRAM-test-create.yaml")
+	expectedPath := filepath.Join(repoDir, "docs", "PROGRAM", "PROGRAM-test-create.yaml")
 	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
 		t.Errorf("expected PROGRAM manifest at %s", expectedPath)
 	}
