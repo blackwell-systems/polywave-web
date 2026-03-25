@@ -4,6 +4,7 @@ import { IMPLDocResponse, RepoEntry, FileOwnershipEntry } from '../../types'
 import { Card, CardContent } from '../ui/card'
 import FileOwnershipTable from '../FileOwnershipTable'
 import FileModal from '../FileBrowser/FileModal'
+import { fetchResolveFile } from '../../api'
 
 function detectRepoName(filePath: string, repos: RepoEntry[]): string {
   let best = ''
@@ -38,13 +39,29 @@ export default function FileOwnershipPanel({ impl, repos = [], onFileClick }: Fi
     repo: '',
   })
 
-  function handleViewFile(entry: FileOwnershipEntry) {
-    // Determine which repo to use for the modal:
-    // 1. Per-file repo tag (cross-repo IMPLs)
-    // 2. IMPL's own repo (most common)
-    // 3. First config repo (last resort)
-    const repoName = entry.repo || impl.repo || (repos.length > 0 ? repos[0].name : '')
-    setModalState({ open: true, filePath: entry.file, repo: repoName })
+  async function handleViewFile(entry: FileOwnershipEntry) {
+    // If entry has an explicit repo tag, use it directly.
+    if (entry.repo) {
+      setModalState({ open: true, filePath: entry.file, repo: entry.repo })
+      return
+    }
+
+    // Open the modal immediately with the best-available repo so the UI
+    // is responsive. Then resolve the real repo in the background.
+    const fallbackRepo = impl.repo || (repos.length > 0 ? repos[0].name : '')
+    setModalState({ open: true, filePath: entry.file, repo: fallbackRepo })
+
+    try {
+      const resolved = await fetchResolveFile(entry.file)
+      if (resolved.found && resolved.repo !== fallbackRepo) {
+        // Update the modal with the correct repo.
+        setModalState(prev =>
+          prev.open ? { ...prev, repo: resolved.repo } : prev
+        )
+      }
+    } catch {
+      // Resolve failed — keep the fallback repo. Not critical.
+    }
   }
 
   function handleCloseModal() {
@@ -59,7 +76,7 @@ export default function FileOwnershipPanel({ impl, repos = [], onFileClick }: Fi
         type="button"
         aria-label={`View file ${entry.file}`}
         data-testid="view-file-btn"
-        onClick={() => handleViewFile(entry)}
+        onClick={() => { void handleViewFile(entry) }}
         className="inline-flex items-center justify-center rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors bg-transparent border-0 cursor-pointer ml-1"
       >
         <Eye size={14} aria-hidden="true" />
