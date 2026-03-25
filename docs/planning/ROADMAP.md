@@ -30,25 +30,25 @@ scout-and-wave-app/      Wails desktop app (future)
 
 ---
 
-## Current Status (v0.53.0+)
+## Current Status
 
-**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E23 execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`scout-and-wave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop — 7 tools, backend adapters, middleware support), markdown system fully removed (YAML-only manifests), base commit tracking for post-merge verification, duplicate completion report detection.
+**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E41+ execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`scout-and-wave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop), markdown system fully removed (YAML-only manifests), base commit tracking for post-merge verification, duplicate completion report detection, E24 retry loop (engine-side — `sawtools retry` command, `pkg/retry` package), closed-loop gate retry (R3).
 
-**Web UI** — 3-column layout, Scout launcher, ReviewScreen (15+ panels), WaveBoard (failure-type action buttons, notes callout, scope-hint reruns), RevisePanel, GitActivity, CommandPalette, Settings, ThemePicker, SVG dep graph (animated during execution — pulsing/complete/failed node states, edge animations), wave gate, cancellation, desktop notifications, ManifestValidation panel, WorktreePanel (modal overlay with batch delete), QualityGatesPanel (required/optional display with command table), per-agent context toggle in ReviewScreen, timeout failure type with distinct badge and rerun action.
+**Web UI** — 3-column layout, Scout launcher, ReviewScreen (15+ panels), WaveBoard (failure-type action buttons, notes callout, scope-hint reruns, timeout badge + rerun), RevisePanel, GitActivity, CommandPalette, Settings, ThemePicker, SVG dep graph (animated during execution), wave gate, cancellation, desktop notifications, ManifestValidation panel, WorktreePanel (modal overlay with batch delete), QualityGatesPanel (required/optional display with command table), per-agent context toggle in ReviewScreen.
 
-**Streaming** — PTY + `--output-format stream-json` pipeline, JSON fragment reassembly, SSE broker (2048-channel).
+**Streaming** — PTY + `--output-format stream-json` pipeline, JSON fragment reassembly, SSE broker (2048-channel), auto_retry_started / auto_retry_exhausted events cached for late clients.
 
-**API** — 30+ routes covering scout (+ rerun), wave, single-agent rerun, merge, test, diff, worktree (+ cleanup), chat, config, context, scaffold rerun, manifest validate/load/wave/completion, per-agent context extraction. All endpoints YAML-only (markdown format removed v0.53.0).
+**API** — 30+ routes covering scout (+ rerun), wave, single-agent rerun, merge, test, diff, worktree (+ cleanup), chat, config, context, scaffold rerun, manifest validate/load/wave/completion, per-agent context extraction, step-level retry/skip/force-complete, recovery controls. All endpoints YAML-only.
 
 See CHANGELOG.md for full version history.
 
 ---
 
-## Phase 2: Deepen the Intelligence (v0.18.0+)
+## Phase 2: Deepen the Intelligence
 
-### v0.18.0-A — Verification Loop UI (Auto-Retry Visualization)
+### Verification Loop UI (Auto-Retry Visualization)
 
-**Why:** Engine v0.30.0 adds E24 verification loop with automatic retry on quality gate failures. The UI needs to show retry chains and failure context.
+**Why:** The engine has E24 verification loop and `sawtools retry` command. The web UI has no visibility into retry chains — users see failures with no indication that a fix wave exists or is running.
 
 **Scope:**
 - IMPL list: show retry chain hierarchy (e.g., "Feature X → Fix Wave 1 → Fix Wave 2")
@@ -64,15 +64,15 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-B — Enhanced Agent Progress Indicators
+### Enhanced Agent Progress Indicators
 
-**Why:** Engine v0.34.0 adds `agent_progress` SSE events with structured file/action tracking. Current WaveBoard shows agent status but not granular progress.
+**Why:** WaveBoard shows agent status (running/complete/failed) but execution is a black box — no indication of what the agent is currently doing within its run.
 
 **Scope:**
 - WaveBoard agent cards: show current file + action in real-time
   - Examples: "Writing: src/api/handlers.go", "Running: go build ./...", "Tool: Edit"
 - Progress percentage: commits made / expected files (from file ownership table)
-- Progress bar per agent (0-100% based on file count)
+- Progress bar per agent (0–100% based on file count)
 - Tooltip on hover: full command or tool call details
 
 **Success criteria:**
@@ -80,9 +80,9 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-C — Persistent Memory Viewer (remaining)
+### Persistent Memory Viewer
 
-**Why:** Engine v0.33.0 adds persistent memory system (`docs/MEMORY.md`) with pattern/pitfall/preference learning. Basic view/edit exists via ContextViewerPanel — remaining work adds structured browsing and memory provenance.
+**Why:** `pkg/protocol/memory.go` has `ProjectMemory`, `LoadProjectMemory`, `SaveProjectMemory` — but the web UI has no way to view or edit project memory entries. Basic context view exists via ContextViewerPanel (raw text); remaining work adds structured browsing and memory provenance.
 
 **Scope:**
 - Settings screen: "Project Memory" tab
@@ -100,9 +100,9 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-D — Wave Timeout Status (remaining)
+### Wave Timeout Diagnostics
 
-**Why:** Timeout failure type exists with distinct badge and rerun button. Remaining work adds richer timeout diagnostics and per-project configuration.
+**Why:** Timeout failure type exists with distinct badge and rerun button. No diagnostic detail is surfaced — user cannot tell what the agent was doing at the time of timeout or configure the limit without editing IMPL docs directly.
 
 **Scope:**
 - Completion report: "Agent timed out" section with:
@@ -116,9 +116,9 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-J — Pre-Wave Quality Gates Preview (remaining)
+### Pre-Wave Quality Gates Editing
 
-**Why:** QualityGatesPanel shows gate configuration during review. Remaining work adds inline editing so users can adjust gates before approving.
+**Why:** QualityGatesPanel shows gate configuration during review but is read-only. Users must open a text editor to adjust gates before approving a wave.
 
 **Scope:**
 - "Edit Gates" inline: toggle required/optional per gate, add/remove gates — writes back via `PUT /api/impl/{slug}/raw`
@@ -129,12 +129,12 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.18.0-K — Large IMPL Doc Scalability (remaining)
+### Large IMPL Doc Scalability
 
-**Why:** Per-agent context API exists (`GET /api/impl/{slug}/agent/{letter}/context`) and AgentContextToggle shows trimmed payloads in ReviewScreen. Remaining work wires per-agent context into the wave launch path and adds lazy loading.
+**Why:** Per-agent context API exists (`GET /api/impl/{slug}/agent/{letter}/context`) and AgentContextToggle shows trimmed payloads in ReviewScreen. The wave launch path still passes the full IMPL doc to every agent regardless of size, and ReviewScreen parses the full doc on every panel switch.
 
 **Scope:**
-- Wave launch path: pass per-agent context payload instead of full IMPL doc when invoking Wave agents via `/api/wave/{slug}/start`
+- Wave launch path: pass per-agent context payload instead of full IMPL doc when invoking wave agents via `/api/wave/{slug}/start`
 - Lazy-load IMPL doc sections in ReviewScreen: fetch and parse only the active panel, not the full doc on every view switch
 
 **Success criteria:**
@@ -143,14 +143,14 @@ See CHANGELOG.md for full version history.
 
 ---
 
-## Phase 3: Native App (v0.19.5+)
+## Phase 3: Native App
 
-### v0.19.5 — Wails Desktop App
+### Wails Desktop App
 
 **Why:** The web server is the wrong distribution primitive for end users. The `/saw` skill handles orchestration — the UI's job is monitoring, and monitoring deserves a real native app.
 
 **Scope:**
-- New `scout-and-wave-app` repo: Wails app importing `scout-and-wave-engine`
+- New `scout-and-wave-app` repo: Wails app importing `scout-and-wave-go`
 - Replace `net/http` handlers with Wails bound methods
 - Replace SSE `EventSource` with `runtime.EventsEmit` / `EventsOn`
 - Replace `fetch` calls in `api.ts` with Wails JS bindings
@@ -166,7 +166,7 @@ See CHANGELOG.md for full version history.
 
 ---
 
-### v0.19.5 — Multi-Provider Backends
+### Multi-Provider Backends
 
 SAW agents are Claude-native today. This milestone decouples the engine from Anthropic's API so any model with tool-use support can run Scout, Wave, and Scaffold agents.
 
@@ -185,16 +185,20 @@ SAW agents are Claude-native today. This milestone decouples the engine from Ant
 - `saw backends list` — show detected providers and their status
 
 **Translation layer:**
-- Normalize tool-use format across providers (Claude's `tool_use` vs OpenAI's `tool_calls`)
+- Normalize tool-use format across providers
 - Streaming response normalization (SSE format differs per provider)
-- Token counting abstraction (each provider has different counting semantics)
+- Token counting abstraction
 - Retry/backoff per provider's rate limit headers
 
-### v0.20.0 — MCP Server
+---
+
+### MCP Server
 
 `mcp-server-saw` package. Tools: `saw_scout`, `saw_wave`, `saw_status`, `saw_approve`. Expose SAW engine to any MCP-capable host.
 
-### v0.21.0 — GitHub Integration
+---
+
+### GitHub Integration
 
 GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitHub. Wave results posted back to PR.
 
@@ -217,14 +221,18 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 
 ## Current Focus
 
-**Now:** Phase 2 intelligence features (remaining items)
-- v0.18.0-A — Verification loop / retry chain UI
-- v0.18.0-B — Enhanced agent progress indicators (current file + action, progress bars)
-- v0.18.0-C — Persistent memory viewer (structured table, memories applied count)
-- v0.18.0-D — Wave timeout diagnostics (last known file, settings config)
-- v0.18.0-J — Pre-wave quality gates editing (inline toggle required/optional)
-- v0.18.0-K — Large IMPL scalability (per-agent context in wave launch, lazy-load panels)
+**Now:** Phase 2 intelligence features
+- Verification loop / retry chain UI (engine-side E24 exists; UI visualization absent)
+- Enhanced agent progress indicators (current file + action, progress bars)
+- Persistent memory viewer (structured table, memories applied count)
+- Wave timeout diagnostics (last known file, settings config)
+- Pre-wave quality gates editing (inline toggle required/optional)
+- Large IMPL scalability (per-agent context in wave launch, lazy-load panels)
 
-**Then:** v0.19.5 — Wails desktop app. Engine extraction complete — import `scout-and-wave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
+**Then:** Wails desktop app. Engine extraction complete — import `scout-and-wave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
 
-**Goal:** By v0.19.5, SAW is installable in one command on Mac/Windows/Linux with full OS integration.
+**Goal:** By Wails release, SAW is installable in one command on Mac/Windows/Linux with full OS integration.
+
+---
+
+Last reviewed: 2026-03-24

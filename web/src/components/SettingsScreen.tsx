@@ -203,6 +203,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
       await saveConfig(configToSave)
       setConfig(configToSave)
       onReposChange?.(normalizedRepos)
+      window.dispatchEvent(new CustomEvent('saw:contrast-changed', { detail: configToSave.appearance.contrast }))
       setSavedMsg(true)
       setTimeout(() => {
         setSavedMsg(false)

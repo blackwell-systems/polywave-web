@@ -4,6 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SAW - Scout and Wave</title>
+    <script>
+      (function () {
+        var t = localStorage.getItem('saw-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (t === 'dark' || (t !== 'light' && prefersDark)) {
+          document.documentElement.classList.add('dark');
+        }
+        if (localStorage.getItem('saw-contrast') === 'high') {
+          document.documentElement.classList.add('high-contrast');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -34,6 +34,13 @@ func runValidate(args []string) error {
 		AutoFix: *autoFix,
 	})
 
+	if res.Data == nil {
+		if len(res.Errors) > 0 {
+			return fmt.Errorf("validate: %s", res.Errors[0].Message)
+		}
+		return fmt.Errorf("validate: failed to load manifest: %s", manifestPath)
+	}
+
 	data := res.GetData()
 
 	if data.Valid {

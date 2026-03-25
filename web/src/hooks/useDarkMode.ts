@@ -2,8 +2,15 @@ import { useState, useEffect } from 'react'
 import { getConfig } from '../api'
 
 export function useDarkMode(): [boolean, () => void] {
-  const [isDark, setIsDark] = useState<boolean>(false)
-  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>('system')
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    const t = localStorage.getItem('saw-theme')
+    if (t === 'dark') return true
+    if (t === 'light') return false
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  })
+  const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>(() => {
+    return (localStorage.getItem('saw-theme') as 'system' | 'light' | 'dark') ?? 'system'
+  })
 
   function getSystemDark(): boolean {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
@@ -14,6 +21,7 @@ export function useDarkMode(): [boolean, () => void] {
     getConfig().then(config => {
       const theme = config.appearance?.theme ?? 'system'
       setThemeMode(theme)
+      localStorage.setItem('saw-theme', theme)
 
       if (theme === 'dark') {
         setIsDark(true)
@@ -53,6 +61,7 @@ export function useDarkMode(): [boolean, () => void] {
     const nextTheme: 'light' | 'dark' = isDark ? 'light' : 'dark'
     setThemeMode(nextTheme)
     setIsDark(nextTheme === 'dark')
+    localStorage.setItem('saw-theme', nextTheme)
 
     // Persist in background — don't block the UI
     getConfig().then(async config => {

@@ -9,7 +9,7 @@
   "appearance": {
     "theme": "dark",
     "contrast": "high",
-    "color_theme_dark": "ros-pine",
+    "color_theme_dark": "horizon-dark",
     "color_theme_light": "shapeshifter"
   },
   "autonomy": {},
