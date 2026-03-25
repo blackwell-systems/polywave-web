@@ -18,6 +18,7 @@ interface InterviewClient {
   start(description: string, opts?: { maxQuestions?: number; projectPath?: string }): Promise<{ runId: string }>
   subscribeEvents(runId: string): EventSource
   answer(runId: string, answer: string): Promise<void>
+  resume(docPath: string): Promise<{ runId: string }>
 }
 
 function getInterviewClient(): InterviewClient {
@@ -30,7 +31,15 @@ function getInterviewClient(): InterviewClient {
 const inputCls =
   'w-full bg-muted border border-border rounded px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring disabled:opacity-50'
 
-const PHASES = ['Goals', 'Scope', 'Users', 'Constraints', 'Integration', 'Quality']
+const PHASE_KEYS = ['overview', 'scope', 'requirements', 'interfaces', 'stories', 'review']
+const PHASE_LABELS: Record<string, string> = {
+  overview: 'Goals',
+  scope: 'Scope',
+  requirements: 'Requirements',
+  interfaces: 'Interfaces',
+  stories: 'Stories',
+  review: 'Review',
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -199,9 +208,9 @@ export default function InterviewLauncher({ onLaunchScout }: InterviewLauncherPr
 
   // ── Phase progress ───────────────────────────────────────────────────────
 
-  const phaseIndex = PHASES.findIndex(p => p.toLowerCase() === phase.toLowerCase())
+  const phaseIndex = PHASE_KEYS.indexOf(phase)
   const currentPhaseNum = phaseIndex >= 0 ? phaseIndex + 1 : 1
-  const totalPhases = PHASES.length
+  const totalPhases = PHASE_KEYS.length
 
   // ── Render ───────────────────────────────────────────────────────────────
 
@@ -267,7 +276,7 @@ export default function InterviewLauncher({ onLaunchScout }: InterviewLauncherPr
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
-                Phase {currentPhaseNum}/{totalPhases}: {phase || 'Starting...'}
+                Phase {currentPhaseNum}/{totalPhases}: {(PHASE_LABELS[phase] ?? phase) || 'Starting...'}
               </span>
               {maxQ > 0 && (
                 <span className="text-xs text-muted-foreground">
@@ -282,12 +291,12 @@ export default function InterviewLauncher({ onLaunchScout }: InterviewLauncherPr
               />
             </div>
             <div className="flex justify-between">
-              {PHASES.map((p, i) => (
+              {PHASE_KEYS.map((p, i) => (
                 <span
                   key={p}
                   className={`text-[10px] ${i + 1 <= currentPhaseNum ? 'text-primary' : 'text-muted-foreground'}`}
                 >
-                  {p}
+                  {PHASE_LABELS[p] ?? p}
                 </span>
               ))}
             </div>
