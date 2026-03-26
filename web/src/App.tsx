@@ -415,7 +415,7 @@ export default function App() {
             onNewPlanClick={() => setLiveView(v => v === 'scout' ? null : 'scout')}
             onProgramsClick={() => {
               setShowPrograms(true)
-              setSelectedSlug(null); setImpl(null); setLiveView(null)
+              setSelectedSlug(null); setImpl(null); setLiveView(null); setSelectedProgramSlug(null)
             }}
             onNewProgramClick={() => setLiveView(v => v === 'planner' ? null : 'planner')}
             onSearchClick={() => setShowPalette(true)}

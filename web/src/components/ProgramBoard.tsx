@@ -9,12 +9,21 @@ import OperationsPanel from './OperationsPanel'
 import PipelineRow from './PipelineRow'
 import PipelineMetricsBar from './PipelineMetrics'
 import { useGlobalEvents } from '../hooks/useGlobalEvents'
-import { ChevronDown, List, GitBranch } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
+
+type ProgramPanelKey = 'tier-structure' | 'dep-graph' | 'tier-list'
+
+const PROGRAM_PANELS: Array<{ key: ProgramPanelKey; label: string }> = [
+  { key: 'tier-structure', label: 'Tier Structure' },
+  { key: 'dep-graph',      label: 'Dependency Graph' },
+  { key: 'tier-list',      label: 'Tier List' },
+]
 import { getRepoColor, getRepoColorWithOpacity } from '../lib/entityColors'
 import { getStatusBorderColor, getStatusBadgeClasses, getStatusLabel, getProgramStateDotClass } from '../lib/statusColors'
 import ProgramDependencyGraph from './ProgramDependencyGraph'
 import CreateFromImplsPanel from './CreateFromImplsPanel'
 import DisjointAnalysisScreen from './DisjointAnalysisScreen'
+import TierStructurePanel from './TierStructurePanel'
 
 interface ProgramBoardProps {
   programSlug: string
@@ -174,11 +183,9 @@ export function UnifiedProgramsView({ onSelectImpl, onSelectProgram, createFromI
     }
   }, [createFromImplsOpen])
 
-  // Sync selectedProgram when parent navigates to a program
+  // Sync selectedProgram when parent navigates to a program (including null to reset)
   useEffect(() => {
-    if (initialProgramSlug) {
-      setSelectedProgram(initialProgramSlug)
-    }
+    setSelectedProgram(initialProgramSlug ?? null)
   }, [initialProgramSlug])
 
   const loadData = useCallback(async () => {
@@ -538,12 +545,12 @@ export default function ProgramBoard({ programSlug, onSelectImpl }: ProgramBoard
   const [connected, setConnected] = useState(false)
   const [waveProgress, setWaveProgress] = useState<Record<string, string>>({})
   const [replanning, setReplanning] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'graph'>('graph')
+  const [activePanels, setActivePanels] = useState<ProgramPanelKey[]>(['tier-structure', 'dep-graph'])
 
   useEffect(() => {
     // Reset wave progress and view mode when programSlug changes
     setWaveProgress({})
-    setViewMode('graph')
+    setActivePanels(['tier-structure', 'dep-graph'])
 
     // Initial fetch
     const loadStatus = async () => {
@@ -692,31 +699,6 @@ export default function ProgramBoard({ programSlug, onSelectImpl }: ProgramBoard
             </p>
           </div>
           <div className="flex items-center gap-3">
-            {/* View mode toggle */}
-            <div className="flex rounded-lg overflow-hidden border border-border">
-              <button
-                onClick={() => setViewMode('graph')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                  viewMode === 'graph'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <GitBranch className="w-3.5 h-3.5" />
-                Graph
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${
-                  viewMode === 'list'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <List className="w-3.5 h-3.5" />
-                List
-              </button>
-            </div>
             {(status.state === 'BLOCKED' || status.state === 'blocked') && (
               <button
                 onClick={() => void handleReplan()}
@@ -768,8 +750,49 @@ export default function ProgramBoard({ programSlug, onSelectImpl }: ProgramBoard
           </div>
         )}
 
-        {/* Tier sections / Graph view */}
-        {viewMode === 'list' ? (
+        {/* Panel nav — mirrors ReviewScreen toggle style */}
+        <div className="sticky top-0 z-40 py-3 bg-background/80 backdrop-blur-sm border-b border-border/50">
+          <div className="flex flex-wrap gap-2">
+            {PROGRAM_PANELS.map(panel => (
+              <button
+                key={panel.key}
+                onClick={() => setActivePanels(prev =>
+                  prev.includes(panel.key) ? prev.filter(k => k !== panel.key) : [...prev, panel.key]
+                )}
+                className={`flex items-center justify-center text-sm font-medium px-4 h-10 transition-colors border ${
+                  activePanels.includes(panel.key)
+                    ? 'bg-primary/10 border-primary/30 text-primary hover:bg-primary/15'
+                    : 'border-border bg-background text-foreground hover:bg-muted'
+                }`}
+              >
+                {panel.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tier Structure + Dep Graph side by side (mirrors wave-structure + dep-graph in ReviewLayout) */}
+        {(activePanels.includes('tier-structure') || activePanels.includes('dep-graph')) && (
+          <div className={`grid gap-6 ${
+            activePanels.includes('tier-structure') && activePanels.includes('dep-graph')
+              ? 'grid-cols-1 md:grid-cols-2'
+              : 'grid-cols-1'
+          }`}>
+            {activePanels.includes('tier-structure') && (
+              <TierStructurePanel status={status} onSelectImpl={onSelectImpl} waveProgress={waveProgress} />
+            )}
+            {activePanels.includes('dep-graph') && (
+              <ProgramDependencyGraph
+                programSlug={programSlug}
+                status={status}
+                onSelectImpl={onSelectImpl}
+                waveProgress={waveProgress}
+              />
+            )}
+          </div>
+        )}
+
+        {activePanels.includes('tier-list') && (
           <div className="space-y-6">
             {status.tier_statuses.map((tier) => {
               const isActive = tier.number === status.current_tier
@@ -787,13 +810,6 @@ export default function ProgramBoard({ programSlug, onSelectImpl }: ProgramBoard
               )
             })}
           </div>
-        ) : (
-          <ProgramDependencyGraph
-            programSlug={programSlug}
-            status={status}
-            onSelectImpl={onSelectImpl}
-            waveProgress={waveProgress}
-          />
         )}
 
         {/* Executing banner */}
