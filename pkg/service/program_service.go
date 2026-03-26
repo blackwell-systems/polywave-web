@@ -144,8 +144,12 @@ func ResolveProgramPath(deps Deps, slug string) (string, string, error) {
 
 	for _, repo := range repos {
 		docsDir := filepath.Join(repo.Path, "docs")
-		// Check docs/PROGRAM/ first (current convention), then docs/ (legacy)
-		for _, dir := range []string{filepath.Join(docsDir, "PROGRAM"), docsDir} {
+		// Check active, complete/, then legacy docs/ location
+		for _, dir := range []string{
+			filepath.Join(docsDir, "PROGRAM"),
+			filepath.Join(docsDir, "PROGRAM", "complete"),
+			docsDir,
+		} {
 			programPath := filepath.Join(dir, fmt.Sprintf("PROGRAM-%s.yaml", slug))
 			if _, err := os.Stat(programPath); err == nil {
 				return programPath, repo.Path, nil
@@ -358,7 +362,7 @@ func CreateProgramFromIMPLs(deps Deps, slugs []string, name string, programSlug 
 		return result.Result[protocol.GenerateProgramData]{}, fmt.Errorf("no repo path configured")
 	}
 	opts := protocol.GenerateProgramOpts{
-		ImplSlugs:   slugs,
+		ImplRefs:    slugs,
 		RepoPath:    repoPath,
 		ProgramSlug: programSlug,
 		Title:       name,
