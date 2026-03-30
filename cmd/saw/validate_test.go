@@ -82,13 +82,13 @@ file_ownership:
 	// Check that the error is about missing title
 	found := false
 	for _, e := range validationErrors {
-		if e.Code == "I4_MISSING_FIELD" && e.Field == "title" {
+		if e.Code == "V005_REQUIRED_FIELDS_MISSING" && e.Field == "title" {
 			found = true
 			break
 		}
 	}
 	if !found {
-		t.Fatalf("expected I4_MISSING_FIELD error for title field, got: %+v", validationErrors)
+		t.Fatalf("expected V005_REQUIRED_FIELDS_MISSING error for title field, got: %+v", validationErrors)
 	}
 }
 
@@ -186,17 +186,17 @@ file_ownership:
 		t.Fatal("expected I1 violation error, got none")
 	}
 
-	// Check that we have an I1_VIOLATION error
+	// Check that we have a disjoint ownership violation error
 	found := false
 	for _, e := range validationErrors {
-		if e.Code == "I1_VIOLATION" {
+		if e.Code == "V002_DISJOINT_OWNERSHIP" {
 			found = true
 			break
 		}
 	}
 	if !found {
 		errJSON, _ := json.MarshalIndent(validationErrors, "", "  ")
-		t.Fatalf("expected I1_VIOLATION error, got: %s", string(errJSON))
+		t.Fatalf("expected V002_DISJOINT_OWNERSHIP error, got: %s", string(errJSON))
 	}
 }
 
