@@ -10,6 +10,7 @@ import (
 	"time"
 
 	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
 )
 
 // ---------------------------------------------------------------------------
@@ -43,9 +44,9 @@ func TestHandleWaveMerge_Returns202(t *testing.T) {
 	// Inject a no-op merge function so no real git/engine calls occur.
 	orig := mergeWaveFunc
 	mergeCalled := make(chan struct{}, 1)
-	mergeWaveFunc = func(ctx context.Context, opts engine.RunMergeOpts) error {
+	mergeWaveFunc = func(ctx context.Context, opts engine.RunMergeOpts) result.Result[engine.MergeData] {
 		mergeCalled <- struct{}{}
-		return nil
+		return result.NewSuccess(engine.MergeData{})
 	}
 	t.Cleanup(func() { mergeWaveFunc = orig })
 
@@ -95,8 +96,8 @@ func TestHandleWaveMerge_Returns202(t *testing.T) {
 // background goroutine publishes merge_started, merge_output, merge_complete.
 func TestHandleWaveMerge_PublishesMergeComplete(t *testing.T) {
 	orig := mergeWaveFunc
-	mergeWaveFunc = func(ctx context.Context, opts engine.RunMergeOpts) error {
-		return nil // success
+	mergeWaveFunc = func(ctx context.Context, opts engine.RunMergeOpts) result.Result[engine.MergeData] {
+		return result.NewSuccess(engine.MergeData{})
 	}
 	t.Cleanup(func() { mergeWaveFunc = orig })
 
@@ -258,9 +259,9 @@ func TestHandleResolveConflicts_Returns202(t *testing.T) {
 	// Inject a no-op resolution function so no real git/API calls occur.
 	orig := resolveConflictsFunc
 	resolveCalled := make(chan struct{}, 1)
-	resolveConflictsFunc = func(ctx context.Context, opts engine.ResolveConflictsOpts) error {
+	resolveConflictsFunc = func(ctx context.Context, opts engine.ResolveConflictsOpts) result.Result[engine.ResolveData] {
 		resolveCalled <- struct{}{}
-		return nil
+		return result.NewSuccess(engine.ResolveData{})
 	}
 	t.Cleanup(func() { resolveConflictsFunc = orig })
 

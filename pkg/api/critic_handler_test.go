@@ -104,7 +104,7 @@ func TestHandleGetCriticReview_WithReview(t *testing.T) {
 		ReviewedAt: "2026-03-19T00:00:00Z",
 		IssueCount: 0,
 	}
-	if err := protocol.WriteCriticReview(implPath, review); err != nil {
+	if err := protocol.WriteCriticReview(context.Background(), implPath, review); err != nil {
 		t.Fatalf("WriteCriticReview failed: %v", err)
 	}
 
@@ -392,7 +392,7 @@ func makeIMPLWithCriticReport(t *testing.T, implDir, slug string, reviews map[st
 		ReviewedAt:   "2026-03-20T00:00:00Z",
 		IssueCount:   countIssues(reviews),
 	}
-	if err := protocol.WriteCriticReview(implPath, result); err != nil {
+	if err := protocol.WriteCriticReview(context.Background(), implPath, result); err != nil {
 		t.Fatalf("WriteCriticReview failed: %v", err)
 	}
 	return implPath
@@ -515,7 +515,7 @@ func TestAutoFixCritic_FileExistence(t *testing.T) {
 	}
 
 	// Verify file ownership was actually added to the manifest
-	manifest, err := protocol.Load(filepath.Join(implDir, "IMPL-"+slug+".yaml"))
+	manifest, err := protocol.Load(context.Background(), filepath.Join(implDir, "IMPL-"+slug+".yaml"))
 	if err != nil {
 		t.Fatalf("failed to reload manifest: %v", err)
 	}
@@ -661,7 +661,7 @@ func TestAutoFixCritic_DryRun(t *testing.T) {
 	}
 
 	// Verify manifest was NOT modified (file ownership should not have changed)
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		t.Fatalf("failed to reload manifest: %v", err)
 	}

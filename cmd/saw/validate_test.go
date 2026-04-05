@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -69,7 +70,7 @@ file_ownership:
 	// Capture stderr to check validation errors
 	// Note: runValidate calls os.Exit(1) on validation failure, which we can't test directly
 	// Instead, we'll test the underlying logic by calling the SDK directly
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		t.Fatalf("failed to load manifest: %v", err)
 	}
@@ -176,7 +177,7 @@ file_ownership:
 	}
 
 	// Load and validate
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		t.Fatalf("failed to load manifest: %v", err)
 	}

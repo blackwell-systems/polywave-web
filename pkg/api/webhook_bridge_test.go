@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/notify"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
 )
 
 // mockAdapter records Send calls for verification.
@@ -17,11 +18,14 @@ type mockAdapter struct {
 }
 
 func (m *mockAdapter) Name() string { return m.name }
-func (m *mockAdapter) Send(_ context.Context, msg notify.Message) error {
+func (m *mockAdapter) Send(_ context.Context, msg notify.Message) result.Result[notify.SendData] {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.messages = append(m.messages, msg)
-	return m.sendErr
+	if m.sendErr != nil {
+		return result.NewFailure[notify.SendData]([]result.SAWError{{Code: "SEND_FAILED", Message: m.sendErr.Error(), Severity: "fatal"}})
+	}
+	return result.NewSuccess(notify.SendData{})
 }
 
 func TestDefaultFormatter_Format(t *testing.T) {

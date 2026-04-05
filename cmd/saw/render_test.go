@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -219,8 +220,8 @@ func TestRender(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Write manifest to file
 			manifestPath := filepath.Join(tmpDir, tt.name+".yaml")
-			if err := protocol.Save(tt.manifest, manifestPath); err != nil {
-				t.Fatalf("Failed to save manifest: %v", err)
+			if saveResult := protocol.Save(context.Background(), tt.manifest, manifestPath); saveResult.IsFatal() {
+				t.Fatalf("Failed to save manifest: %v", saveResult.Errors[0])
 			}
 
 			// Capture stdout

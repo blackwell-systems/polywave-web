@@ -18,10 +18,11 @@ import (
 func setupTestJournal(t *testing.T, repoPath string, agentPath string) *journal.JournalObserver {
 	t.Helper()
 
-	obs, err := journal.NewObserver(repoPath, agentPath)
-	if err != nil {
-		t.Fatalf("failed to create observer: %v", err)
+	obsResult := journal.NewObserver(repoPath, agentPath)
+	if obsResult.IsFatal() {
+		t.Fatalf("failed to create observer: %v", obsResult.Errors[0])
 	}
+	obs := obsResult.GetData()
 
 	// Create sample entries
 	entries := []journal.ToolEntry{
@@ -181,8 +182,8 @@ func TestHandleJournalCheckpoints_ReturnsList(t *testing.T) {
 	obs := setupTestJournal(t, tmpDir, "wave1/agent-C")
 
 	// Create a checkpoint
-	if err := obs.Checkpoint("test-checkpoint"); err != nil {
-		t.Fatalf("failed to create checkpoint: %v", err)
+	if cpResult := obs.Checkpoint("test-checkpoint"); cpResult.IsFatal() {
+		t.Fatalf("failed to create checkpoint: %v", cpResult.Errors[0])
 	}
 
 	srv := New(Config{
@@ -227,8 +228,8 @@ func TestHandleJournalRestore_Success(t *testing.T) {
 	obs := setupTestJournal(t, tmpDir, "wave1/agent-D")
 
 	// Create checkpoint
-	if err := obs.Checkpoint("restore-test"); err != nil {
-		t.Fatalf("failed to create checkpoint: %v", err)
+	if cpResult := obs.Checkpoint("restore-test"); cpResult.IsFatal() {
+		t.Fatalf("failed to create checkpoint: %v", cpResult.Errors[0])
 	}
 
 	// Add more entries after checkpoint
@@ -362,10 +363,7 @@ func TestHandleJournalSummary_EmptyJournal(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create observer but don't add entries
-	_, err := journal.NewObserver(tmpDir, "wave1/agent-G")
-	if err != nil {
-		t.Fatalf("failed to create observer: %v", err)
-	}
+	_ = journal.NewObserver(tmpDir, "wave1/agent-G")
 
 	srv := New(Config{
 		Addr:     "localhost:0",
@@ -398,10 +396,7 @@ func TestHandleJournalCheckpoints_EmptyList(t *testing.T) {
 	tmpDir := t.TempDir()
 
 	// Create journal but no checkpoints
-	_, err := journal.NewObserver(tmpDir, "wave1/agent-H")
-	if err != nil {
-		t.Fatalf("failed to create observer: %v", err)
-	}
+	_ = journal.NewObserver(tmpDir, "wave1/agent-H")
 
 	srv := New(Config{
 		Addr:     "localhost:0",

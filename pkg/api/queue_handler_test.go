@@ -93,17 +93,18 @@ func TestHandleDeleteQueue(t *testing.T) {
 
 	// First, add an item
 	mgr := queue.NewManager(tmpDir)
-	err := mgr.Add(queue.Item{
+	addResult := mgr.Add(queue.Item{
 		Title:              "Delete me",
 		Priority:           5,
 		FeatureDescription: "To be deleted",
 	})
-	if err != nil {
-		t.Fatalf("failed to add item: %v", err)
+	if addResult.IsFatal() {
+		t.Fatalf("failed to add item: %v", addResult.Errors[0])
 	}
 
 	// Verify it exists
-	items, _ := mgr.List()
+	listResult := mgr.List()
+	items := listResult.GetData().Items
 	if len(items) != 1 {
 		t.Fatalf("expected 1 item, got %d", len(items))
 	}

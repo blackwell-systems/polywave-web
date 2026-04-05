@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -48,8 +49,8 @@ func TestRunSetCompletion_InvalidStatus(t *testing.T) {
 		},
 	}
 
-	if err := protocol.Save(manifest, manifestPath); err != nil {
-		t.Fatalf("failed to create test manifest: %v", err)
+	if saveResult := protocol.Save(context.Background(), manifest, manifestPath); saveResult.IsFatal() {
+		t.Fatalf("failed to create test manifest: %v", saveResult.Errors[0])
 	}
 
 	// Create a YAML with invalid status.
@@ -101,8 +102,8 @@ func TestRunSetCompletion_AgentNotFound(t *testing.T) {
 		},
 	}
 
-	if err := protocol.Save(manifest, manifestPath); err != nil {
-		t.Fatalf("failed to create test manifest: %v", err)
+	if saveResult := protocol.Save(context.Background(), manifest, manifestPath); saveResult.IsFatal() {
+		t.Fatalf("failed to create test manifest: %v", saveResult.Errors[0])
 	}
 
 	// Create a valid YAML for a non-existent agent.
@@ -155,8 +156,8 @@ func TestRunSetCompletion_Success(t *testing.T) {
 		},
 	}
 
-	if err := protocol.Save(manifest, manifestPath); err != nil {
-		t.Fatalf("failed to create test manifest: %v", err)
+	if saveResult := protocol.Save(context.Background(), manifest, manifestPath); saveResult.IsFatal() {
+		t.Fatalf("failed to create test manifest: %v", saveResult.Errors[0])
 	}
 
 	// Create a valid YAML completion report.
@@ -193,7 +194,7 @@ verification: PASS (go test)
 	}
 
 	// Verify the manifest was updated.
-	updatedManifest, err := protocol.Load(manifestPath)
+	updatedManifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		t.Fatalf("failed to load updated manifest: %v", err)
 	}
@@ -242,8 +243,8 @@ func TestRunSetCompletion_PartialStatus(t *testing.T) {
 		},
 	}
 
-	if err := protocol.Save(manifest, manifestPath); err != nil {
-		t.Fatalf("failed to create test manifest: %v", err)
+	if saveResult := protocol.Save(context.Background(), manifest, manifestPath); saveResult.IsFatal() {
+		t.Fatalf("failed to create test manifest: %v", saveResult.Errors[0])
 	}
 
 	// Create a YAML with partial status and failure_type.
@@ -275,7 +276,7 @@ verification: FAIL (tests incomplete)
 	}
 
 	// Verify the manifest was updated.
-	updatedManifest, err := protocol.Load(manifestPath)
+	updatedManifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		t.Fatalf("failed to load updated manifest: %v", err)
 	}

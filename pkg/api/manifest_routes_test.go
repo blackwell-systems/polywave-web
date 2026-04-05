@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -252,7 +253,7 @@ waves:
 	}
 
 	// Verify the manifest was updated
-	updatedManifest, err := protocol.Load(manifestPath)
+	updatedManifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		t.Errorf("failed to reload manifest: %v", err)
 	}
