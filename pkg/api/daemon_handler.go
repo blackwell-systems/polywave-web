@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/autonomy"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 )
@@ -95,11 +94,7 @@ func (s *Server) handleDaemonStart(w http.ResponseWriter, r *http.Request) {
 
 	// Load autonomy config for daemon opts via unified config.
 	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
-	autoCfg := autonomy.Config{
-		Level:          autonomy.Level(sawCfg.Autonomy.Level),
-		MaxAutoRetries: sawCfg.Autonomy.MaxAutoRetries,
-		MaxQueueDepth:  sawCfg.Autonomy.MaxQueueDepth,
-	}
+	autoCfg := sawCfg.Autonomy
 
 	// Load SAW config to get model and repo settings.
 	var chatModel string

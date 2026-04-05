@@ -13,11 +13,7 @@ import (
 // or the default config (gated) if none exists.
 func (s *Server) handleGetAutonomy(w http.ResponseWriter, r *http.Request) {
 	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
-	cfg := autonomy.Config{
-		Level:          autonomy.Level(sawCfg.Autonomy.Level),
-		MaxAutoRetries: sawCfg.Autonomy.MaxAutoRetries,
-		MaxQueueDepth:  sawCfg.Autonomy.MaxQueueDepth,
-	}
+	cfg := sawCfg.Autonomy
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cfg) //nolint:errcheck
@@ -40,9 +36,7 @@ func (s *Server) handleSaveAutonomy(w http.ResponseWriter, r *http.Request) {
 
 	// Load existing config, update autonomy section, save back
 	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
-	sawCfg.Autonomy.Level = string(cfg.Level)
-	sawCfg.Autonomy.MaxAutoRetries = cfg.MaxAutoRetries
-	sawCfg.Autonomy.MaxQueueDepth = cfg.MaxQueueDepth
+	sawCfg.Autonomy = cfg
 
 	res := config.Save(s.cfg.RepoPath, sawCfg)
 	if !res.IsSuccess() {

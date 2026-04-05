@@ -255,7 +255,7 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 	autonomyLevel := "gated"
 	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
 	if sawCfg != nil && sawCfg.Autonomy.Level != "" {
-		autonomyLevel = sawCfg.Autonomy.Level
+		autonomyLevel = string(sawCfg.Autonomy.Level)
 	}
 
 	// 5. Build metrics
