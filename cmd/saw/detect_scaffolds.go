@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,7 +36,7 @@ func runDetectScaffolds(args []string) error {
 	}
 
 	// Call SDK scaffold detector
-	result, err := scaffold.DetectScaffolds(implPath)
+	result, err := scaffold.DetectScaffolds(context.Background(), implPath)
 	if err != nil {
 		return fmt.Errorf("detect-scaffolds: %w", err)
 	}
