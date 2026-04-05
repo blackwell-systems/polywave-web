@@ -30,12 +30,12 @@ type UpdatePriorityRequest struct {
 // Returns all queue items sorted by priority as a JSON array.
 func (s *Server) handleListQueue(w http.ResponseWriter, r *http.Request) {
 	mgr := queue.NewManager(s.cfg.RepoPath)
-	items, err := mgr.List()
-	if err != nil {
-		http.Error(w, "failed to list queue: "+err.Error(), http.StatusInternalServerError)
+	listResult := mgr.List()
+	if listResult.IsFatal() {
+		http.Error(w, "failed to list queue: "+listResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
-	respondJSON(w, http.StatusOK, items)
+	respondJSON(w, http.StatusOK, listResult.GetData().Items)
 }
 
 // handleAddQueue serves POST /api/queue.
@@ -61,15 +61,14 @@ func (s *Server) handleAddQueue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	mgr := queue.NewManager(s.cfg.RepoPath)
-	if err := mgr.Add(item); err != nil {
-		http.Error(w, "failed to add queue item: "+err.Error(), http.StatusInternalServerError)
+	if addResult := mgr.Add(item); addResult.IsFatal() {
+		http.Error(w, "failed to add queue item: "+addResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Re-read to get the item with populated fields (slug, status, file_path).
-	items, err := mgr.List()
-	if err == nil {
-		for _, it := range items {
+	if relistResult := mgr.List(); relistResult.IsSuccess() {
+		for _, it := range relistResult.GetData().Items {
 			if it.Title == req.Title {
 				item = it
 				break

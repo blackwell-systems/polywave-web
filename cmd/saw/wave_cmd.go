@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -23,7 +24,7 @@ func runCurrentWave(args []string) error {
 	}
 
 	// Load the manifest
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		return fmt.Errorf("current-wave: %w", err)
 	}

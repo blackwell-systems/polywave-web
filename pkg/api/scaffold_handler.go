@@ -69,7 +69,14 @@ func (s *Server) runScaffoldAgent(ctx context.Context, slug, runID, implPath str
 		scaffoldModel = sawCfg.Agent.ScaffoldModel
 	}
 
-	if err := engine.RunScaffold(ctx, implPath, s.cfg.RepoPath, sawRepo, scaffoldModel, onEvent); err != nil {
+	scaffoldResult := engine.RunScaffold(engine.RunScaffoldOpts{
+		Ctx:      ctx,
+		ImplPath: implPath,
+		RepoPath: s.cfg.RepoPath,
+		Model:    scaffoldModel,
+		OnEvent:  onEvent,
+	})
+	if scaffoldResult.IsFatal() {
 		if ctx.Err() != nil {
 			s.broker.Publish(slug, SSEEvent{
 				Event: "scaffold_cancelled",

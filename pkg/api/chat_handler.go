@@ -130,7 +130,7 @@ func (s *Server) runImplChatAgent(ctx context.Context, runID, slug, message stri
 
 	log.Printf("[chat] Launching RunChat: runID=%s implPath=%s repoPath=%s historyLen=%d chatModel=%q", runID, implPath, s.cfg.RepoPath, len(engineHistory), chatModel)
 
-	err := engine.RunChat(ctx, engine.RunChatOpts{
+	chatResult := engine.RunChat(ctx, engine.RunChatOpts{
 		IMPLPath:    implPath,
 		RepoPath:    s.cfg.RepoPath,
 		SAWRepoPath: sawRepo,
@@ -139,13 +139,14 @@ func (s *Server) runImplChatAgent(ctx context.Context, runID, slug, message stri
 		ChatModel:   chatModel,
 	}, onChunk)
 
-	if err != nil {
+	if chatResult.IsFatal() {
 		if ctx.Err() != nil {
 			log.Printf("[chat] Agent cancelled: runID=%s", runID)
 			publish("chat_failed", map[string]string{"run_id": runID, "error": "cancelled"})
 		} else {
-			log.Printf("[chat] Agent failed: runID=%s error=%v", runID, err)
-			publish("chat_failed", map[string]string{"run_id": runID, "error": err.Error()})
+			errMsg := chatResult.Errors[0].Error()
+			log.Printf("[chat] Agent failed: runID=%s error=%s", runID, errMsg)
+			publish("chat_failed", map[string]string{"run_id": runID, "error": errMsg})
 		}
 		return
 	}

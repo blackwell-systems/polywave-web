@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -54,13 +55,13 @@ func runDetectCascades(args []string) error {
 	}
 
 	// Call SDK analyzer
-	result, err := analyzer.DetectCascades(repoRoot, renames)
-	if err != nil {
-		return fmt.Errorf("detect-cascades: %w", err)
+	cascadeResult := analyzer.DetectCascades(context.Background(), repoRoot, renames)
+	if cascadeResult.IsFatal() {
+		return fmt.Errorf("detect-cascades: %s", cascadeResult.Errors[0].Error())
 	}
 
 	// Output YAML
-	data, err := yaml.Marshal(result)
+	data, err := yaml.Marshal(cascadeResult.GetData())
 	if err != nil {
 		return fmt.Errorf("detect-cascades: failed to marshal YAML: %w", err)
 	}

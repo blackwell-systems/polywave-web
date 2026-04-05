@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"path/filepath"
@@ -22,14 +23,14 @@ func (s *Server) handleGetAgentContext(w http.ResponseWriter, r *http.Request) {
 
 	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".yaml")
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		http.Error(w, "IMPL manifest not found", http.StatusNotFound)
 		return
 	}
 
 	// Use protocol's ExtractAgentContextFromManifest
-	payload, err := protocol.ExtractAgentContextFromManifest(manifest, letter)
+	payload, err := protocol.ExtractAgentContextFromManifest(context.Background(), manifest, letter)
 	if err != nil {
 		http.Error(w, "agent not found in manifest", http.StatusNotFound)
 		return

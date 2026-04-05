@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
@@ -81,7 +82,7 @@ func (s *Server) handleAmendImpl(w http.ResponseWriter, r *http.Request) {
 		opts.NewTask = req.NewTask
 	}
 
-	res := protocol.AmendImpl(opts)
+	res := protocol.AmendImpl(context.Background(), opts)
 	if !res.IsSuccess() {
 		msg := "amend failed"
 		if len(res.Errors) > 0 {

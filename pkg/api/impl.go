@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -188,7 +189,7 @@ func (s *Server) handleApprove(w http.ResponseWriter, r *http.Request) {
 	// Runs async so the 202 response returns immediately.
 	implPath, repo, err := service.FindImplPath(deps, slug)
 	if err == nil {
-		if manifest, loadErr := protocol.Load(implPath); loadErr == nil && criticThresholdMet(manifest) {
+		if manifest, loadErr := protocol.Load(context.Background(), implPath); loadErr == nil && criticThresholdMet(manifest) {
 			go s.runCriticAsync(slug, implPath)
 		}
 	}

@@ -39,13 +39,13 @@ func (s *Server) handleGetCriticReview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		respondError(w, "failed to load IMPL manifest", http.StatusInternalServerError)
 		return
 	}
 
-	result := protocol.GetCriticReview(manifest)
+	result := protocol.GetCriticReview(context.Background(), manifest)
 	if result == nil {
 		respondError(w, "no critic review for this IMPL", http.StatusNotFound)
 		return
@@ -143,11 +143,11 @@ func (s *Server) runCriticAsync(slug, implPath string) {
 		return
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		return
 	}
-	if result := protocol.GetCriticReview(manifest); result != nil {
+	if result := protocol.GetCriticReview(context.Background(), manifest); result != nil {
 		s.EmitCriticReviewComplete(slug, result)
 	}
 }
@@ -171,7 +171,7 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		respondError(w, "failed to load IMPL manifest", http.StatusInternalServerError)
 		return
@@ -231,8 +231,8 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := protocol.Save(manifest, implPath); err != nil {
-		respondError(w, "failed to save manifest: "+err.Error(), http.StatusInternalServerError)
+	if saveResult := protocol.Save(context.Background(), manifest, implPath); saveResult.IsFatal() {
+		respondError(w, "failed to save manifest: "+saveResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -240,7 +240,7 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 	_ = exec.Command("sawtools", "validate", "--fix", implPath).Run() //nolint:gosec
 
 	// Reload manifest to get updated state (including any validator auto-fixes)
-	manifest, err = protocol.Load(implPath)
+	manifest, err = protocol.Load(context.Background(), implPath)
 	if err != nil {
 		respondError(w, "failed to reload manifest after fix", http.StatusInternalServerError)
 		return
@@ -323,13 +323,13 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		respondError(w, "failed to load IMPL manifest", http.StatusInternalServerError)
 		return
 	}
 
-	criticReport := protocol.GetCriticReview(manifest)
+	criticReport := protocol.GetCriticReview(context.Background(), manifest)
 	if criticReport == nil {
 		respondError(w, "no critic report exists for this IMPL", http.StatusBadRequest)
 		return
@@ -416,8 +416,8 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Save manifest with applied fixes
-	if err := protocol.Save(manifest, implPath); err != nil {
-		respondError(w, "failed to save manifest: "+err.Error(), http.StatusInternalServerError)
+	if saveResult := protocol.Save(context.Background(), manifest, implPath); saveResult.IsFatal() {
+		respondError(w, "failed to save manifest: "+saveResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -431,13 +431,13 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 	_ = cmd.Run()
 
 	// Reload manifest to get updated critic result
-	manifest, err = protocol.Load(implPath)
+	manifest, err = protocol.Load(context.Background(), implPath)
 	if err != nil {
 		respondError(w, "failed to reload manifest after fix", http.StatusInternalServerError)
 		return
 	}
 
-	resp.NewResult = protocol.GetCriticReview(manifest)
+	resp.NewResult = protocol.GetCriticReview(context.Background(), manifest)
 	if resp.NewResult != nil {
 		resp.AllResolved = resp.NewResult.Verdict == protocol.CriticVerdictPass
 	} else {

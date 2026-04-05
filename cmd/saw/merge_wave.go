@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -38,7 +39,7 @@ func runMergeWave(args []string) error {
 	}
 
 	// Load the manifest
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("merge-wave: manifest file not found: %s", manifestPath)

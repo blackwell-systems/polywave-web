@@ -157,7 +157,7 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 		})
 	}
 
-	execErr := engine.RunPlanner(ctx, engine.RunPlannerOpts{
+	execResult := engine.RunPlanner(ctx, engine.RunPlannerOpts{
 		Description:    description,
 		RepoPath:       repoRoot,
 		SAWRepoPath:    sawRepo,
@@ -165,19 +165,20 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 		PlannerModel:   plannerModel,
 	}, onChunk)
 
-	if execErr != nil {
+	if execResult.IsFatal() {
 		if ctx.Err() != nil {
 			publish("planner_cancelled", map[string]string{"run_id": runID})
 		} else {
+			errMsg := execResult.Errors[0].Error()
 			publish("planner_failed", map[string]string{
 				"run_id": runID,
-				"error":  execErr.Error(),
+				"error":  errMsg,
 			})
 			s.notificationBus.Notify(NotificationEvent{
 				Type:     NotifyRunFailed,
 				Slug:     slug,
 				Title:    "Planner Failed",
-				Message:  fmt.Sprintf("Planner run failed: %s", execErr.Error()),
+				Message:  fmt.Sprintf("Planner run failed: %s", errMsg),
 				Severity: "error",
 			})
 		}

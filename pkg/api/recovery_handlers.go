@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -155,7 +157,7 @@ func (s *Server) handleStepRetry(w http.ResponseWriter, r *http.Request) {
 func executeStep(step PipelineStep, implPath, repoPath string, wave int) error {
 	switch step {
 	case StepVerifyCommits:
-		result := protocol.VerifyCommits(implPath, wave, repoPath)
+		result := protocol.VerifyCommits(context.Background(), implPath, wave, repoPath)
 		if result.IsFatal() {
 			return fmt.Errorf("verify-commits fatal error")
 		}
@@ -165,7 +167,7 @@ func executeStep(step PipelineStep, implPath, repoPath string, wave int) error {
 		return nil
 
 	case StepScanStubs:
-		manifest, err := protocol.Load(implPath)
+		manifest, err := protocol.Load(context.Background(), implPath)
 		if err != nil {
 			return fmt.Errorf("failed to load manifest: %w", err)
 		}
@@ -185,20 +187,20 @@ func executeStep(step PipelineStep, implPath, repoPath string, wave int) error {
 		return nil
 
 	case StepRunGates:
-		manifest, err := protocol.Load(implPath)
+		manifest, err := protocol.Load(context.Background(), implPath)
 		if err != nil {
 			return fmt.Errorf("failed to load manifest: %w", err)
 		}
 		stateDir := filepath.Join(repoPath, ".saw-state")
-		cache := gatecache.New(stateDir, 5*time.Minute)
-		result := protocol.RunGatesWithCache(manifest, wave, repoPath, cache)
+		cache := gatecache.New(context.Background(), stateDir, 5*time.Minute)
+		result := protocol.RunGatesWithCache(context.Background(), manifest, wave, repoPath, cache, slog.Default())
 		if result.IsFatal() {
 			return fmt.Errorf("run-gates fatal error")
 		}
 		return nil
 
 	case StepValidateIntegration:
-		manifest, err := protocol.Load(implPath)
+		manifest, err := protocol.Load(context.Background(), implPath)
 		if err != nil {
 			return fmt.Errorf("failed to load manifest: %w", err)
 		}
@@ -206,15 +208,23 @@ func executeStep(step PipelineStep, implPath, repoPath string, wave int) error {
 		return err
 
 	case StepMergeAgents:
-		_, err := protocol.MergeAgents(implPath, wave, repoPath, "")
-		return err
+		mergeResult := protocol.MergeAgents(protocol.MergeAgentsOpts{
+			Ctx:          context.Background(),
+			ManifestPath: implPath,
+			WaveNum:      wave,
+			RepoDir:      repoPath,
+		})
+		if mergeResult.IsFatal() {
+			return fmt.Errorf("merge-agents failed: %s", mergeResult.Errors[0].Error())
+		}
+		return nil
 
 	case StepFixGoMod:
 		_, err := protocol.FixGoModReplacePaths(repoPath)
 		return err
 
 	case StepVerifyBuild:
-		result := protocol.VerifyBuild(implPath, repoPath)
+		result := protocol.VerifyBuild(context.Background(), implPath, repoPath)
 		if result.IsFatal() {
 			return fmt.Errorf("verify-build fatal error")
 		}
@@ -230,8 +240,11 @@ func executeStep(step PipelineStep, implPath, repoPath string, wave int) error {
 		return nil
 
 	case StepCleanup:
-		_, err := protocol.Cleanup(implPath, wave, repoPath)
-		return err
+		cleanupResult := protocol.Cleanup(context.Background(), implPath, wave, repoPath, slog.Default())
+		if cleanupResult.IsFatal() {
+			return fmt.Errorf("cleanup failed: %s", cleanupResult.Errors[0].Error())
+		}
+		return nil
 
 	default:
 		return fmt.Errorf("unhandled step: %s", step)
@@ -291,13 +304,13 @@ func (s *Server) handleForceMarkComplete(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	err := engine.MarkIMPLComplete(r.Context(), engine.MarkIMPLCompleteOpts{
+	markResult := engine.MarkIMPLComplete(r.Context(), engine.MarkIMPLCompleteOpts{
 		IMPLPath: implPath,
 		RepoPath: repoPath,
 		Date:     time.Now().Format("2006-01-02"),
 	})
-	if err != nil {
-		http.Error(w, "failed to mark complete: "+err.Error(), http.StatusInternalServerError)
+	if markResult.IsFatal() {
+		http.Error(w, "failed to mark complete: "+markResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
 

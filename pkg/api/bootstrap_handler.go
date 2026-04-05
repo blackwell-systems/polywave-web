@@ -120,7 +120,7 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 	// prefix can be replaced with a dedicated flag.
 	feature := "[BOOTSTRAP] " + description
 
-	execErr := engine.RunScout(ctx, engine.RunScoutOpts{
+	execResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:             feature,
 		RepoPath:            repoRoot,
 		SAWRepoPath:         sawRepo,
@@ -129,19 +129,20 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 		UseStructuredOutput: true,
 	}, onChunk)
 
-	if execErr != nil {
+	if execResult.IsFatal() {
 		if ctx.Err() != nil {
 			publish("scout_cancelled", map[string]string{"run_id": runID})
 		} else {
+			errMsg := execResult.Errors[0].Error()
 			publish("scout_failed", map[string]string{
 				"run_id": runID,
-				"error":  execErr.Error(),
+				"error":  errMsg,
 			})
 			s.notificationBus.Notify(NotificationEvent{
 				Type:     NotifyRunFailed,
 				Slug:     slug,
 				Title:    "Bootstrap Failed",
-				Message:  fmt.Sprintf("Bootstrap scout run failed: %s", execErr.Error()),
+				Message:  fmt.Sprintf("Bootstrap scout run failed: %s", errMsg),
 				Severity: "error",
 			})
 		}
@@ -154,11 +155,14 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 		"status": "running",
 	})
 
-	finalizeResult, finalizeErr := engine.FinalizeIMPLEngine(ctx, implOut, repoRoot)
-	if finalizeErr != nil {
+	finalizeResult := engine.FinalizeIMPLEngine(ctx, engine.FinalizeIMPLEngineOpts{
+		IMPLPath: implOut,
+		RepoRoot: repoRoot,
+	})
+	if finalizeResult.IsFatal() {
 		publish("scout_failed", map[string]string{
 			"run_id": runID,
-			"error":  "finalize-impl failed: " + finalizeErr.Error(),
+			"error":  "finalize-impl failed: " + finalizeResult.Errors[0].Error(),
 		})
 		return
 	}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -24,17 +25,18 @@ func (s *Server) handleInterruptedSessions(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Prefer DetectWithConfig for cross-repo worktree awareness.
-	allSessions, err := resume.DetectWithConfig(repoPaths)
-	if err != nil {
+	ctx := context.Background()
+	var allSessions []resume.SessionState
+	detectResult := resume.DetectWithConfig(ctx, repoPaths)
+	if detectResult.IsFatal() {
 		// Fallback: per-repo Detect loop for backward compatibility.
-		allSessions = nil
 		for _, repo := range repos {
-			sessions, ferr := resume.Detect(repo.Path)
-			if ferr != nil {
-				continue
+			if perRepoResult := resume.Detect(ctx, repo.Path); perRepoResult.IsSuccess() {
+				allSessions = append(allSessions, perRepoResult.GetData()...)
 			}
-			allSessions = append(allSessions, sessions...)
 		}
+	} else {
+		allSessions = detectResult.GetData()
 	}
 
 	if allSessions == nil {

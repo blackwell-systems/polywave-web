@@ -212,10 +212,10 @@ func (s *Server) handleTestWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	if err := adapter.Send(ctx, msg); err != nil {
+	if sendResult := adapter.Send(ctx, msg); sendResult.IsFatal() {
 		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"success": false,
-			"error":   err.Error(),
+			"error":   sendResult.Errors[0].Error(),
 		})
 		return
 	}

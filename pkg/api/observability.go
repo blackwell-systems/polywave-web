@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -46,13 +47,13 @@ func (s *Server) handleObsIMPLMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metrics, err := observability.GetIMPLMetrics(r.Context(), store, implSlug)
-	if err != nil {
-		respondError(w, err.Error(), http.StatusInternalServerError)
+	metricsResult := observability.GetIMPLMetrics(r.Context(), store, implSlug)
+	if metricsResult.IsFatal() {
+		respondError(w, metricsResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, metrics)
+	respondJSON(w, http.StatusOK, metricsResult.GetData())
 }
 
 func (s *Server) handleObsProgramSummary(w http.ResponseWriter, r *http.Request) {
@@ -68,13 +69,13 @@ func (s *Server) handleObsProgramSummary(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	summary, err := observability.GetProgramSummary(r.Context(), store, programSlug)
-	if err != nil {
-		respondError(w, err.Error(), http.StatusInternalServerError)
+	summaryResult := observability.GetProgramSummary(r.Context(), store, programSlug)
+	if summaryResult.IsFatal() {
+		respondError(w, summaryResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, summary)
+	respondJSON(w, http.StatusOK, summaryResult.GetData())
 }
 
 func (s *Server) handleObsQueryEvents(w http.ResponseWriter, r *http.Request) {
@@ -112,26 +113,43 @@ func (s *Server) handleObsRollup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var result *observability.RollupResult
+	var rollupResult observability.RollupResult
+	var rollupErr error
+	ctx := r.Context()
 	switch req.Type {
 	case "cost":
-		result, err = observability.ComputeCostRollup(r.Context(), store, req)
+		cr := observability.ComputeCostRollup(ctx, store, req)
+		if cr.IsFatal() {
+			rollupErr = fmt.Errorf("%s", cr.Errors[0].Error())
+		} else {
+			rollupResult = cr.GetData()
+		}
 	case "success_rate":
-		result, err = observability.ComputeSuccessRateRollup(r.Context(), store, req)
+		sr := observability.ComputeSuccessRateRollup(ctx, store, req)
+		if sr.IsFatal() {
+			rollupErr = fmt.Errorf("%s", sr.Errors[0].Error())
+		} else {
+			rollupResult = sr.GetData()
+		}
 	case "retry":
 		// Map "retry" param to "retry_count" rollup type.
 		req.Type = "retry_count"
-		result, err = observability.ComputeRetryRollup(r.Context(), store, req)
+		rr := observability.ComputeRetryRollup(ctx, store, req)
+		if rr.IsFatal() {
+			rollupErr = fmt.Errorf("%s", rr.Errors[0].Error())
+		} else {
+			rollupResult = rr.GetData()
+		}
 	default:
 		respondError(w, "type must be cost, success_rate, or retry", http.StatusBadRequest)
 		return
 	}
-	if err != nil {
-		respondError(w, err.Error(), http.StatusInternalServerError)
+	if rollupErr != nil {
+		respondError(w, rollupErr.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, result)
+	respondJSON(w, http.StatusOK, rollupResult)
 }
 
 func (s *Server) handleObsCostBreakdown(w http.ResponseWriter, r *http.Request) {
@@ -147,13 +165,13 @@ func (s *Server) handleObsCostBreakdown(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	breakdown, err := observability.GetCostBreakdown(r.Context(), store, implSlug)
-	if err != nil {
-		respondError(w, err.Error(), http.StatusInternalServerError)
+	breakdownResult := observability.GetCostBreakdown(r.Context(), store, implSlug)
+	if breakdownResult.IsFatal() {
+		respondError(w, breakdownResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
 
-	respondJSON(w, http.StatusOK, breakdown)
+	respondJSON(w, http.StatusOK, breakdownResult.GetData())
 }
 
 // parseQueryFilters extracts QueryFilters from HTTP query parameters.

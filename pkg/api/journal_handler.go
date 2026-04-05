@@ -23,7 +23,7 @@ type SummaryResponse struct {
 
 // CheckpointsResponse wraps checkpoint metadata list
 type CheckpointsResponse struct {
-	Checkpoints []journal.Checkpoint `json:"checkpoints"`
+	Checkpoints []journal.CheckpointRecord `json:"checkpoints"`
 }
 
 // RestoreRequest specifies which checkpoint to restore
@@ -45,11 +45,12 @@ func (s *Server) handleJournalGet(w http.ResponseWriter, r *http.Request) {
 	agentPath := fmt.Sprintf("%s/%s", wave, agent)
 
 	// Create observer
-	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
-	if err != nil {
-		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+	obsResult := journal.NewObserver(s.cfg.RepoPath, agentPath)
+	if obsResult.IsFatal() {
+		respondError(w, fmt.Sprintf("failed to create observer: %v", obsResult.Errors[0].Message), http.StatusInternalServerError)
 		return
 	}
+	obs := obsResult.GetData()
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.IndexPath); os.IsNotExist(err) {
@@ -85,11 +86,12 @@ func (s *Server) handleJournalSummary(w http.ResponseWriter, r *http.Request) {
 	agentPath := fmt.Sprintf("%s/%s", wave, agent)
 
 	// Create observer
-	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
-	if err != nil {
-		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+	obsResult := journal.NewObserver(s.cfg.RepoPath, agentPath)
+	if obsResult.IsFatal() {
+		respondError(w, fmt.Sprintf("failed to create observer: %v", obsResult.Errors[0].Message), http.StatusInternalServerError)
 		return
 	}
+	obs := obsResult.GetData()
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.JournalDir); os.IsNotExist(err) {
@@ -113,11 +115,7 @@ func (s *Server) handleJournalSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Generate context markdown
-	markdown, err := journal.GenerateContext(entries, 0) // 0 = all entries
-	if err != nil {
-		respondError(w, fmt.Sprintf("failed to generate context: %v", err), http.StatusInternalServerError)
-		return
-	}
+	markdown := journal.GenerateContext(entries, 0) // 0 = all entries
 
 	resp := SummaryResponse{
 		Markdown: markdown,
@@ -140,11 +138,12 @@ func (s *Server) handleJournalCheckpoints(w http.ResponseWriter, r *http.Request
 	agentPath := fmt.Sprintf("%s/%s", wave, agent)
 
 	// Create observer
-	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
-	if err != nil {
-		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+	obsResult := journal.NewObserver(s.cfg.RepoPath, agentPath)
+	if obsResult.IsFatal() {
+		respondError(w, fmt.Sprintf("failed to create observer: %v", obsResult.Errors[0].Message), http.StatusInternalServerError)
 		return
 	}
+	obs := obsResult.GetData()
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.JournalDir); os.IsNotExist(err) {
@@ -153,14 +152,14 @@ func (s *Server) handleJournalCheckpoints(w http.ResponseWriter, r *http.Request
 	}
 
 	// List checkpoints
-	checkpoints, err := obs.ListCheckpoints()
-	if err != nil {
-		respondError(w, fmt.Sprintf("failed to list checkpoints: %v", err), http.StatusInternalServerError)
+	listResult := obs.ListCheckpoints()
+	if listResult.IsFatal() {
+		respondError(w, fmt.Sprintf("failed to list checkpoints: %v", listResult.Errors[0].Message), http.StatusInternalServerError)
 		return
 	}
 
 	resp := CheckpointsResponse{
-		Checkpoints: checkpoints,
+		Checkpoints: listResult.GetData(),
 	}
 
 	respondJSON(w, http.StatusOK, resp)
@@ -198,11 +197,12 @@ func (s *Server) handleJournalRestore(w http.ResponseWriter, r *http.Request) {
 	agentPath := fmt.Sprintf("%s/%s", wave, agent)
 
 	// Create observer
-	obs, err := journal.NewObserver(s.cfg.RepoPath, agentPath)
-	if err != nil {
-		respondError(w, fmt.Sprintf("failed to create observer: %v", err), http.StatusInternalServerError)
+	obsResult := journal.NewObserver(s.cfg.RepoPath, agentPath)
+	if obsResult.IsFatal() {
+		respondError(w, fmt.Sprintf("failed to create observer: %v", obsResult.Errors[0].Message), http.StatusInternalServerError)
 		return
 	}
+	obs := obsResult.GetData()
 
 	// Check if journal exists
 	if _, err := os.Stat(obs.JournalDir); os.IsNotExist(err) {
@@ -211,12 +211,14 @@ func (s *Server) handleJournalRestore(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Restore checkpoint
-	if err := obs.RestoreCheckpoint(req.CheckpointName); err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			respondError(w, fmt.Sprintf("checkpoint not found: %v", err), http.StatusBadRequest)
+	restoreResult := obs.RestoreCheckpoint(req.CheckpointName)
+	if restoreResult.IsFatal() {
+		errMsg := restoreResult.Errors[0].Message
+		if strings.Contains(errMsg, "not found") {
+			respondError(w, fmt.Sprintf("checkpoint not found: %s", errMsg), http.StatusBadRequest)
 			return
 		}
-		respondError(w, fmt.Sprintf("failed to restore checkpoint: %v", err), http.StatusInternalServerError)
+		respondError(w, fmt.Sprintf("failed to restore checkpoint: %s", errMsg), http.StatusInternalServerError)
 		return
 	}
 

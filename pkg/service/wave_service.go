@@ -119,13 +119,13 @@ func RerunAgent(deps Deps, slug string, wave int, agent string, scopeHint string
 	}
 
 	go func() {
-		if err := engine.RunSingleAgent(context.Background(), opts, wave, agent, scopeHint, enginePublisher); err != nil {
+		if agentResult := engine.RunSingleAgent(context.Background(), opts, wave, agent, scopeHint, enginePublisher); agentResult.IsFatal() {
 			publish("agent_failed", map[string]interface{}{
 				"agent":        agent,
 				"wave":         wave,
 				"status":       "failed",
 				"failure_type": "rerun",
-				"message":      err.Error(),
+				"message":      agentResult.Errors[0].Error(),
 			})
 		}
 	}()
@@ -159,21 +159,22 @@ func FinalizeWave(deps Deps, slug string, wave int) error {
 			"chunk": fmt.Sprintf("Retrying finalization for wave %d...\n", wave),
 		})
 
-		finalizeResult, err := engine.FinalizeWave(context.Background(), engine.FinalizeWaveOpts{
+		retryFinalizeResult := engine.FinalizeWave(context.Background(), engine.FinalizeWaveOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			WaveNum:  wave,
 		})
-		if finalizeResult != nil {
-			for _, gate := range finalizeResult.GateResults {
+		if retryFinalizeResult.IsSuccess() {
+			retryData := retryFinalizeResult.GetData()
+			for _, gate := range retryData.GateResults {
 				publish("quality_gate_result", gate)
 			}
 		}
-		if err != nil {
+		if retryFinalizeResult.IsFatal() {
 			publish("merge_failed", map[string]interface{}{
 				"slug":  slug,
 				"wave":  wave,
-				"error": err.Error(),
+				"error": retryFinalizeResult.Errors[0].Error(),
 			})
 			return
 		}
@@ -214,11 +215,12 @@ func runWaveLoop(
 	waveModel, scaffoldModel, _ := resolveModelsFromPath(repoPath)
 
 	// Load the YAML manifest to get wave structure.
-	manifest, err := protocol.Load(implPath)
+	loadResult, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		publish("run_failed", map[string]string{"error": err.Error()})
 		return
 	}
+	manifest := loadResult
 	if manifest == nil {
 		publish("run_failed", map[string]string{"error": "failed to load IMPL manifest: " + implPath})
 		return
@@ -274,10 +276,17 @@ func runWaveLoop(
 	// RunScaffold MUST run before PrepareWave (which validates scaffolds are committed).
 	if !protocol.AllScaffoldsCommitted(manifest) {
 		publish("stage_scaffold_running", nil)
-		if err := engine.RunScaffold(ctx, implPath, repoPath, "", scaffoldModel, func(ev engine.Event) {
-			publish(ev.Event, ev.Data)
-		}); err != nil {
-			publish("run_failed", map[string]string{"error": err.Error()})
+		scaffoldResult := engine.RunScaffold(engine.RunScaffoldOpts{
+			Ctx:      ctx,
+			ImplPath: implPath,
+			RepoPath: repoPath,
+			Model:    scaffoldModel,
+			OnEvent: func(ev engine.Event) {
+				publish(ev.Event, ev.Data)
+			},
+		})
+		if scaffoldResult.IsFatal() {
+			publish("run_failed", map[string]string{"error": scaffoldResult.Errors[0].Error()})
 			return
 		}
 	}
@@ -293,12 +302,13 @@ func runWaveLoop(
 	startIdx := 0
 	if currentWave == nil {
 		// All waves complete -- mark IMPL done if not already marked (E15 + E18).
-		if err := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
+		markResult := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			Date:     time.Now().Format("2006-01-02"),
-		}); err != nil {
-			publish("mark_complete_warning", map[string]string{"error": err.Error()})
+		})
+		if markResult.IsFatal() {
+			publish("mark_complete_warning", map[string]string{"error": markResult.Errors[0].Error()})
 		}
 		publish("run_complete", map[string]interface{}{
 			"status": "success",
@@ -356,11 +366,12 @@ func runWaveLoop(
 			}
 
 			// Create orchestrator and run wave (replaces RunSingleWave).
-			orch, orchErr := orchestrator.New(repoPath, implPath)
-			if orchErr != nil {
-				publish("run_failed", map[string]string{"error": orchErr.Error()})
+			orchResult := orchestrator.New(ctx, repoPath, implPath)
+			if orchResult.IsFatal() {
+				publish("run_failed", map[string]string{"error": orchResult.Errors[0].Error()})
 				return
 			}
+			orch := orchResult.GetData()
 			if waveModel != "" {
 				orch.SetDefaultModel(waveModel)
 			}
@@ -374,27 +385,28 @@ func runWaveLoop(
 				}
 				orch.SetWorktreePaths(paths)
 			}
-			if err := orch.RunWave(waveNum); err != nil {
-				publish("run_failed", map[string]string{"error": err.Error()})
+			if runResult := orch.RunWave(ctx, waveNum); runResult.IsFatal() {
+				publish("run_failed", map[string]string{"error": runResult.Errors[0].Error()})
 				return
 			}
 		}
 
 		// Finalize wave: monolithic engine.FinalizeWave.
-		finalizeResult, err := engine.FinalizeWave(ctx, engine.FinalizeWaveOpts{
+		finalizeResult := engine.FinalizeWave(ctx, engine.FinalizeWaveOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			WaveNum:  waveNum,
 		})
-		if err != nil {
-			publish("run_failed", map[string]string{"error": err.Error()})
+		if finalizeResult.IsFatal() {
+			publish("run_failed", map[string]string{"error": finalizeResult.Errors[0].Error()})
 			return
 		}
-		if finalizeResult != nil {
-			if finalizeResult.StubReport != nil && len(finalizeResult.StubReport.Hits) > 0 {
-				publish("stub_report", finalizeResult.StubReport)
+		if finalizeResult.IsSuccess() {
+			finalizeData := finalizeResult.GetData()
+			if finalizeData.StubReport != nil && len(finalizeData.StubReport.Hits) > 0 {
+				publish("stub_report", finalizeData.StubReport)
 			}
-			for _, gate := range finalizeResult.GateResults {
+			for _, gate := range finalizeData.GateResults {
 				publish("quality_gate_result", gate)
 			}
 		}
@@ -403,10 +415,10 @@ func runWaveLoop(
 		for _, ag := range wave.Agents {
 			completedLetters = append(completedLetters, ag.ID)
 		}
-		if err := engine.UpdateIMPLStatus(implPath, completedLetters); err != nil {
+		if updateResult := engine.UpdateIMPLStatus(implPath, completedLetters); updateResult.IsFatal() {
 			publish("update_status_failed", map[string]string{
 				"wave":  slug,
-				"error": err.Error(),
+				"error": updateResult.Errors[0].Error(),
 			})
 		}
 
@@ -449,12 +461,12 @@ func runWaveLoop(
 	}
 
 	// After all waves complete -- mark IMPL done (E15 + E18)
-	if err := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
+	if markResult := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
 		IMPLPath: implPath,
 		RepoPath: repoPath,
 		Date:     time.Now().Format("2006-01-02"),
-	}); err != nil {
-		publish("mark_complete_warning", map[string]string{"error": err.Error()})
+	}); markResult.IsFatal() {
+		publish("mark_complete_warning", map[string]string{"error": markResult.Errors[0].Error()})
 	}
 
 	publish("run_complete", map[string]interface{}{
@@ -677,7 +689,7 @@ func waveAgentsHaveCommitsWithManifest(repoPath, implPath, slug string, waveNum 
 	// Build per-agent repo map from file ownership (cross-repo support).
 	agentRepoDir := make(map[string]string)
 	if implPath != "" {
-		if manifest, err := protocol.Load(implPath); err == nil {
+		if manifest, err := protocol.Load(context.Background(), implPath); err == nil {
 			repoParent := filepath.Dir(repoPath)
 			for _, agent := range agents {
 				for _, fo := range manifest.FileOwnership {

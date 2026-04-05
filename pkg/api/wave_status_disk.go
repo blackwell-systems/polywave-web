@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -45,7 +46,7 @@ func (s *Server) handleWaveDiskStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		http.Error(w, "failed to load manifest: "+err.Error(), http.StatusInternalServerError)
 		return

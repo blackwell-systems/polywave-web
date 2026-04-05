@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -31,7 +32,7 @@ func runFreezeCheck(args []string) error {
 	manifestPath := fs.Arg(0)
 
 	// Load manifest
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("freeze-check: manifest file not found: %s", manifestPath)
@@ -40,7 +41,7 @@ func runFreezeCheck(args []string) error {
 	}
 
 	// Check for freeze violations
-	violations, err := protocol.CheckFreeze(manifest)
+	violations, err := protocol.CheckFreeze(context.Background(), manifest)
 	if err != nil {
 		return fmt.Errorf("freeze-check: %w", err)
 	}

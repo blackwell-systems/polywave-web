@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -103,7 +104,7 @@ func (s *Server) handleImportIMPLs(w http.ResponseWriter, r *http.Request) {
 		// Load the IMPL manifest to get its title and agent/wave counts.
 		var title string
 		var agentCount, waveCount int
-		if m, err := protocol.Load(implPath); err == nil {
+		if m, err := protocol.Load(context.Background(), implPath); err == nil {
 			title = m.Title
 			waveCount = len(m.Waves)
 			for _, w := range m.Waves {

@@ -42,12 +42,12 @@ func runMerge(args []string) error {
 		repoPath = filepath.Dir(*implPath)
 	}
 
-	if err := engine.MergeWave(context.Background(), engine.RunMergeOpts{
+	if mergeResult := engine.MergeWave(context.Background(), engine.RunMergeOpts{
 		IMPLPath: *implPath,
 		RepoPath: repoPath,
 		WaveNum:  *waveNum,
-	}); err != nil {
-		return fmt.Errorf("merge: %w", err)
+	}); mergeResult.IsFatal() {
+		return fmt.Errorf("merge: %s", mergeResult.Errors[0].Error())
 	}
 
 	fmt.Printf("Wave %d merged successfully.\n", *waveNum)

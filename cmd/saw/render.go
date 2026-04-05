@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -30,7 +31,7 @@ func runRender(args []string) error {
 	manifestPath := fs.Arg(0)
 
 	// Load the manifest
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("render: manifest file not found: %s", manifestPath)

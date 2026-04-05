@@ -75,7 +75,7 @@ func (wb *WebhookBridge) HandleNotification(event NotificationEvent) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := wb.dispatcher.Dispatch(ctx, evt, wb.formatter); err != nil {
-		log.Printf("webhook dispatch error: %v", err)
+	if dispatchResult := wb.dispatcher.Dispatch(ctx, evt, wb.formatter); dispatchResult.IsFatal() {
+		log.Printf("webhook dispatch error: %v", dispatchResult.Errors[0])
 	}
 }

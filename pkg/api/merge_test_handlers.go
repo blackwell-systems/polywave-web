@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
 )
 
 // MergeWaveRequest is the JSON body for POST /api/wave/{slug}/merge.
@@ -28,7 +30,7 @@ type TestWaveRequest struct {
 
 // mergeWaveFunc is the seam used by handleWaveMerge. Tests can replace this
 // to inject a no-op and avoid real git calls in unit tests.
-var mergeWaveFunc = func(ctx context.Context, opts engine.RunMergeOpts) error {
+var mergeWaveFunc = func(ctx context.Context, opts engine.RunMergeOpts) result.Result[engine.MergeData] {
 	return engine.MergeWave(ctx, opts)
 }
 
@@ -80,17 +82,18 @@ func (s *Server) handleWaveMerge(w http.ResponseWriter, r *http.Request) {
 			"chunk": fmt.Sprintf("Merging wave %d agents...\n", wave),
 		})
 
-		err := mergeWaveFunc(ctx, engine.RunMergeOpts{
+		mergeResult := mergeWaveFunc(ctx, engine.RunMergeOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			WaveNum:  wave,
 		})
-		if err != nil {
-			conflictingFiles := extractConflictingFiles(err.Error())
+		if mergeResult.IsFatal() {
+			errMsg := mergeResult.Errors[0].Error()
+			conflictingFiles := extractConflictingFiles(errMsg)
 			publish("merge_failed", map[string]interface{}{
 				"slug":              slug,
 				"wave":              wave,
-				"error":             err.Error(),
+				"error":             errMsg,
 				"conflicting_files": conflictingFiles,
 			})
 			return
@@ -103,8 +106,9 @@ func (s *Server) handleWaveMerge(w http.ResponseWriter, r *http.Request) {
 			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": "Auto-corrected go.mod replace paths\n"})
 		}
 
-		if cleanupResult, cleanErr := protocol.Cleanup(implPath, wave, repoPath); cleanErr != nil {
-			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleanup warning: %v\n", cleanErr)})
+		cleanupResult := protocol.Cleanup(ctx, implPath, wave, repoPath, slog.Default())
+		if cleanupResult.IsFatal() {
+			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleanup warning: %v\n", cleanupResult.Errors[0])})
 		} else if cleanupResult.IsSuccess() {
 			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleaned up %d worktrees\n", len(cleanupResult.GetData().Agents))})
 		}
@@ -158,7 +162,7 @@ func (s *Server) handleWaveTest(w http.ResponseWriter, r *http.Request) {
 		})
 
 		// Load the YAML manifest to get the test command.
-		manifest, err := protocol.Load(implPath)
+		manifest, err := protocol.Load(ctx, implPath)
 		if err != nil || manifest == nil {
 			errMsg := "failed to load IMPL manifest"
 			if err != nil {
@@ -301,7 +305,7 @@ func extractConflictingFiles(errStr string) []string {
 
 // resolveConflictsFunc is the seam used by handleResolveConflicts. Tests can
 // replace this to inject a no-op and avoid real git/Claude API calls in unit tests.
-var resolveConflictsFunc = func(ctx context.Context, opts engine.ResolveConflictsOpts) error {
+var resolveConflictsFunc = func(ctx context.Context, opts engine.ResolveConflictsOpts) result.Result[engine.ResolveData] {
 	return engine.ResolveConflicts(ctx, opts)
 }
 
@@ -352,7 +356,7 @@ func (s *Server) handleResolveConflicts(w http.ResponseWriter, r *http.Request) 
 
 		ctx := context.Background()
 
-		err := resolveConflictsFunc(ctx, engine.ResolveConflictsOpts{
+		resolveResult := resolveConflictsFunc(ctx, engine.ResolveConflictsOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			WaveNum:  wave,
@@ -381,11 +385,11 @@ func (s *Server) handleResolveConflicts(w http.ResponseWriter, r *http.Request) 
 			},
 		})
 
-		if err != nil {
+		if resolveResult.IsFatal() {
 			publish("conflict_resolution_failed", map[string]interface{}{
 				"slug":  slug,
 				"wave":  wave,
-				"error": err.Error(),
+				"error": resolveResult.Errors[0].Error(),
 			})
 			return
 		}
@@ -397,8 +401,9 @@ func (s *Server) handleResolveConflicts(w http.ResponseWriter, r *http.Request) 
 			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": "Auto-corrected go.mod replace paths\n"})
 		}
 
-		if cleanupResult, cleanErr := protocol.Cleanup(implPath, wave, repoPath); cleanErr != nil {
-			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleanup warning: %v\n", cleanErr)})
+		cleanupResult := protocol.Cleanup(ctx, implPath, wave, repoPath, slog.Default())
+		if cleanupResult.IsFatal() {
+			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleanup warning: %v\n", cleanupResult.Errors[0])})
 		} else if cleanupResult.IsSuccess() {
 			publish("merge_output", map[string]interface{}{"slug": slug, "wave": wave, "chunk": fmt.Sprintf("Cleaned up %d worktrees\n", len(cleanupResult.GetData().Agents))})
 		}
@@ -465,7 +470,7 @@ func (s *Server) handleFixBuild(w http.ResponseWriter, r *http.Request) {
 			"gate": body.GateType,
 		})
 
-		err := engine.FixBuildFailure(context.Background(), engine.FixBuildOpts{
+		fixResult := engine.FixBuildFailure(context.Background(), engine.FixBuildOpts{
 			IMPLPath:  implPath,
 			RepoPath:  repoPath,
 			WaveNum:   body.Wave,
@@ -493,11 +498,11 @@ func (s *Server) handleFixBuild(w http.ResponseWriter, r *http.Request) {
 			},
 		})
 
-		if err != nil {
+		if fixResult.IsFatal() {
 			publish("fix_build_failed", map[string]interface{}{
 				"slug":  slug,
 				"wave":  body.Wave,
-				"error": err.Error(),
+				"error": fixResult.Errors[0].Error(),
 			})
 			return
 		}

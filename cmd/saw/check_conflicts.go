@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -30,7 +31,7 @@ func runCheckConflicts(args []string) error {
 	manifestPath := fs.Arg(0)
 
 	// Load the manifest
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("check-conflicts: manifest file not found: %s", manifestPath)
@@ -39,7 +40,7 @@ func runCheckConflicts(args []string) error {
 	}
 
 	// Detect conflicts
-	conflicts := protocol.DetectOwnershipConflicts(manifest, manifest.CompletionReports)
+	conflicts := protocol.DetectOwnershipConflicts(context.Background(), manifest, manifest.CompletionReports)
 
 	// Output JSON array
 	conflictsJSON, err := json.MarshalIndent(conflicts, "", "  ")

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -124,7 +125,7 @@ func (s *Server) getFilesOwned(slug string, wave int, agent string) []string {
 		return nil
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		return nil
 	}

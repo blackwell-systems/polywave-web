@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 
@@ -69,7 +70,7 @@ func runProgramTier(
 		}
 		runWaveLoopFunc(implPath, implSlug, repoPath, implPublish, func(ExecutionStage, StageStatus, int, string) {})
 
-		implManifest, err := protocol.Load(implPath)
+		implManifest, err := protocol.Load(context.Background(), implPath)
 		if err != nil {
 			publish("program_blocked", map[string]interface{}{
 				"program_slug": programSlug,
@@ -119,7 +120,7 @@ func runProgramTier(
 	}
 
 	log.Printf("runProgramTier: running tier gates for tier %d", tierNumber)
-	gateRes := protocol.RunTierGate(manifest, tierNumber, repoPath)
+	gateRes := protocol.RunTierGate(context.Background(), manifest, tierNumber, repoPath)
 	if gateRes.IsFatal() {
 		publish("program_blocked", map[string]interface{}{
 			"program_slug": programSlug,

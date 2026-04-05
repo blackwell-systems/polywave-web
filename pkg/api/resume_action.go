@@ -45,11 +45,12 @@ func (s *Server) handleResumeExecution(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Detect interrupted sessions across all configured repos.
-	allSessions, err := resume.DetectWithConfig(repoPaths)
-	if err != nil {
-		http.Error(w, "failed to detect sessions: "+err.Error(), http.StatusInternalServerError)
+	detectResult := resume.DetectWithConfig(context.Background(), repoPaths)
+	if detectResult.IsFatal() {
+		http.Error(w, "failed to detect sessions: "+detectResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
+	allSessions := detectResult.GetData()
 
 	// Filter to the single session matching this slug.
 	var matches []resume.SessionState
@@ -80,7 +81,7 @@ func (s *Server) handleResumeExecution(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load the manifest to determine which agents need re-launch.
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		http.Error(w, "failed to load IMPL manifest: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -198,20 +199,20 @@ func (s *Server) handleResumeExecution(w http.ResponseWriter, r *http.Request) {
 				"status": "launching",
 			})
 
-			if err := engine.RunSingleAgent(
+			if agentResult := engine.RunSingleAgent(
 				context.Background(),
 				opts,
 				waveNum,
 				al.letter,
 				al.promptPrefix,
 				enginePublisher,
-			); err != nil {
+			); agentResult.IsFatal() {
 				publish("agent_failed", map[string]interface{}{
 					"agent":        al.letter,
 					"wave":         waveNum,
 					"status":       "failed",
 					"failure_type": "resume",
-					"message":      err.Error(),
+					"message":      agentResult.Errors[0].Error(),
 				})
 			}
 		}

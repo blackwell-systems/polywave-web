@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -35,13 +36,13 @@ func runExtractCommands(args []string) error {
 	}
 
 	// Call SDK commands extractor
-	result, err := commands.ExtractCommands(repoRoot)
-	if err != nil {
-		return fmt.Errorf("extract-commands: %w", err)
+	extractResult := commands.ExtractCommands(context.Background(), repoRoot)
+	if extractResult.IsFatal() {
+		return fmt.Errorf("extract-commands: %s", extractResult.Errors[0].Error())
 	}
 
 	// Output YAML
-	data, err := yaml.Marshal(result)
+	data, err := yaml.Marshal(extractResult.GetData())
 	if err != nil {
 		return fmt.Errorf("extract-commands: failed to marshal YAML: %w", err)
 	}

@@ -57,13 +57,13 @@ func runAnalyzeSuitability(args []string) error {
 	}
 
 	// Call SDK suitability analyzer
-	result, err := suitability.ScanPreImplementation(repoRoot, requirements)
-	if err != nil {
-		return fmt.Errorf("analyze-suitability: %w", err)
+	scanResult := suitability.ScanPreImplementation(repoRoot, requirements)
+	if scanResult.IsFatal() {
+		return fmt.Errorf("analyze-suitability: %s", scanResult.Errors[0].Error())
 	}
 
 	// Output YAML
-	data, err := yaml.Marshal(result)
+	data, err := yaml.Marshal(scanResult.GetData())
 	if err != nil {
 		return fmt.Errorf("analyze-suitability: failed to marshal YAML: %w", err)
 	}

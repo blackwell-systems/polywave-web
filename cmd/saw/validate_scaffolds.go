@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -31,7 +32,7 @@ func runValidateScaffolds(args []string) error {
 	manifestPath := fs.Arg(0)
 
 	// Load manifest
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("validate-scaffolds: manifest file not found: %s", manifestPath)

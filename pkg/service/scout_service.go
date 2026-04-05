@@ -128,7 +128,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		})
 	}
 
-	execErr := engine.ScoutCorrectionLoop(ctx, engine.ScoutCorrectionOpts{
+	execResult := engine.ScoutCorrectionLoop(ctx, engine.ScoutCorrectionOpts{
 		ScoutOpts: engine.RunScoutOpts{
 			Feature:             feature,
 			RepoPath:            repoRoot,
@@ -146,13 +146,13 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		},
 	}, onChunk)
 
-	if execErr != nil {
+	if execResult.IsFatal() {
 		if ctx.Err() != nil {
 			publish("scout_cancelled", map[string]string{"run_id": runID})
 		} else {
 			publish("scout_failed", map[string]string{
 				"run_id": runID,
-				"error":  execErr.Error(),
+				"error":  execResult.Errors[0].Error(),
 			})
 		}
 		return
@@ -164,11 +164,14 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		"status": "running",
 	})
 
-	finalizeResult, finalizeErr := engine.FinalizeIMPLEngine(ctx, implOut, repoRoot)
-	if finalizeErr != nil {
+	finalizeResult := engine.FinalizeIMPLEngine(ctx, engine.FinalizeIMPLEngineOpts{
+		IMPLPath: implOut,
+		RepoRoot: repoRoot,
+	})
+	if finalizeResult.IsFatal() {
 		publish("scout_failed", map[string]string{
 			"run_id": runID,
-			"error":  "finalize-impl failed: " + finalizeErr.Error(),
+			"error":  "finalize-impl failed: " + finalizeResult.Errors[0].Error(),
 		})
 		return
 	}

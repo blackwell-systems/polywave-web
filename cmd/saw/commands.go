@@ -43,27 +43,36 @@ func (a *engineOrchAdapter) TransitionTo(newState protocol.ProtocolState) error 
 }
 
 func (a *engineOrchAdapter) RunWave(waveNum int) error {
-	return engine.RunSingleWave(context.Background(), engine.RunWaveOpts{
+	if r := engine.RunSingleWave(context.Background(), engine.RunWaveOpts{
 		IMPLPath: a.implPath,
 		RepoPath: a.repoPath,
 	}, waveNum, func(ev engine.Event) {
 		fmt.Printf("[%s] %v\n", ev.Event, ev.Data)
-	})
+	}); r.IsFatal() {
+		return fmt.Errorf("%s", r.Errors[0].Error())
+	}
+	return nil
 }
 
 func (a *engineOrchAdapter) MergeWave(waveNum int) error {
-	return engine.MergeWave(context.Background(), engine.RunMergeOpts{
+	if r := engine.MergeWave(context.Background(), engine.RunMergeOpts{
 		IMPLPath: a.implPath,
 		RepoPath: a.repoPath,
 		WaveNum:  waveNum,
-	})
+	}); r.IsFatal() {
+		return fmt.Errorf("%s", r.Errors[0].Error())
+	}
+	return nil
 }
 
 func (a *engineOrchAdapter) RunVerification(testCommand string) error {
-	return engine.RunVerification(context.Background(), engine.RunVerificationOpts{
+	if r := engine.RunVerification(context.Background(), engine.RunVerificationOpts{
 		RepoPath:    a.repoPath,
 		TestCommand: testCommand,
-	})
+	}); r.IsFatal() {
+		return fmt.Errorf("%s", r.Errors[0].Error())
+	}
+	return nil
 }
 
 func (a *engineOrchAdapter) UpdateIMPLStatus(waveNum int) error {
@@ -79,7 +88,10 @@ func (a *engineOrchAdapter) UpdateIMPLStatus(waveNum int) error {
 			break
 		}
 	}
-	return engine.UpdateIMPLStatus(a.implPath, letters)
+	if r := engine.UpdateIMPLStatus(a.implPath, letters); r.IsFatal() {
+		return fmt.Errorf("%s", r.Errors[0].Error())
+	}
+	return nil
 }
 
 func (a *engineOrchAdapter) IMPLDoc() *protocol.IMPLManifest {
@@ -89,7 +101,7 @@ func (a *engineOrchAdapter) IMPLDoc() *protocol.IMPLManifest {
 // orchestratorNewFunc is a seam for tests: creates a waveOrchestrator from a
 // repo path and IMPL doc path. Tests can replace this to inject a fake.
 var orchestratorNewFunc = func(repoPath, implPath string) (waveOrchestrator, error) {
-	doc, err := protocol.Load(implPath)
+	doc, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse IMPL doc: %w", err)
 	}
@@ -249,7 +261,7 @@ func runStatus(args []string) error {
 		return errors.New("status: --impl is required\nRun 'saw status --help' for usage.")
 	}
 
-	doc, err := protocol.Load(*implPath)
+	doc, err := protocol.Load(context.Background(), *implPath)
 	if err != nil {
 		return fmt.Errorf("status: %w", err)
 	}
@@ -459,13 +471,13 @@ func runScout(args []string) error {
 	sawRepo := filepath.Dir(filepath.Dir(scoutMdPath))
 
 	ctx := context.Background()
-	if err := engine.RunScout(ctx, engine.RunScoutOpts{
+	if scoutResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:     *feature,
 		RepoPath:    repoRoot,
 		SAWRepoPath: sawRepo,
 		IMPLOutPath: implOut,
-	}, func(s string) { fmt.Print(s) }); err != nil {
-		return fmt.Errorf("scout: %w", err)
+	}, func(s string) { fmt.Print(s) }); scoutResult.IsFatal() {
+		return fmt.Errorf("scout: %s", scoutResult.Errors[0].Error())
 	}
 
 	return nil
@@ -519,13 +531,18 @@ func runScaffold(args []string) error {
 		return fmt.Errorf("scaffold: %w", err)
 	}
 
-	sawRepo := filepath.Dir(filepath.Dir(scaffoldMdPath))
+	_ = scaffoldMdPath // sawRepo no longer needed by RunScaffoldOpts
 
 	ctx := context.Background()
-	if err := engine.RunScaffold(ctx, absImpl, repoRoot, sawRepo, "", func(ev engine.Event) {
-		fmt.Println(ev.Event)
-	}); err != nil {
-		return fmt.Errorf("scaffold: %w", err)
+	if scaffoldResult := engine.RunScaffold(engine.RunScaffoldOpts{
+		Ctx:      ctx,
+		ImplPath: absImpl,
+		RepoPath: repoRoot,
+		OnEvent: func(ev engine.Event) {
+			fmt.Println(ev.Event)
+		},
+	}); scaffoldResult.IsFatal() {
+		return fmt.Errorf("scaffold: %s", scaffoldResult.Errors[0].Error())
 	}
 
 	return nil

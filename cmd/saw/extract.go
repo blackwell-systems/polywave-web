@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -40,7 +41,7 @@ func runExtractContext(args []string) error {
 	}
 
 	// Load the manifest
-	manifest, err := protocol.Load(*implPath)
+	manifest, err := protocol.Load(context.Background(), *implPath)
 	if err != nil {
 		return fmt.Errorf("extract-context: %w", err)
 	}

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -75,7 +76,7 @@ func (s *Server) handleValidateIntegration(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		respondError(w, fmt.Sprintf("failed to load manifest: %v", err), http.StatusInternalServerError)
 		return
@@ -116,7 +117,7 @@ func (s *Server) handleValidateWiring(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		respondError(w, fmt.Sprintf("failed to load manifest: %v", err), http.StatusInternalServerError)
 		return

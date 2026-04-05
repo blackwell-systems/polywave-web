@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
@@ -10,7 +11,7 @@ import (
 // LoadManifest loads a YAML manifest using the Protocol SDK.
 // Returns the parsed manifest or an error if the file cannot be read or parsed.
 func LoadManifest(yamlPath string) (*protocol.IMPLManifest, error) {
-	manifest, err := protocol.Load(yamlPath)
+	manifest, err := protocol.Load(context.Background(), yamlPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load manifest: %w", err)
 	}
@@ -25,7 +26,7 @@ func LoadManifest(yamlPath string) (*protocol.IMPLManifest, error) {
 // duplicate key detection, unknown key detection, typed-block validation),
 // ensuring the web app enforces the same rules as the CLI.
 func ValidateManifest(yamlPath string) ([]result.SAWError, error) {
-	res := protocol.FullValidate(yamlPath, protocol.FullValidateOpts{})
+	res := protocol.FullValidate(context.Background(), yamlPath, protocol.FullValidateOpts{})
 	if res.IsFatal() {
 		return nil, fmt.Errorf("failed to validate manifest: %s", res.Errors[0].Message)
 	}
@@ -39,7 +40,7 @@ func ValidateManifest(yamlPath string) ([]result.SAWError, error) {
 // GetManifestWave returns a specific wave from a manifest.
 // Returns an error if the wave number is invalid or if the file cannot be loaded.
 func GetManifestWave(yamlPath string, waveNum int) (*protocol.Wave, error) {
-	manifest, err := protocol.Load(yamlPath)
+	manifest, err := protocol.Load(context.Background(), yamlPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load manifest: %w", err)
 	}
@@ -57,17 +58,17 @@ func GetManifestWave(yamlPath string, waveNum int) (*protocol.Wave, error) {
 // Returns an error if the agent ID is not found, if the manifest cannot be loaded,
 // or if the manifest cannot be saved after updating.
 func SetManifestCompletion(yamlPath, agentID string, report protocol.CompletionReport) error {
-	manifest, err := protocol.Load(yamlPath)
+	manifest, err := protocol.Load(context.Background(), yamlPath)
 	if err != nil {
 		return fmt.Errorf("failed to load manifest: %w", err)
 	}
 
-	if err := protocol.SetCompletionReport(manifest, agentID, report); err != nil {
-		return fmt.Errorf("failed to set completion report: %w", err)
+	if setResult := protocol.SetCompletionReport(manifest, agentID, report); setResult.IsFatal() {
+		return fmt.Errorf("failed to set completion report: %s", setResult.Errors[0].Message)
 	}
 
-	if err := protocol.Save(manifest, yamlPath); err != nil {
-		return fmt.Errorf("failed to save manifest: %w", err)
+	if saveResult := protocol.Save(context.Background(), manifest, yamlPath); saveResult.IsFatal() {
+		return fmt.Errorf("failed to save manifest: %s", saveResult.Errors[0].Message)
 	}
 
 	return nil

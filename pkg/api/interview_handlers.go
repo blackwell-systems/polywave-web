@@ -91,25 +91,26 @@ func (s *Server) handleInterviewStart(w http.ResponseWriter, r *http.Request) {
 		ProjectPath:  req.ProjectPath,
 	}
 
-	doc, firstQ, err := mgr.Start(cfg)
-	if err != nil {
-		respondError(w, "failed to start interview: "+err.Error(), http.StatusInternalServerError)
+	startResult := mgr.Start(cfg)
+	if startResult.IsFatal() {
+		respondError(w, "failed to start interview: "+startResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
+	startData := startResult.GetData()
 
 	ctx, cancel := context.WithCancel(s.serverCtx)
 
 	run := &interviewRun{
 		cancel:  cancel,
 		mgr:     mgr,
-		doc:     doc,
+		doc:     startData.Doc,
 		answers: make(chan string, 1),
 	}
 	s.interviewRuns.Store(runID, run)
 
 	// Background goroutine: emits the first question via SSE, then waits for
 	// answers and emits subsequent questions until the interview completes.
-	go s.runInterviewLoop(ctx, runID, run, firstQ)
+	go s.runInterviewLoop(ctx, runID, run, startData.Question)
 
 	respondJSON(w, http.StatusAccepted, InterviewStartResponse{RunID: runID})
 }
@@ -138,14 +139,15 @@ func (s *Server) handleInterviewResume(w http.ResponseWriter, r *http.Request) {
 	docsDir := filepath.Dir(req.DocPath)
 	mgr := interview.NewDeterministicManager(docsDir)
 
-	doc, firstQ, err := mgr.Resume(req.DocPath)
-	if err != nil {
-		respondError(w, "failed to resume interview: "+err.Error(), http.StatusInternalServerError)
+	resumeResult := mgr.Resume(req.DocPath)
+	if resumeResult.IsFatal() {
+		respondError(w, "failed to resume interview: "+resumeResult.Errors[0].Error(), http.StatusInternalServerError)
 		return
 	}
+	resumeData := resumeResult.GetData()
 
 	// If already complete, return 409 Conflict.
-	if doc.Status == "complete" || firstQ == nil {
+	if resumeData.Doc.Status == "complete" || resumeData.Question == nil {
 		respondError(w, "interview is already complete", http.StatusConflict)
 		return
 	}
@@ -156,12 +158,12 @@ func (s *Server) handleInterviewResume(w http.ResponseWriter, r *http.Request) {
 	run := &interviewRun{
 		cancel:  cancel,
 		mgr:     mgr,
-		doc:     doc,
+		doc:     resumeData.Doc,
 		answers: make(chan string, 1),
 	}
 	s.interviewRuns.Store(runID, run)
 
-	go s.runInterviewLoop(ctx, runID, run, firstQ)
+	go s.runInterviewLoop(ctx, runID, run, resumeData.Question)
 
 	respondJSON(w, http.StatusAccepted, InterviewStartResponse{RunID: runID})
 }
@@ -213,17 +215,19 @@ func (s *Server) runInterviewLoop(ctx context.Context, runID string, run *interv
 			previousPhase := run.doc.Phase
 			run.docMu.Unlock()
 
-			updatedDoc, nextQ, err := run.mgr.Answer(doc, answer)
-			if err != nil {
+			answerResult := run.mgr.Answer(doc, answer)
+			if answerResult.IsFatal() {
 				s.broker.Publish(brokerKey, SSEEvent{
 					Event: "error",
-					Data:  map[string]string{"message": err.Error()},
+					Data:  map[string]string{"message": answerResult.Errors[0].Error()},
 				})
 				continue
 			}
+			answerData := answerResult.GetData()
+			nextQ := answerData.Question
 
 			run.docMu.Lock()
-			run.doc = updatedDoc
+			run.doc = answerData.Doc
 			run.docMu.Unlock()
 
 			// Emit answer_recorded event.
@@ -233,23 +237,23 @@ func (s *Server) runInterviewLoop(ctx context.Context, runID string, run *interv
 			})
 
 			// Emit phase_complete if phase changed.
-			if string(updatedDoc.Phase) != string(previousPhase) && updatedDoc.Phase != "complete" {
+			if string(answerData.Doc.Phase) != string(previousPhase) && answerData.Doc.Phase != "complete" {
 				s.broker.Publish(brokerKey, SSEEvent{
 					Event: "phase_complete",
 					Data: map[string]string{
 						"phase":      string(previousPhase),
-						"next_phase": string(updatedDoc.Phase),
+						"next_phase": string(answerData.Doc.Phase),
 					},
 				})
 			}
 
-			if updatedDoc.Status == "complete" || nextQ == nil {
+			if answerData.Doc.Status == "complete" || nextQ == nil {
 				// Interview complete.
 				s.broker.Publish(brokerKey, SSEEvent{
 					Event: "complete",
 					Data: map[string]interface{}{
-						"requirements_path": updatedDoc.RequirementsPath,
-						"slug":              updatedDoc.Slug,
+						"requirements_path": answerData.Doc.RequirementsPath,
+						"slug":              answerData.Doc.Slug,
 					},
 				})
 				return
@@ -260,8 +264,8 @@ func (s *Server) runInterviewLoop(ctx context.Context, runID string, run *interv
 				Event: "question",
 				Data: InterviewQuestionEvent{
 					Phase:        string(nextQ.Phase),
-					QuestionNum:  updatedDoc.QuestionCursor + 1,
-					MaxQuestions: updatedDoc.MaxQuestions,
+					QuestionNum:  answerData.Doc.QuestionCursor + 1,
+					MaxQuestions: answerData.Doc.MaxQuestions,
 					Text:         nextQ.Text,
 					Hint:         nextQ.Hint,
 				},

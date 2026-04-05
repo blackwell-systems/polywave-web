@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -137,9 +138,9 @@ func runWaveLoop(
 	}
 
 	// Load the YAML manifest to get wave structure.
-	manifest, err := protocol.Load(implPath)
-	if err != nil {
-		publish("run_failed", map[string]string{"error": err.Error()})
+	manifest, loadErr := protocol.Load(context.Background(), implPath)
+	if loadErr != nil {
+		publish("run_failed", map[string]string{"error": loadErr.Error()})
 		return
 	}
 	if manifest == nil {
@@ -153,16 +154,24 @@ func runWaveLoop(
 	// This prevents the scaffold stage from flashing in the UI on Wave 2+ starts.
 	if !protocol.AllScaffoldsCommitted(manifest) {
 		onStage(StageScaffold, StageStatusRunning, 0, "")
-		if err := engine.RunScaffold(ctx, implPath, repoPath, "", scaffoldModel, func(ev engine.Event) {
-			publish(ev.Event, ev.Data)
-		}); err != nil {
-			onStage(StageScaffold, StageStatusFailed, 0, err.Error())
-			publish("run_failed", map[string]string{"error": err.Error()})
+		scaffoldResult := engine.RunScaffold(engine.RunScaffoldOpts{
+			Ctx:      ctx,
+			ImplPath: implPath,
+			RepoPath: repoPath,
+			Model:    scaffoldModel,
+			OnEvent: func(ev engine.Event) {
+				publish(ev.Event, ev.Data)
+			},
+		})
+		if scaffoldResult.IsFatal() {
+			errMsg := scaffoldResult.Errors[0].Error()
+			onStage(StageScaffold, StageStatusFailed, 0, errMsg)
+			publish("run_failed", map[string]string{"error": errMsg})
 			pkgNotificationBus.Notify(NotificationEvent{
 				Type:     NotifyRunFailed,
 				Slug:     slug,
 				Title:    "Scaffold Failed",
-				Message:  err.Error(),
+				Message:  errMsg,
 				Severity: "error",
 			})
 			return
@@ -192,13 +201,13 @@ func runWaveLoop(
 		// This handles the case where waves completed in a previous session but
 		// mark-complete was never reached (e.g. server restart between last merge
 		// and completion marking).
-		if err := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
+		if earlyMarkResult := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			Date:     time.Now().Format("2006-01-02"),
-		}); err != nil {
+		}); earlyMarkResult.IsFatal() {
 			// Non-fatal: may already be marked complete (archived)
-			publish("mark_complete_warning", map[string]string{"error": err.Error()})
+			publish("mark_complete_warning", map[string]string{"error": earlyMarkResult.Errors[0].Error()})
 		}
 		publish("run_complete", map[string]interface{}{
 			"status": "success",
@@ -260,11 +269,12 @@ func runWaveLoop(
 			onStage("wave_prepare", StageStatusComplete, waveNum, "")
 
 			// Create orchestrator and run wave (replaces engine.RunSingleWave).
-			orch, orchErr := orchestrator.New(repoPath, implPath)
-			if orchErr != nil {
-				publish("run_failed", map[string]string{"error": orchErr.Error()})
+			orchResult := orchestrator.New(ctx, repoPath, implPath)
+			if orchResult.IsFatal() {
+				publish("run_failed", map[string]string{"error": orchResult.Errors[0].Error()})
 				return
 			}
+			orch := orchResult.GetData()
 			if waveModel != "" {
 				orch.SetDefaultModel(waveModel)
 			}
@@ -282,14 +292,15 @@ func runWaveLoop(
 			}
 
 			onStage(StageWaveExecute, StageStatusRunning, waveNum, "")
-			if err := orch.RunWave(waveNum); err != nil {
-				onStage(StageWaveExecute, StageStatusFailed, waveNum, err.Error())
-				publish("run_failed", map[string]string{"error": err.Error()})
+			if runResult := orch.RunWave(ctx, waveNum); runResult.IsFatal() {
+				errMsg := runResult.Errors[0].Error()
+				onStage(StageWaveExecute, StageStatusFailed, waveNum, errMsg)
+				publish("run_failed", map[string]string{"error": errMsg})
 				pkgNotificationBus.Notify(NotificationEvent{
 					Type:     NotifyAgentFailed,
 					Slug:     slug,
 					Title:    fmt.Sprintf("Wave %d Agent Failed", waveNum),
-					Message:  err.Error(),
+					Message:  errMsg,
 					Severity: "error",
 				})
 				return
@@ -309,20 +320,22 @@ func runWaveLoop(
 			}
 		} else {
 			// Backward compatibility: monolithic finalize when no tracker.
-			finalizeResult, err := engine.FinalizeWave(ctx, engine.FinalizeWaveOpts{
+			finalizeResult := engine.FinalizeWave(ctx, engine.FinalizeWaveOpts{
 				IMPLPath: implPath,
 				RepoPath: repoPath,
 				WaveNum:  waveNum,
 			})
-			if err != nil {
-				onStage(StageWaveMerge, StageStatusFailed, waveNum, err.Error())
-				publish("run_failed", map[string]string{"error": err.Error()})
+			if finalizeResult.IsFatal() {
+				errMsg := finalizeResult.Errors[0].Error()
+				onStage(StageWaveMerge, StageStatusFailed, waveNum, errMsg)
+				publish("run_failed", map[string]string{"error": errMsg})
 				return
 			}
-			if finalizeResult.StubReport != nil && len(finalizeResult.StubReport.Hits) > 0 {
-				publish("stub_report", finalizeResult.StubReport)
+			finalizeData := finalizeResult.GetData()
+			if finalizeData.StubReport != nil && len(finalizeData.StubReport.Hits) > 0 {
+				publish("stub_report", finalizeData.StubReport)
 			}
-			for _, gates := range finalizeResult.GateResults {
+			for _, gates := range finalizeData.GateResults {
 				for _, gate := range gates {
 					publish("quality_gate_result", gate)
 					if gate.FromCache {
@@ -336,8 +349,8 @@ func runWaveLoop(
 				}
 			}
 			// Wiring gap events (E35): engine now carries WiringReport in FinalizeWaveResult.
-			if finalizeResult.WiringReport != nil && !finalizeResult.WiringReport.Valid {
-				for _, gap := range finalizeResult.WiringReport.Gaps {
+			if finalizeData.WiringReport != nil && !finalizeData.WiringReport.Valid {
+				for _, gap := range finalizeData.WiringReport.Gaps {
 					publish("wiring_gap", map[string]interface{}{
 						"wave":                waveNum,
 						"symbol":              gap.Declaration.Symbol,
@@ -350,8 +363,8 @@ func runWaveLoop(
 				}
 				publish("wiring_gaps_summary", map[string]interface{}{
 					"wave":      waveNum,
-					"gap_count": len(finalizeResult.WiringReport.Gaps),
-					"summary":   finalizeResult.WiringReport.Summary,
+					"gap_count": len(finalizeData.WiringReport.Gaps),
+					"summary":   finalizeData.WiringReport.Summary,
 				})
 			}
 		}
@@ -369,11 +382,11 @@ func runWaveLoop(
 		for _, ag := range wave.Agents {
 			completedLetters = append(completedLetters, ag.ID)
 		}
-		if err := engine.UpdateIMPLStatus(implPath, completedLetters); err != nil {
+		if updateResult := engine.UpdateIMPLStatus(implPath, completedLetters); updateResult.IsFatal() {
 			// Non-fatal: mirrors the CLI behaviour (warning, not abort).
 			publish("update_status_failed", map[string]string{
 				"wave":  slug,
-				"error": err.Error(),
+				"error": updateResult.Errors[0].Error(),
 			})
 		}
 
@@ -422,13 +435,13 @@ func runWaveLoop(
 	}
 
 	// After all waves complete — mark IMPL done (E15 + E18)
-	if err := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
+	if markResult := engine.MarkIMPLComplete(ctx, engine.MarkIMPLCompleteOpts{
 		IMPLPath: implPath,
 		RepoPath: repoPath,
 		Date:     time.Now().Format("2006-01-02"),
-	}); err != nil {
+	}); markResult.IsFatal() {
 		// Non-fatal: log but don't fail the run
-		publish("mark_complete_warning", map[string]string{"error": err.Error()})
+		publish("mark_complete_warning", map[string]string{"error": markResult.Errors[0].Error()})
 	}
 
 	onStage(StageComplete, StageStatusComplete, 0, "")
@@ -458,6 +471,7 @@ func publishPipelineStep(publish func(string, interface{}), slug string, waveNum
 // Non-fatal steps (scan_stubs, validate_integration, fix_go_mod, cleanup)
 // log errors but continue. Fatal step failures return an error.
 func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationModel string, publish func(string, interface{})) error {
+	ctx := context.Background()
 	tracker := defaultPipelineTracker
 
 	// Determine resume point: skip steps already completed/skipped.
@@ -479,7 +493,7 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 	}
 
 	// Load manifest once for steps that need it.
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		return fmt.Errorf("runFinalizeSteps: load manifest: %w", err)
 	}
@@ -491,7 +505,7 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		_ = tracker.Start(slug, waveNum, StepVerifyCommits)
 		publishPipelineStep(publish, slug, waveNum, StepVerifyCommits, StepRunning, "")
 
-		verifyResult := protocol.VerifyCommits(implPath, waveNum, repoPath)
+		verifyResult := protocol.VerifyCommits(ctx, implPath, waveNum, repoPath)
 		if verifyResult.IsFatal() {
 			err := fmt.Errorf("verify-commits fatal error")
 			_ = tracker.Fail(slug, waveNum, StepVerifyCommits, err)
@@ -544,8 +558,8 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		publishPipelineStep(publish, slug, waveNum, StepRunGates, StepRunning, "")
 
 		stateDir := filepath.Join(repoPath, ".saw-state")
-		cache := gatecache.New(stateDir, 5*time.Minute)
-		gateResults := protocol.RunGatesWithCache(manifest, waveNum, repoPath, cache)
+		cache := gatecache.New(ctx, stateDir, 5*time.Minute)
+		gateResults := protocol.RunGatesWithCache(ctx, manifest, waveNum, repoPath, cache, slog.Default())
 		if gateResults.IsFatal() {
 			err := fmt.Errorf("run-gates fatal error")
 			_ = tracker.Fail(slug, waveNum, StepRunGates, err)
@@ -564,7 +578,7 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 			}
 			if gate.Required && !gate.Passed {
 				// Attempt closed-loop gate retry (R3) before failing.
-				retryResult, retryErr := engine.ClosedLoopGateRetry(context.Background(), engine.ClosedLoopRetryOpts{
+				retryResult := engine.ClosedLoopGateRetry(context.Background(), engine.ClosedLoopRetryOpts{
 					IMPLPath:     implPath,
 					RepoPath:     repoPath,
 					WaveNum:      waveNum,
@@ -577,9 +591,9 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 						publish(ev.Event, ev.Data)
 					},
 				})
-				if retryErr == nil && retryResult != nil && retryResult.Fixed {
+				if retryResult.IsSuccess() && retryResult.GetData().Fixed {
 					// Re-run all gates to confirm after fix.
-					gateResults = protocol.RunGatesWithCache(manifest, waveNum, repoPath, cache)
+					gateResults = protocol.RunGatesWithCache(ctx, manifest, waveNum, repoPath, cache, slog.Default())
 					if gateResults.IsSuccess() {
 						allPass := true
 						for _, g := range gateResults.Data.Gates {
@@ -661,11 +675,17 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		_ = tracker.Start(slug, waveNum, StepMergeAgents)
 		publishPipelineStep(publish, slug, waveNum, StepMergeAgents, StepRunning, "")
 
-		mergeResult, err := protocol.MergeAgents(implPath, waveNum, repoPath, "")
-		if err != nil {
-			_ = tracker.Fail(slug, waveNum, StepMergeAgents, err)
-			publishPipelineStep(publish, slug, waveNum, StepMergeAgents, StepFailed, err.Error())
-			return fmt.Errorf("merge-agents: %w", err)
+		mergeResult := protocol.MergeAgents(protocol.MergeAgentsOpts{
+			Ctx:          ctx,
+			ManifestPath: implPath,
+			WaveNum:      waveNum,
+			RepoDir:      repoPath,
+		})
+		if mergeResult.IsFatal() {
+			mergeErr := fmt.Errorf("merge-agents: %s", mergeResult.Errors[0].Error())
+			_ = tracker.Fail(slug, waveNum, StepMergeAgents, mergeErr)
+			publishPipelineStep(publish, slug, waveNum, StepMergeAgents, StepFailed, mergeErr.Error())
+			return mergeErr
 		}
 		if !mergeResult.IsSuccess() {
 			err := fmt.Errorf("merge-agents encountered conflicts")
@@ -700,7 +720,7 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		_ = tracker.Start(slug, waveNum, StepVerifyBuild)
 		publishPipelineStep(publish, slug, waveNum, StepVerifyBuild, StepRunning, "")
 
-		verifyBuildResult := protocol.VerifyBuild(implPath, repoPath)
+		verifyBuildResult := protocol.VerifyBuild(ctx, implPath, repoPath)
 		if verifyBuildResult.IsFatal() {
 			err := fmt.Errorf("verify-build fatal error")
 			_ = tracker.Fail(slug, waveNum, StepVerifyBuild, err)
@@ -752,7 +772,7 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		_ = tracker.Start(slug, waveNum, StepIntegrationAgent)
 		publishPipelineStep(publish, slug, waveNum, StepIntegrationAgent, StepRunning, "")
 
-		intAgentErr := engine.RunIntegrationAgent(context.Background(), engine.RunIntegrationAgentOpts{
+		intAgentResult := engine.RunIntegrationAgent(context.Background(), engine.RunIntegrationAgentOpts{
 			IMPLPath: implPath,
 			RepoPath: repoPath,
 			WaveNum:  waveNum,
@@ -761,11 +781,11 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		}, func(ev engine.Event) {
 			publish(ev.Event, ev.Data)
 		})
-		if intAgentErr != nil {
-			log.Printf("runFinalizeSteps: integration-agent non-fatal error: %v", intAgentErr)
+		if intAgentResult.IsFatal() {
+			log.Printf("runFinalizeSteps: integration-agent non-fatal error: %v", intAgentResult.Errors[0])
 			_ = tracker.Complete(slug, waveNum, StepIntegrationAgent)
 			publishPipelineStep(publish, slug, waveNum, StepIntegrationAgent, StepComplete,
-				fmt.Sprintf("non-fatal: %v", intAgentErr))
+				fmt.Sprintf("non-fatal: %v", intAgentResult.Errors[0]))
 		} else {
 			_ = tracker.Complete(slug, waveNum, StepIntegrationAgent)
 			publishPipelineStep(publish, slug, waveNum, StepIntegrationAgent, StepComplete, "")
@@ -783,8 +803,8 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		_ = tracker.Start(slug, waveNum, StepCleanup)
 		publishPipelineStep(publish, slug, waveNum, StepCleanup, StepRunning, "")
 
-		if _, err := protocol.Cleanup(implPath, waveNum, repoPath); err != nil {
-			log.Printf("runFinalizeSteps: cleanup non-fatal error: %v", err)
+		if cleanupResult := protocol.Cleanup(ctx, implPath, waveNum, repoPath, slog.Default()); cleanupResult.IsFatal() {
+			log.Printf("runFinalizeSteps: cleanup non-fatal error: %v", cleanupResult.Errors[0])
 		}
 		_ = tracker.Complete(slug, waveNum, StepCleanup)
 		publishPipelineStep(publish, slug, waveNum, StepCleanup, StepComplete, "")
@@ -844,7 +864,8 @@ func (s *Server) handleWaveAgentRerun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	scopeHint := body.ScopeHint
-	if rc, err := retry.BuildRetryAttempt(implPath, letter, 2); err == nil {
+	if retryRes := retry.BuildRetryAttempt(context.Background(), implPath, letter, 2); retryRes.IsSuccess() {
+		rc := retryRes.GetData()
 		if rc.PromptText != "" {
 			if scopeHint != "" {
 				scopeHint = rc.PromptText + "\n" + scopeHint
@@ -1031,7 +1052,7 @@ func waveAgentsHaveCommitsWithManifest(repoPath, implPath, slug string, waveNum 
 	// Build per-agent repo map from file ownership (cross-repo support).
 	agentRepoDir := make(map[string]string) // agent ID -> repo dir
 	if implPath != "" {
-		if manifest, err := protocol.Load(implPath); err == nil {
+		if manifest, err := protocol.Load(context.Background(), implPath); err == nil {
 			repoParent := filepath.Dir(repoPath)
 			for _, agent := range agents {
 				for _, fo := range manifest.FileOwnership {

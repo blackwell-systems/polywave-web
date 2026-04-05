@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -30,7 +31,7 @@ func runValidate(args []string) error {
 
 	manifestPath := fs.Arg(0)
 
-	res := protocol.FullValidate(manifestPath, protocol.FullValidateOpts{
+	res := protocol.FullValidate(context.Background(), manifestPath, protocol.FullValidateOpts{
 		AutoFix: *autoFix,
 	})
 

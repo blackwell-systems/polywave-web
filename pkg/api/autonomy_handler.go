@@ -33,8 +33,8 @@ func (s *Server) handleSaveAutonomy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate level using the canonical parser.
-	if _, err := autonomy.ParseLevel(string(cfg.Level)); err != nil {
-		http.Error(w, "invalid autonomy level: "+err.Error(), http.StatusBadRequest)
+	if parseResult := autonomy.ParseLevel(string(cfg.Level)); parseResult.IsFatal() {
+		http.Error(w, "invalid autonomy level: "+parseResult.Errors[0].Message, http.StatusBadRequest)
 		return
 	}
 

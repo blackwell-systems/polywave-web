@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -47,14 +48,15 @@ func runAnalyzeDeps(args []string) error {
 		}
 	}
 
-	// Call SDK analyzer
-	result, err := analyzer.AnalyzeDeps(repoRoot, targets)
-	if err != nil {
-		return fmt.Errorf("analyze-deps: %w", err)
+	// Call SDK analyzer (BuildGraph + ToOutput replaces removed AnalyzeDeps)
+	graphResult := analyzer.BuildGraph(context.Background(), repoRoot, targets)
+	if graphResult.IsFatal() {
+		return fmt.Errorf("analyze-deps: %s", graphResult.Errors[0].Error())
 	}
+	output := analyzer.ToOutput(graphResult.GetData())
 
 	// Output YAML
-	data, err := yaml.Marshal(result)
+	data, err := yaml.Marshal(output)
 	if err != nil {
 		return fmt.Errorf("analyze-deps: failed to marshal YAML: %w", err)
 	}

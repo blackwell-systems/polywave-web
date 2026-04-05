@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
 
 	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
@@ -36,7 +38,8 @@ func runRunGates(args []string) error {
 	manifestPath := fs.Arg(0)
 
 	// Load the manifest
-	manifest, err := protocol.Load(manifestPath)
+	ctx := context.Background()
+	manifest, err := protocol.Load(ctx, manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("run-gates: manifest file not found: %s", manifestPath)
@@ -45,7 +48,7 @@ func runRunGates(args []string) error {
 	}
 
 	// Run gates
-	gateResults := protocol.RunGatesWithCache(manifest, *waveFlag, *repoDirFlag, nil)
+	gateResults := protocol.RunGatesWithCache(ctx, manifest, *waveFlag, *repoDirFlag, nil, slog.Default())
 	if gateResults.IsFatal() {
 		return fmt.Errorf("run-gates fatal error")
 	}

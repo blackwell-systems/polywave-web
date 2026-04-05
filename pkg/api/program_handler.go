@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -135,7 +136,7 @@ func buildPipelineData(repos []config.RepoEntry, activeRuns *sync.Map) ([]Pipeli
 				slug := strings.TrimSuffix(strings.TrimPrefix(name, "IMPL-"), ".yaml")
 				title := slug
 				fullPath := filepath.Join(completeDir, name)
-				if m, err := protocol.Load(fullPath); err == nil && m.Title != "" {
+				if m, err := protocol.Load(context.Background(), fullPath); err == nil && m.Title != "" {
 					title = m.Title
 				}
 				entry := PipelineEntry{
@@ -165,7 +166,7 @@ func buildPipelineData(repos []config.RepoEntry, activeRuns *sync.Map) ([]Pipeli
 				slug := strings.TrimSuffix(strings.TrimPrefix(name, "IMPL-"), ".yaml")
 				title := slug
 				fullPath := filepath.Join(activeDir, name)
-				if m, err := protocol.Load(fullPath); err == nil && m.Title != "" {
+				if m, err := protocol.Load(context.Background(), fullPath); err == nil && m.Title != "" {
 					title = m.Title
 				}
 
@@ -191,7 +192,8 @@ func buildPipelineData(repos []config.RepoEntry, activeRuns *sync.Map) ([]Pipeli
 
 		// 3. Load queued items from queue manager
 		mgr := queue.NewManager(repoPath)
-		if items, err := mgr.List(); err == nil {
+		if listResult := mgr.List(); listResult.IsSuccess() {
+			items := listResult.GetData().Items
 			for i, item := range items {
 				if entryExists(entries, item.Slug) {
 					if item.Status == "blocked" {
@@ -248,7 +250,7 @@ func enrichImplWithWaves(implSlug, repoPath string) []ImplWaveInfo {
 		return nil
 	}
 
-	manifest, err := protocol.Load(implPath)
+	manifest, err := protocol.Load(context.Background(), implPath)
 	if err != nil {
 		return nil
 	}
@@ -319,8 +321,8 @@ func (s *Server) handleGetProgramStatus(w http.ResponseWriter, r *http.Request) 
 
 	// Sync program status from disk before returning (E32).
 	if programPath, repoPath, resolveErr := service.ResolveProgramPath(deps, slug); resolveErr == nil {
-		if syncErr := engine.SyncProgramStatusFromDisk(programPath, repoPath); syncErr != nil {
-			log.Printf("handleGetProgramStatus: SyncProgramStatusFromDisk warning: %v", syncErr)
+		if syncResult := engine.SyncProgramStatusFromDisk(programPath, repoPath); syncResult.IsFatal() {
+			log.Printf("handleGetProgramStatus: SyncProgramStatusFromDisk warning: %v", syncResult.Errors[0])
 		}
 	}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -39,19 +40,19 @@ func runSetCompletion(args []string) error {
 	}
 
 	// Load manifest.
-	manifest, err := protocol.Load(manifestPath)
+	manifest, err := protocol.Load(context.Background(), manifestPath)
 	if err != nil {
 		return fmt.Errorf("set-completion: failed to load manifest: %w", err)
 	}
 
 	// Register completion report.
-	if err := protocol.SetCompletionReport(manifest, agentID, report); err != nil {
-		return fmt.Errorf("set-completion: %w", err)
+	if setResult := protocol.SetCompletionReport(manifest, agentID, report); setResult.IsFatal() {
+		return fmt.Errorf("set-completion: %s", setResult.Errors[0].Message)
 	}
 
 	// Save manifest back.
-	if err := protocol.Save(manifest, manifestPath); err != nil {
-		return fmt.Errorf("set-completion: failed to save manifest: %w", err)
+	if saveResult := protocol.Save(context.Background(), manifest, manifestPath); saveResult.IsFatal() {
+		return fmt.Errorf("set-completion: failed to save manifest: %s", saveResult.Errors[0].Message)
 	}
 
 	fmt.Printf("✓ Completion report registered for agent %s\n", agentID)

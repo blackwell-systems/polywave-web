@@ -211,18 +211,18 @@ Instructions:
 		sawRepo = filepath.Join(home, "code", "scout-and-wave")
 	}
 
-	err := engine.RunScout(ctx, engine.RunScoutOpts{
+	scoutResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:     systemPrompt,
 		RepoPath:    s.cfg.RepoPath,
 		SAWRepoPath: sawRepo,
 		IMPLOutPath: implPath,
 	}, onChunk)
 
-	if err != nil {
+	if scoutResult.IsFatal() {
 		if ctx.Err() != nil {
 			publish("revise_cancelled", map[string]string{"run_id": runID})
 		} else {
-			publish("revise_failed", map[string]string{"run_id": runID, "error": err.Error()})
+			publish("revise_failed", map[string]string{"run_id": runID, "error": scoutResult.Errors[0].Error()})
 		}
 		return
 	}

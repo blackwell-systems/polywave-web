@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -213,7 +214,8 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 
 		// 3. Load queued items from queue manager
 		mgr := queue.NewManager(repoPath)
-		if items, err := mgr.List(); err == nil {
+		if listResult := mgr.List(); listResult.IsSuccess() {
+			items := listResult.GetData().Items
 			for i, item := range items {
 				if entryExists(entries, item.Slug) {
 					if item.Status == "blocked" {
@@ -290,7 +292,7 @@ func entryExists(entries []PipelineEntry, slug string) bool {
 // loadManifestResult wraps protocol.Load into a Result[protocol.IMPLManifest],
 // providing unified success-checking via .IsSuccess() across pipeline handler callsites.
 func loadManifestResult(path string) result.Result[protocol.IMPLManifest] {
-	m, err := protocol.Load(path)
+	m, err := protocol.Load(context.Background(), path)
 	if err != nil || m == nil {
 		return result.NewFailure[protocol.IMPLManifest]([]result.SAWError{
 			{

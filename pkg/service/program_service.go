@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -113,24 +114,25 @@ func ReplanProgram(deps Deps, slug string, reason string, failedTier int) error 
 	publish := makeProgramPublisher(deps, slug)
 
 	go func() {
-		result, err := engine.ReplanProgram(engine.ReplanProgramOpts{
+		replanResult := engine.ReplanProgram(engine.ReplanProgramOpts{
 			ProgramManifestPath: programPath,
 			Reason:              reason,
 			FailedTier:          failedTier,
 			PlannerModel:        plannerModel,
 		})
-		if err != nil {
-			log.Printf("ReplanProgram(%s) error: %v", slug, err)
+		if replanResult.IsFatal() {
+			log.Printf("ReplanProgram(%s) error: %v", slug, replanResult.Errors[0])
 			publish("program_replan_failed", map[string]string{
 				"program_slug": slug,
-				"error":        err.Error(),
+				"error":        replanResult.Errors[0].Error(),
 			})
 			return
 		}
+		replanData := replanResult.GetData()
 		publish("program_replan_complete", map[string]interface{}{
 			"program_slug":      slug,
-			"validation_passed": result.ValidationPassed,
-			"changes_summary":   result.ChangesSummary,
+			"validation_passed": replanData.ValidationPassed,
+			"changes_summary":   replanData.ChangesSummary,
 		})
 	}()
 
@@ -225,7 +227,7 @@ func runProgramTier(
 		}
 
 		// Check completion by examining the manifest
-		implManifest, err := protocol.Load(implPath)
+		implManifest, err := protocol.Load(context.Background(), implPath)
 		if err != nil {
 			publish("program_blocked", map[string]interface{}{
 				"program_slug": programSlug,
@@ -274,7 +276,7 @@ func runProgramTier(
 
 	// Run tier gates
 	log.Printf("runProgramTier: running tier gates for tier %d", tierNumber)
-	gateRes := protocol.RunTierGate(manifest, tierNumber, repoPath)
+	gateRes := protocol.RunTierGate(context.Background(), manifest, tierNumber, repoPath)
 	if gateRes.IsFatal() {
 		publish("program_blocked", map[string]interface{}{
 			"program_slug": programSlug,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -43,7 +44,8 @@ func runUpdateAgentPrompt(args []string) error {
 	newPrompt := string(promptBytes)
 
 	// Load manifest
-	manifest, err := protocol.Load(manifestPath)
+	ctx := context.Background()
+	manifest, err := protocol.Load(ctx, manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("update-agent-prompt: manifest file not found: %s", manifestPath)
@@ -52,13 +54,13 @@ func runUpdateAgentPrompt(args []string) error {
 	}
 
 	// Update agent prompt
-	if err := protocol.UpdateAgentPrompt(manifest, *agentID, newPrompt); err != nil {
-		return fmt.Errorf("update-agent-prompt: %w", err)
+	if updateResult := protocol.UpdateAgentPrompt(manifest, *agentID, newPrompt); updateResult.IsFatal() {
+		return fmt.Errorf("update-agent-prompt: %s", updateResult.Errors[0].Message)
 	}
 
 	// Save manifest back
-	if err := protocol.Save(manifest, manifestPath); err != nil {
-		return fmt.Errorf("update-agent-prompt: failed to save manifest: %w", err)
+	if saveResult := protocol.Save(ctx, manifest, manifestPath); saveResult.IsFatal() {
+		return fmt.Errorf("update-agent-prompt: failed to save manifest: %s", saveResult.Errors[0].Message)
 	}
 
 	fmt.Printf("✓ Agent %s prompt updated\n", *agentID)
