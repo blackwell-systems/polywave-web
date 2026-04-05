@@ -87,13 +87,18 @@ file_ownership:
     agent: A
     wave: 1
     action: new
+  - file: file2.go
+    agent: A
+    wave: 1
+    action: new
 waves:
   - number: 1
     agents:
       - id: A
-        task: Implement file1.go
+        task: Implement file1 and file2
         files:
           - file1.go
+          - file2.go
 `
 	if err := os.WriteFile(manifestPath, []byte(manifestYAML), 0644); err != nil {
 		t.Fatalf("failed to write test manifest: %v", err)

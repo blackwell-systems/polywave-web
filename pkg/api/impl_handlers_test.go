@@ -90,13 +90,17 @@ file_ownership:
   - file: pkg/example/foo.go
     agent: A
     wave: 1
+  - file: pkg/example/bar.go
+    agent: A
+    wave: 1
 waves:
   - number: 1
     agents:
       - id: A
-        task: Implement foo
+        task: Implement foo and bar
         files:
           - pkg/example/foo.go
+          - pkg/example/bar.go
 `
 	tmpFile := createTempYAML(t, yamlContent)
 	defer os.Remove(tmpFile)

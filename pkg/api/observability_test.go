@@ -260,15 +260,17 @@ func TestHandleObsCostBreakdown(t *testing.T) {
 		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
 	}
 
-	var breakdown map[string]float64
+	var breakdown struct {
+		PerAgent map[string]float64 `json:"PerAgent"`
+	}
 	if err := json.NewDecoder(w.Body).Decode(&breakdown); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if breakdown["A"] != 1.00 {
-		t.Errorf("expected A=1.00, got %f", breakdown["A"])
+	if breakdown.PerAgent["A"] != 1.00 {
+		t.Errorf("expected A=1.00, got %f", breakdown.PerAgent["A"])
 	}
-	if breakdown["B"] != 2.50 {
-		t.Errorf("expected B=2.50, got %f", breakdown["B"])
+	if breakdown.PerAgent["B"] != 2.50 {
+		t.Errorf("expected B=2.50, got %f", breakdown.PerAgent["B"])
 	}
 }
 

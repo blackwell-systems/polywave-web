@@ -22,12 +22,17 @@ waves:
   - number: 1
     agents:
       - id: "A"
-        task: "Implement file1.go"
+        task: "Implement file1.go and file2.go"
         files:
           - "file1.go"
+          - "file2.go"
         dependencies: []
 file_ownership:
   - file: "file1.go"
+    agent: "A"
+    wave: 1
+    depends_on: []
+  - file: "file2.go"
     agent: "A"
     wave: 1
     depends_on: []
