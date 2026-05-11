@@ -47,22 +47,22 @@ suitability_assessment: |
   was skipped. Current codebase shows 22% completion (orb animations exist and exceed
   v1 spec). This v2 IMPL reflects actual current state and completes remaining 78%.
 
-test_command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npm test
-lint_command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx prettier --check src/
+test_command: cd /Users/dayna.blackwell/code/polywave-web/web && npm test
+lint_command: cd /Users/dayna.blackwell/code/polywave-web/web && npx prettier --check src/
 state: SCOUT_PENDING
 
 quality_gates:
   level: standard
   gates:
     - type: format
-      command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx prettier --check src/
+      command: cd /Users/dayna.blackwell/code/polywave-web/web && npx prettier --check src/
       required: true
       fix: false
     - type: build
-      command: cd /Users/dayna.blackwell/code/scout-and-wave-web && npm run build --prefix web && go build -o saw ./cmd/saw
+      command: cd /Users/dayna.blackwell/code/polywave-web && npm run build --prefix web && go build -o polywave ./cmd/saw
       required: true
     - type: test
-      command: cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npm test
+      command: cd /Users/dayna.blackwell/code/polywave-web/web && npm test
       required: false
 
 scaffolds: []
@@ -286,7 +286,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/index.css && \
           npm run build
           ```
@@ -326,14 +326,14 @@ waves:
           **Tests:**
           Build verification - ensure Tailwind generates animation classes:
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npm run build && \
           grep "animate-fade-in-up" dist/assets/*.css
           ```
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check tailwind.config.js && \
           npm run build
           ```
@@ -378,7 +378,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/StageTimeline.tsx && \
           npm run build
           ```
@@ -417,7 +417,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/WaveBoard.tsx && \
           npm run build
           ```
@@ -468,7 +468,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/AgentCard.tsx && \
           npm run build && \
           npm test -- AgentCard
@@ -522,7 +522,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/ProgressBar.tsx && \
           npm run build
           ```
@@ -581,7 +581,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/SuitabilityBadge.tsx && \
           npm run build
           ```
@@ -626,7 +626,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/CommandPalette.tsx && \
           npm run build
           ```
@@ -670,7 +670,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/ResumeBanner.tsx && \
           npm run build
           ```
@@ -714,7 +714,7 @@ waves:
 
           **Verification gate:**
           ```bash
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && \
+          cd /Users/dayna.blackwell/code/polywave-web/web && \
           npx prettier --check src/components/ImplList.tsx && \
           npm run build
           ```

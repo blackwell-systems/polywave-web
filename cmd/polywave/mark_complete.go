@@ -9,8 +9,8 @@ import (
 	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
-// runMarkComplete writes a SAW:COMPLETE marker to an IMPL doc.
-// Command: saw mark-complete <impl-doc-path> [--date YYYY-MM-DD]
+// runMarkComplete writes a polywave:complete marker to an IMPL doc.
+// Command: polywave mark-complete <impl-doc-path> [--date YYYY-MM-DD]
 // Exits 0 on success, exits 1 on error.
 func runMarkComplete(args []string) error {
 	fs := flag.NewFlagSet("mark-complete", flag.ContinueOnError)

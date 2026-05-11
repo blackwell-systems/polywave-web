@@ -14,9 +14,9 @@ lint_command: go vet ./...
 
 ## Features Completed
 - **yaml-structured-sections-v3**: completed 2026-03-10, 0 waves, 0 agents
-  - IMPL doc: ../scout-and-wave/docs/IMPL/IMPL-yaml-structured-sections-v3.yaml
+  - IMPL doc: ../polywave/docs/IMPL/IMPL-yaml-structured-sections-v3.yaml
 - **yaml-structured-sections-v3**: completed 2026-03-10, 0 waves, 0 agents
-  - IMPL doc: ../scout-and-wave/docs/IMPL/IMPL-yaml-structured-sections-v3.yaml
+  - IMPL doc: ../polywave/docs/IMPL/IMPL-yaml-structured-sections-v3.yaml
 - **live-execution-viz**: completed 2026-03-15, 2 waves, 5 agents
   - IMPL doc: docs/IMPL/complete/IMPL-live-execution-viz.yaml
 - **usereducer-wave-events**: completed 2026-03-16, 2 waves, 2 agents
@@ -50,7 +50,7 @@ lint_command: go vet ./...
 - **sse-improvements**: completed 2026-03-19, 1 waves, 5 agents
   - IMPL doc: docs/IMPL/complete/IMPL-sse-improvements.yaml
 - **critic-agent**: completed 2026-03-19, 3 waves, 7 agents
-  - IMPL doc: ../scout-and-wave/docs/IMPL/complete/IMPL-critic-agent.yaml
+  - IMPL doc: ../polywave/docs/IMPL/complete/IMPL-critic-agent.yaml
 - **greenfield-ux**: completed 2026-03-19, 1 waves, 7 agents
   - IMPL doc: docs/IMPL/complete/IMPL-greenfield-ux.yaml
 - **new-user-experience**: completed 2026-03-19, 1 waves, 5 agents
@@ -58,7 +58,7 @@ lint_command: go vet ./...
 - **react-refactor**: completed 2026-03-19, 4 waves, 9 agents
   - IMPL doc: docs/IMPL/complete/IMPL-react-refactor.yaml
 - **webapp-ux-onboarding**: completed 2026-03-20, 3 waves, 6 agents
-  - IMPL doc: /Users/dayna.blackwell/code/scout-and-wave/docs/IMPL/complete/IMPL-webapp-ux-onboarding.yaml
+  - IMPL doc: /Users/dayna.blackwell/code/polywave/docs/IMPL/complete/IMPL-webapp-ux-onboarding.yaml
 - **unified-impl-navigation**: completed 2026-03-20, 2 waves, 4 agents
   - IMPL doc: docs/IMPL/complete/IMPL-unified-impl-navigation.yaml
 - **program-dep-graph**: completed 2026-03-21, 2 waves, 3 agents

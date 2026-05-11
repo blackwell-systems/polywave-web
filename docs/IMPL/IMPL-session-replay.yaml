@@ -34,23 +34,23 @@ suitability_assessment: |
 
   Recommendation: Clear speedup. Proceed.
 
-test_command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./... && cd web && npx tsc --noEmit"
-lint_command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go vet ./..."
+test_command: "cd /Users/dayna.blackwell/code/polywave-web && go test ./... && cd web && npx tsc --noEmit"
+lint_command: "cd /Users/dayna.blackwell/code/polywave-web && go vet ./..."
 
 quality_gates:
   level: standard
   gates:
     - type: build
-      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./cmd/saw"
+      command: "cd /Users/dayna.blackwell/code/polywave-web && go build ./cmd/saw"
       required: true
     - type: lint
-      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go vet ./..."
+      command: "cd /Users/dayna.blackwell/code/polywave-web && go vet ./..."
       required: true
     - type: typecheck
-      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit"
+      command: "cd /Users/dayna.blackwell/code/polywave-web/web && npx tsc --noEmit"
       required: true
     - type: test
-      command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./pkg/api/... -run TestReplay -count=1"
+      command: "cd /Users/dayna.blackwell/code/polywave-web && go test ./pkg/api/... -run TestReplay -count=1"
       required: true
 
 scaffolds: []
@@ -245,7 +245,7 @@ waves:
 
           ### Verification gate
           ```
-          cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./cmd/saw && go test ./pkg/api/ -run TestEventRecorder -count=1 -v
+          cd /Users/dayna.blackwell/code/polywave-web && go build ./cmd/saw && go test ./pkg/api/ -run TestEventRecorder -count=1 -v
           ```
 
           ### Constraints
@@ -301,7 +301,7 @@ waves:
 
           ### Verification gate
           ```
-          cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./cmd/saw && go test ./pkg/api/ -run TestHandleGetReplay -count=1 -v
+          cd /Users/dayna.blackwell/code/polywave-web && go build ./cmd/saw && go test ./pkg/api/ -run TestHandleGetReplay -count=1 -v
           ```
 
           ### Constraints
@@ -376,7 +376,7 @@ waves:
 
           ### Verification gate
           ```
-          cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npx tsc --noEmit
+          cd /Users/dayna.blackwell/code/polywave-web/web && npx tsc --noEmit
           ```
 
           ### Constraints
@@ -437,7 +437,7 @@ waves:
 
           ### Verification gate
           ```
-          cd /Users/dayna.blackwell/code/scout-and-wave-web && go build ./cmd/saw && cd web && npx tsc --noEmit
+          cd /Users/dayna.blackwell/code/polywave-web && go build ./cmd/saw && cd web && npx tsc --noEmit
           ```
 
           ### Constraints
@@ -461,11 +461,11 @@ post_merge_checklist:
     - title: "Build verification"
       items:
         - description: "Rebuild Go binary"
-          command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go build -o saw ./cmd/saw"
+          command: "cd /Users/dayna.blackwell/code/polywave-web && go build -o polywave ./cmd/saw"
         - description: "Rebuild frontend assets"
-          command: "cd /Users/dayna.blackwell/code/scout-and-wave-web/web && npm run build"
+          command: "cd /Users/dayna.blackwell/code/polywave-web/web && npm run build"
         - description: "Run full test suite"
-          command: "cd /Users/dayna.blackwell/code/scout-and-wave-web && go test ./..."
+          command: "cd /Users/dayna.blackwell/code/polywave-web && go test ./..."
     - title: "Smoke tests"
       items:
         - description: "Start a wave execution, verify event-log.jsonl is created in .saw-state/<slug>/"

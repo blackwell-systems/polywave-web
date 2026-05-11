@@ -22,7 +22,7 @@ type fakeWaveOrch struct {
 	transitionErr error
 }
 
-// validTransitions mirrors the SAW state machine for the states runWave uses.
+// validTransitions mirrors the Polywave state machine for the states runWave uses.
 var fakeValidTransitions = map[protocol.ProtocolState][]protocol.ProtocolState{
 	protocol.StateScoutPending:  {protocol.StateReviewed, protocol.StateNotSuitable},
 	protocol.StateReviewed:      {protocol.StateWavePending},

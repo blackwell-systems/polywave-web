@@ -161,7 +161,7 @@ func newFreezeCheckCmd() *cobra.Command {
 func newMarkCompleteCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:                "mark-complete",
-		Short:              "Write SAW:COMPLETE marker to an IMPL doc",
+		Short:              "Write polywave:complete marker to an IMPL doc",
 		DisableFlagParsing: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runMarkComplete(args)

@@ -1,4 +1,4 @@
-title: Fix API drift between scout-and-wave-go SDK and scout-and-wave-web service layer
+title: Fix API drift between polywave-go SDK and polywave-web service layer
 feature_slug: sdk-api-drift-fix
 verdict: SUITABLE_WITH_CAVEATS
 suitability_assessment: |
@@ -28,8 +28,8 @@ suitability_assessment: |
     Sequential baseline: ~10 min
     Time savings: ~-1 min (overhead slightly exceeds savings)
     Recommendation: Marginal gains. Value is in tracking, not parallelization.
-test_command: cd /Users/dayna.blackwell/workspace/code/scout-and-wave-web && GOWORK=off go build ./...
-lint_command: cd /Users/dayna.blackwell/workspace/code/scout-and-wave-web && go vet ./...
+test_command: cd /Users/dayna.blackwell/workspace/code/polywave-web && GOWORK=off go build ./...
+lint_command: cd /Users/dayna.blackwell/workspace/code/polywave-web && go vet ./...
 file_ownership:
     - file: pkg/service/impl_service.go
       agent: A
@@ -52,27 +52,27 @@ interface_contracts:
       description: Load IMPL manifest from YAML file (now requires context.Context)
       definition: |
         func Load(ctx context.Context, path string) (*IMPLManifest, error)
-      location: pkg/protocol/manifest.go (in scout-and-wave-go)
+      location: pkg/protocol/manifest.go (in polywave-go)
     - name: protocol.Cleanup
       description: Clean up worktrees after wave merge (now requires context.Context, *slog.Logger; returns result.Result)
       definition: |
         func Cleanup(ctx context.Context, manifestPath string, waveNum int, repoDir string, logger *slog.Logger) result.Result[CleanupData]
-      location: pkg/protocol/cleanup.go (in scout-and-wave-go)
+      location: pkg/protocol/cleanup.go (in polywave-go)
     - name: engine.MergeWave
       description: Merge wave branches (return type changed from error to result.Result[MergeData])
       definition: |
         func MergeWave(ctx context.Context, opts RunMergeOpts) result.Result[MergeData]
-      location: pkg/engine/runner.go (in scout-and-wave-go)
+      location: pkg/engine/runner.go (in polywave-go)
     - name: engine.ResolveConflicts
       description: Resolve merge conflicts (return type changed from error to result.Result[ResolveData])
       definition: |
         func ResolveConflicts(ctx context.Context, opts ResolveConflictsOpts) result.Result[ResolveData]
-      location: pkg/engine/resolve_conflicts.go (in scout-and-wave-go)
+      location: pkg/engine/resolve_conflicts.go (in polywave-go)
     - name: engine.FixBuildFailure
       description: AI-assisted build fix (return type changed from error to result.Result[FixBuildData])
       definition: |
         func FixBuildFailure(ctx context.Context, opts FixBuildOpts) result.Result[FixBuildData]
-      location: pkg/engine/fix_build.go (in scout-and-wave-go)
+      location: pkg/engine/fix_build.go (in polywave-go)
 waves:
     - number: 1
       agents:
@@ -111,7 +111,7 @@ waves:
 
             Add these imports:
             - `"log/slog"`
-            - `"github.com/blackwell-systems/scout-and-wave-go/pkg/result"`
+            - `"github.com/blackwell-systems/polywave-go/pkg/result"`
 
             **Change 2:** Update MergeFunc var declaration.
 
@@ -309,7 +309,7 @@ waves:
             The mock assigns MergeFunc with old return type (error). Update to return
             result.Result[engine.MergeData].
 
-            Add `"github.com/blackwell-systems/scout-and-wave-go/pkg/result"` to imports.
+            Add `"github.com/blackwell-systems/polywave-go/pkg/result"` to imports.
 
             Find this exact code:
             ```go
@@ -332,33 +332,33 @@ waves:
 
             ## Interfaces
 
-            All interfaces are defined by the upstream SDK (scout-and-wave-go). No new
+            All interfaces are defined by the upstream SDK (polywave-go). No new
             interfaces are introduced. See interface_contracts in the IMPL doc header.
 
             ## Tests
 
             Run existing tests after changes to verify nothing regresses:
             ```
-            cd /Users/dayna.blackwell/workspace/code/scout-and-wave-web && GOWORK=off go test ./pkg/service/...
+            cd /Users/dayna.blackwell/workspace/code/polywave-web && GOWORK=off go test ./pkg/service/...
             ```
 
             ## Verification gate
             ```
-            cd /Users/dayna.blackwell/workspace/code/scout-and-wave-web && GOWORK=off go build ./... && go vet ./pkg/service/...
+            cd /Users/dayna.blackwell/workspace/code/polywave-web && GOWORK=off go build ./... && go vet ./pkg/service/...
             ```
 
             Postcondition checks:
             ```bash
             # Verify no remaining old-style protocol.Load calls (should be 0)
-            grep -c 'protocol\.Load([^c]' /Users/dayna.blackwell/workspace/code/scout-and-wave-web/pkg/service/impl_service.go /Users/dayna.blackwell/workspace/code/scout-and-wave-web/pkg/service/merge_service.go
+            grep -c 'protocol\.Load([^c]' /Users/dayna.blackwell/workspace/code/polywave-web/pkg/service/impl_service.go /Users/dayna.blackwell/workspace/code/polywave-web/pkg/service/merge_service.go
             # Expected: 0 for both files
 
             # Verify result import exists in merge_service.go
-            grep -c 'pkg/result' /Users/dayna.blackwell/workspace/code/scout-and-wave-web/pkg/service/merge_service.go
+            grep -c 'pkg/result' /Users/dayna.blackwell/workspace/code/polywave-web/pkg/service/merge_service.go
             # Expected: 1
 
             # Verify slog import exists in merge_service.go
-            grep -c '"log/slog"' /Users/dayna.blackwell/workspace/code/scout-and-wave-web/pkg/service/merge_service.go
+            grep -c '"log/slog"' /Users/dayna.blackwell/workspace/code/polywave-web/pkg/service/merge_service.go
             # Expected: 1
             ```
 
@@ -376,10 +376,10 @@ quality_gates:
     level: standard
     gates:
         - type: build
-          command: cd /Users/dayna.blackwell/workspace/code/scout-and-wave-web && GOWORK=off go build ./...
+          command: cd /Users/dayna.blackwell/workspace/code/polywave-web && GOWORK=off go build ./...
           required: true
         - type: lint
-          command: cd /Users/dayna.blackwell/workspace/code/scout-and-wave-web && go vet ./...
+          command: cd /Users/dayna.blackwell/workspace/code/polywave-web && go vet ./...
           required: true
 completion_reports:
     A:
