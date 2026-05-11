@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/interview"
+	"github.com/blackwell-systems/polywave-go/pkg/interview"
 )
 
 // InterviewStartRequest is the JSON body for POST /api/interview/start.

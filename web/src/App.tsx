@@ -70,9 +70,9 @@ function WelcomeCard({ onOpenSettings }: { onOpenSettings: () => void }): JSX.El
     <div className="flex flex-col items-center justify-center h-full px-8">
       <div className="border border-border rounded-lg bg-card p-8 max-w-lg w-full space-y-6">
         <div className="space-y-2">
-          <h2 className="text-lg font-semibold text-foreground">Welcome to Scout-and-Wave</h2>
+          <h2 className="text-lg font-semibold text-foreground">Welcome to Polywave</h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Scout-and-Wave uses AI agents to plan and implement features in parallel.
+            Polywave uses AI agents to plan and implement features in parallel.
             A Scout agent reads your codebase and produces an implementation plan (IMPL).
             You review the plan, approve it, and parallel Wave agents implement it in isolated git branches.
           </p>

@@ -10,8 +10,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // handleImplChat handles POST /api/impl/{slug}/chat.
@@ -116,10 +116,10 @@ func (s *Server) runImplChatAgent(ctx context.Context, runID, slug, message stri
 	}
 
 	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("SAW_REPO")
+	sawRepo := os.Getenv("POLYWAVE_REPO")
 	if sawRepo == "" {
 		home, _ := os.UserHomeDir()
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+		sawRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	// Read config fresh so model changes in Settings take effect immediately.
@@ -133,7 +133,7 @@ func (s *Server) runImplChatAgent(ctx context.Context, runID, slug, message stri
 	chatResult := engine.RunChat(ctx, engine.RunChatOpts{
 		IMPLPath:    implPath,
 		RepoPath:    s.cfg.RepoPath,
-		SAWRepoPath: sawRepo,
+		PolywaveRepoPath: sawRepo,
 		History:     engineHistory,
 		Message:     message,
 		ChatModel:   chatModel,

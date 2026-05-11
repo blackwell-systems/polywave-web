@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
 )
 
 // programTestDeps creates a Deps struct for testing with optional repos config.
@@ -21,7 +21,7 @@ func programTestDeps(t *testing.T, repos []config.RepoEntry) Deps {
 		}
 		cfg := sawConfig{Repos: repos}
 		data, _ := json.Marshal(cfg)
-		configPath := filepath.Join(tmpDir, "saw.config.json")
+		configPath := filepath.Join(tmpDir, "polywave.config.json")
 		os.WriteFile(configPath, data, 0644)
 	}
 
@@ -29,7 +29,7 @@ func programTestDeps(t *testing.T, repos []config.RepoEntry) Deps {
 		RepoPath: tmpDir,
 		IMPLDir:  filepath.Join(tmpDir, "docs", "IMPL"),
 		ConfigPath: func(repoPath string) string {
-			return filepath.Join(repoPath, "saw.config.json")
+			return filepath.Join(repoPath, "polywave.config.json")
 		},
 	}
 }
@@ -355,7 +355,7 @@ func TestCreateProgramFromIMPLs_NoRepoPath(t *testing.T) {
 	deps := Deps{
 		RepoPath: "",
 		ConfigPath: func(repoPath string) string {
-			return filepath.Join(repoPath, "saw.config.json")
+			return filepath.Join(repoPath, "polywave.config.json")
 		},
 	}
 	_, err := CreateProgramFromIMPLs(deps, []string{"x"}, "", "", "")

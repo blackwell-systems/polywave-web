@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // AmendImplRequest is the JSON body for POST /api/impl/{slug}/amend.

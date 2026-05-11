@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/journal"
+	"github.com/blackwell-systems/polywave-go/pkg/journal"
 )
 
 // JournalResponse wraps full journal entries
@@ -258,5 +258,5 @@ func readJournalEntries(indexPath string) ([]journal.ToolEntry, error) {
 
 // Helper to construct journal path (for directory checks)
 func (s *Server) getJournalPath(wave, agent string) string {
-	return filepath.Join(s.cfg.RepoPath, ".saw-state", wave, agent)
+	return filepath.Join(s.cfg.RepoPath, ".polywave-state", wave, agent)
 }

@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 	"github.com/fsnotify/fsnotify"
 )
 
@@ -164,7 +164,7 @@ func (s *Server) startIMPLWatcher(fallbackDir string) {
 
 		// Debounce: coalesce rapid fsnotify events into a single broadcast.
 		// When multiple files change in quick succession (e.g., scout writes
-		// IMPL doc + .saw-state files), only one impl_list_updated event is
+		// IMPL doc + .polywave-state files), only one impl_list_updated event is
 		// sent after 500ms of quiet.
 		var debounceTimer *time.Timer
 		var debounceMu sync.Mutex

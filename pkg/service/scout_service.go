@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // scoutRuns tracks running scout contexts for cancellation.
@@ -63,7 +63,7 @@ func CancelScout(_ Deps, runID string) error {
 	return nil
 }
 
-// sawConfig mirrors the saw.config.json structure needed for scout model lookup.
+// sawConfig mirrors the polywave.config.json structure needed for scout model lookup.
 type sawConfig struct {
 	Agent struct {
 		ScoutModel string `json:"scout_model"`
@@ -95,7 +95,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 	implOut := filepath.Join(repoRoot, "docs", "IMPL", "IMPL-"+slug+".yaml")
 
 	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("SAW_REPO")
+	sawRepo := os.Getenv("POLYWAVE_REPO")
 	if sawRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -105,12 +105,12 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 			})
 			return
 		}
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+		sawRepo = filepath.Join(home, "code", "polywave")
 	}
 
-	// Read saw.config.json to pick up the configured scout model.
+	// Read polywave.config.json to pick up the configured scout model.
 	scoutModel := ""
-	cfgPath := filepath.Join(repoRoot, "saw.config.json")
+	cfgPath := filepath.Join(repoRoot, "polywave.config.json")
 	if deps.ConfigPath != nil {
 		cfgPath = deps.ConfigPath(repoRoot)
 	}
@@ -132,7 +132,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		ScoutOpts: engine.RunScoutOpts{
 			Feature:             feature,
 			RepoPath:            repoRoot,
-			SAWRepoPath:         sawRepo,
+			PolywaveRepoPath:         sawRepo,
 			IMPLOutPath:         implOut,
 			ScoutModel:          scoutModel,
 			UseStructuredOutput: true,

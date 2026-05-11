@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // makeMinimalIMPL writes a minimal valid IMPL YAML to implDir/IMPL-{slug}.yaml

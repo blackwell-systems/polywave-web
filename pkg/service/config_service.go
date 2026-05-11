@@ -11,8 +11,8 @@ import (
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // ValidateModelName ensures a model name contains only safe characters.
@@ -31,10 +31,10 @@ func ValidateModelName(model string) error {
 	return nil
 }
 
-// GetConfig reads saw.config.json from the repo and returns a config.SAWConfig.
+// GetConfig reads polywave.config.json from the repo and returns a config.PolywaveConfig.
 // If the config file does not exist, returns a default config with the
 // repo from deps.RepoPath as the single entry.
-func GetConfig(deps Deps) (*config.SAWConfig, error) {
+func GetConfig(deps Deps) (*config.PolywaveConfig, error) {
 	res := config.Load(deps.RepoPath)
 	if res.IsSuccess() {
 		return res.GetData(), nil
@@ -42,7 +42,7 @@ func GetConfig(deps Deps) (*config.SAWConfig, error) {
 	// If not found, return default with repo from deps
 	if len(res.Errors) > 0 && res.Errors[0].Code == result.CodeConfigNotFound {
 		repoName := filepath.Base(deps.RepoPath)
-		return &config.SAWConfig{
+		return &config.PolywaveConfig{
 			Repos: []config.RepoEntry{{Name: repoName, Path: deps.RepoPath}},
 		}, nil
 	}
@@ -50,8 +50,8 @@ func GetConfig(deps Deps) (*config.SAWConfig, error) {
 }
 
 // SaveConfig validates model names and atomically writes the config to
-// saw.config.json using the SDK's config.Save (temp file + rename).
-func SaveConfig(deps Deps, cfg *config.SAWConfig) error {
+// polywave.config.json using the SDK's config.Save (temp file + rename).
+func SaveConfig(deps Deps, cfg *config.PolywaveConfig) error {
 	// Validate all model name fields
 	models := map[string]string{
 		"scout_model":       cfg.Agent.ScoutModel,

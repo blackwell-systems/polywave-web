@@ -5,7 +5,7 @@ package build
 import (
 	"io/fs"
 
-	web "github.com/blackwell-systems/scout-and-wave-web/web"
+	web "github.com/blackwell-systems/polywave-web/web"
 )
 
 // StaticFS returns the embedded static files for the web server build.

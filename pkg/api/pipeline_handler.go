@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/queue"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/queue"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // implProgramInfo holds the parent program identifiers for a given IMPL slug.
@@ -294,7 +294,7 @@ func entryExists(entries []PipelineEntry, slug string) bool {
 func loadManifestResult(path string) result.Result[protocol.IMPLManifest] {
 	m, err := protocol.Load(context.Background(), path)
 	if err != nil || m == nil {
-		return result.NewFailure[protocol.IMPLManifest]([]result.SAWError{
+		return result.NewFailure[protocol.IMPLManifest]([]result.PolywaveError{
 			{
 				Code:     "E001",
 				Message:  "failed to load IMPL manifest",

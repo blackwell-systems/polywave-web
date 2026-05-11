@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@
 // Package api — codereview_bridge_stub.go
 //
 // Stub implementation of runCodeReviewStep used when the "codereview" build
-// tag is NOT set (i.e. before pkg/codereview is available in scout-and-wave-go).
+// tag is NOT set (i.e. before pkg/codereview is available in polywave-go).
 //
 // This stub skips the code review step gracefully so the rest of the pipeline
 // continues to work. The integration wave (Agent E) should replace this with

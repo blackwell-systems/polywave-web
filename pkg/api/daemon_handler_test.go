@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // TestHandleDaemonStatus_NotRunning verifies that when no daemon has been

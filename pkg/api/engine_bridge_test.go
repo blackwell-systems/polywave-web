@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // TestMakeEnginePublisher verifies that the closure returned by makeEnginePublisher

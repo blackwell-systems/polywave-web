@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // handleGetImplRaw serves GET /api/impl/{slug}/raw
@@ -205,16 +205,16 @@ Instructions:
 	}
 
 	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("SAW_REPO")
+	sawRepo := os.Getenv("POLYWAVE_REPO")
 	if sawRepo == "" {
 		home, _ := os.UserHomeDir()
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+		sawRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	scoutResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:     systemPrompt,
 		RepoPath:    s.cfg.RepoPath,
-		SAWRepoPath: sawRepo,
+		PolywaveRepoPath: sawRepo,
 		IMPLOutPath: implPath,
 	}, onChunk)
 

@@ -3,11 +3,11 @@
 // Package api — codereview_bridge.go
 //
 // This file is compiled only when the "codereview" build tag is set, which
-// requires that github.com/blackwell-systems/scout-and-wave-go/pkg/codereview
-// is available (i.e. after Agent A's branch is merged into scout-and-wave-go).
+// requires that github.com/blackwell-systems/polywave-go/pkg/codereview
+// is available (i.e. after Agent A's branch is merged into polywave-go).
 //
 // The integration wave (Agent E) should:
-//  1. Merge scout-and-wave-go Agent A branch so pkg/codereview exists.
+//  1. Merge polywave-go Agent A branch so pkg/codereview exists.
 //  2. Remove the //go:build codereview constraint from this file.
 //  3. Delete codereview_bridge_stub.go.
 //  4. Wire QualityConfig.CodeReview and AgentConfig.ReviewModel in types.go.
@@ -18,12 +18,12 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/codereview"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/codereview"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
 )
 
 // runCodeReviewStep executes the AI code review gate as pipeline Step 7.5.
-// It reads CodeReviewConfig from saw.config.json and calls codereview.RunCodeReview.
+// It reads CodeReviewConfig from polywave.config.json and calls codereview.RunCodeReview.
 // Returns a non-nil error only when the review is configured as blocking AND fails.
 func runCodeReviewStep(
 	ctx context.Context,

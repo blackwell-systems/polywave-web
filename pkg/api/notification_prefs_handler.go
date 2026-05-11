@@ -6,14 +6,14 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
 )
 
 // configWithNotifications wraps the full config including notifications.
 // This is used locally to read/write the notifications field without
-// modifying the main config.SAWConfig type until integration.
+// modifying the main config.PolywaveConfig type until integration.
 type configWithNotifications struct {
-	config.SAWConfig
+	config.PolywaveConfig
 	Notifications NotificationPreferences `json:"notifications"`
 }
 
@@ -28,10 +28,10 @@ func defaultNotificationPreferences() NotificationPreferences {
 }
 
 // handleGetNotificationPrefs serves GET /api/notifications/preferences.
-// Returns the current notification preferences from saw.config.json.
+// Returns the current notification preferences from polywave.config.json.
 // If the config doesn't exist or has no notifications field, returns defaults.
 func (s *Server) handleGetNotificationPrefs(w http.ResponseWriter, r *http.Request) {
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
+	configPath := filepath.Join(s.cfg.RepoPath, "polywave.config.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -59,7 +59,7 @@ func (s *Server) handleGetNotificationPrefs(w http.ResponseWriter, r *http.Reque
 }
 
 // handleSaveNotificationPrefs serves POST /api/notifications/preferences.
-// Saves notification preferences to saw.config.json under the "notifications" key.
+// Saves notification preferences to polywave.config.json under the "notifications" key.
 // Preserves all other config fields using atomic write pattern.
 func (s *Server) handleSaveNotificationPrefs(w http.ResponseWriter, r *http.Request) {
 	var prefs NotificationPreferences
@@ -68,7 +68,7 @@ func (s *Server) handleSaveNotificationPrefs(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
+	configPath := filepath.Join(s.cfg.RepoPath, "polywave.config.json")
 
 	// Read existing config to preserve all other fields
 	var cfg configWithNotifications

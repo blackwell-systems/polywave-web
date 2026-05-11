@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // bootstrapRunRequest is the JSON body for POST /api/bootstrap/run.
@@ -89,7 +89,7 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 	implOut := filepath.Join(repoRoot, "docs", "IMPL", "IMPL-bootstrap.yaml")
 
 	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("SAW_REPO")
+	sawRepo := os.Getenv("POLYWAVE_REPO")
 	if sawRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -99,7 +99,7 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 			})
 			return
 		}
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+		sawRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	// Read config to pick up the configured scout model.
@@ -123,7 +123,7 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 	execResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:             feature,
 		RepoPath:            repoRoot,
-		SAWRepoPath:         sawRepo,
+		PolywaveRepoPath:         sawRepo,
 		IMPLOutPath:         implOut,
 		ScoutModel:          scoutModel,
 		UseStructuredOutput: true,

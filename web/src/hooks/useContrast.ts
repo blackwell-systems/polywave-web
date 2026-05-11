@@ -85,14 +85,14 @@ function removeHighContrastStyles(): void {
 
 export function useContrast(): [boolean, () => void] {
   const [isHighContrast, setIsHighContrast] = useState<boolean>(() => {
-    return localStorage.getItem('saw-contrast') === 'high'
+    return localStorage.getItem('polywave-contrast') === 'high'
   })
 
   // Load contrast preference from config on mount
   useEffect(() => {
     getConfig().then(config => {
       const contrast = config.appearance?.contrast ?? 'normal'
-      localStorage.setItem('saw-contrast', contrast)
+      localStorage.setItem('polywave-contrast', contrast)
       setIsHighContrast(contrast === 'high')
     }).catch(() => {})
   }, [])
@@ -101,11 +101,11 @@ export function useContrast(): [boolean, () => void] {
   useEffect(() => {
     function handleContrastChanged(e: Event) {
       const contrast = (e as CustomEvent<string>).detail ?? 'normal'
-      localStorage.setItem('saw-contrast', contrast)
+      localStorage.setItem('polywave-contrast', contrast)
       setIsHighContrast(contrast === 'high')
     }
-    window.addEventListener('saw:contrast-changed', handleContrastChanged)
-    return () => window.removeEventListener('saw:contrast-changed', handleContrastChanged)
+    window.addEventListener('polywave:contrast-changed', handleContrastChanged)
+    return () => window.removeEventListener('polywave:contrast-changed', handleContrastChanged)
   }, [])
 
   // Apply .high-contrast class + inject computed contrast overrides
@@ -132,7 +132,7 @@ export function useContrast(): [boolean, () => void] {
   function toggle() {
     const next = !isHighContrast
     setIsHighContrast(next)
-    localStorage.setItem('saw-contrast', next ? 'high' : 'normal')
+    localStorage.setItem('polywave-contrast', next ? 'high' : 'normal')
 
     // Persist in background
     getConfig().then(async config => {

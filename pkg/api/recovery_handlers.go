@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/gatecache"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/gatecache"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // defaultPipelineTracker is the package-level pipeline tracker instance.
@@ -191,9 +191,9 @@ func executeStep(step PipelineStep, implPath, repoPath string, wave int) error {
 		if err != nil {
 			return fmt.Errorf("failed to load manifest: %w", err)
 		}
-		stateDir := filepath.Join(repoPath, ".saw-state")
+		stateDir := filepath.Join(repoPath, ".polywave-state")
 		cache := gatecache.New(context.Background(), stateDir, 5*time.Minute)
-		result := protocol.RunGatesWithCache(context.Background(), manifest, wave, repoPath, cache, slog.Default())
+		result := protocol.RunGatesWithCache(context.Background(), manifest, wave, repoPath, implPath, cache, slog.Default())
 		if result.IsFatal() {
 			return fmt.Errorf("run-gates fatal error")
 		}

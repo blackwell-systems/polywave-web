@@ -20,7 +20,7 @@ interface ScoutLauncherProps {
   activeRepo?: RepoEntry | null  // currently active repo (pre-select in dropdown)
 }
 
-const SESSION_KEY = 'saw-scout-context'
+const SESSION_KEY = 'polywave-scout-context'
 
 const inputCls = "w-full bg-muted border border-border rounded px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
 

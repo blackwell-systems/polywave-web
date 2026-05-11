@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/interview"
+	"github.com/blackwell-systems/polywave-go/pkg/interview"
 )
 
 // newTestServerForInterview creates a minimal Server for interview handler tests.

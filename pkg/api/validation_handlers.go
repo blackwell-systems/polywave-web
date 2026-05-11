@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // ValidateIntegrationResponse is the JSON response for
@@ -29,7 +29,7 @@ type ValidateWiringResponse struct {
 // toIntegrationResult wraps a protocol.ValidateIntegration return into Result[T].
 func toIntegrationResult(report *protocol.IntegrationReport, err error) result.Result[protocol.IntegrationReport] {
 	if err != nil {
-		return result.NewFailure[protocol.IntegrationReport]([]result.SAWError{
+		return result.NewFailure[protocol.IntegrationReport]([]result.PolywaveError{
 			{Code: "E_INTEGRATION_VALIDATE", Message: err.Error(), Severity: "fatal"},
 		})
 	}

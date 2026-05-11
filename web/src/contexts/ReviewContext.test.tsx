@@ -80,7 +80,7 @@ describe('ReviewContext', () => {
     )
     fireEvent.click(screen.getByTestId('toggle-wiring'))
     expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'saw-review-panels',
+      'polywave-review-panels',
       expect.stringContaining('wiring')
     )
   })

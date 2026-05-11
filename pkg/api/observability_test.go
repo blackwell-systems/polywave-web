@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/observability"
+	"github.com/blackwell-systems/polywave-go/pkg/observability"
 )
 
 // mockObsStore implements observability.Store for testing.

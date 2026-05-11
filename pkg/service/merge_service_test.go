@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // mergeTestPublisher implements EventPublisher for testing.

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // SSEPublisher implements service.EventPublisher by delegating to the existing

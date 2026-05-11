@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // TestHandleListPrograms_Empty tests that an empty programs list returns [].
@@ -26,9 +26,9 @@ func TestHandleListPrograms_Empty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Write saw.config.json pointing to this repo
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	// Write polywave.config.json pointing to this repo
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -131,9 +131,9 @@ feature_slug: done-impl
 		t.Fatal(err)
 	}
 
-	// Write saw.config.json
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	// Write polywave.config.json
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -210,8 +210,8 @@ func TestHandleListPrograms_StandaloneEmpty(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -258,8 +258,8 @@ func TestHandleGetProgramStatus_NotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -349,8 +349,8 @@ completion:
 		t.Fatal(err)
 	}
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -436,8 +436,8 @@ completion:
 		t.Fatal(err)
 	}
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -523,10 +523,10 @@ completion:
 		t.Fatal(err)
 	}
 
-	// Write saw.config.json pointing to tmpDir as the repo root.
-	cfg := SAWConfig{Repos: []RepoEntry{{Name: "repo", Path: tmpDir}}}
+	// Write polywave.config.json pointing to tmpDir as the repo root.
+	cfg := PolywaveConfig{Repos: []RepoEntry{{Name: "repo", Path: tmpDir}}}
 	cfgData, _ := json.Marshal(cfg)
-	if err := os.WriteFile(filepath.Join(tmpDir, "saw.config.json"), cfgData, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(tmpDir, "polywave.config.json"), cfgData, 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -588,8 +588,8 @@ completion:
 		t.Fatal(err)
 	}
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -684,7 +684,7 @@ func TestHandleAnalyzeImpls_TooFewSlugs(t *testing.T) {
 		svcDeps: service.Deps{
 			RepoPath: tmpDir,
 			ConfigPath: func(repoPath string) string {
-				return filepath.Join(repoPath, "saw.config.json")
+				return filepath.Join(repoPath, "polywave.config.json")
 			},
 		},
 	}
@@ -743,8 +743,8 @@ waves:
 	os.WriteFile(filepath.Join(implDir, "IMPL-impl-one.yaml"), []byte(impl1), 0644)
 	os.WriteFile(filepath.Join(implDir, "IMPL-impl-two.yaml"), []byte(impl2), 0644)
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	cfgData, _ := json.Marshal(SAWConfig{Repos: []RepoEntry{{Name: "test", Path: repoDir}}})
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	cfgData, _ := json.Marshal(PolywaveConfig{Repos: []RepoEntry{{Name: "test", Path: repoDir}}})
 	os.WriteFile(configPath, cfgData, 0644)
 
 	server := &Server{
@@ -752,7 +752,7 @@ waves:
 		svcDeps: service.Deps{
 			RepoPath: tmpDir,
 			ConfigPath: func(repoPath string) string {
-				return filepath.Join(repoPath, "saw.config.json")
+				return filepath.Join(repoPath, "polywave.config.json")
 			},
 		},
 	}
@@ -786,7 +786,7 @@ func TestHandleCreateFromImpls_TooFewSlugs(t *testing.T) {
 		svcDeps: service.Deps{
 			RepoPath: tmpDir,
 			ConfigPath: func(repoPath string) string {
-				return filepath.Join(repoPath, "saw.config.json")
+				return filepath.Join(repoPath, "polywave.config.json")
 			},
 		},
 	}
@@ -824,8 +824,8 @@ waves:
 `
 	os.WriteFile(filepath.Join(implDir, "IMPL-feature-alpha.yaml"), []byte(impl1), 0644)
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	cfgData, _ := json.Marshal(SAWConfig{Repos: []RepoEntry{{Name: "test", Path: repoDir}}})
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	cfgData, _ := json.Marshal(PolywaveConfig{Repos: []RepoEntry{{Name: "test", Path: repoDir}}})
 	os.WriteFile(configPath, cfgData, 0644)
 
 	server := &Server{
@@ -834,7 +834,7 @@ waves:
 		svcDeps: service.Deps{
 			RepoPath: tmpDir,
 			ConfigPath: func(repoPath string) string {
-				return filepath.Join(repoPath, "saw.config.json")
+				return filepath.Join(repoPath, "polywave.config.json")
 			},
 		},
 	}
@@ -917,8 +917,8 @@ completion:
 		}
 	}
 
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)
@@ -1008,8 +1008,8 @@ func TestHandleExecuteTier_BackwardCompat(t *testing.T) {
 	}
 
 	// No PROGRAM manifest — this simulates a standalone IMPL scenario
-	configPath := filepath.Join(tmpDir, "saw.config.json")
-	config := SAWConfig{
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
+	config := PolywaveConfig{
 		Repos: []RepoEntry{{Name: "test-repo", Path: repoDir}},
 	}
 	configData, _ := json.Marshal(config)

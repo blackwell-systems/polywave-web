@@ -51,7 +51,7 @@ export default function PipelineView({ onSelectImpl, onSelectProgram, onClose }:
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-foreground">SAW Pipeline</h1>
+          <h1 className="text-2xl font-bold text-foreground">Polywave Pipeline</h1>
           <span className={`px-3 py-1 text-xs font-semibold uppercase rounded ${autonomyColors[autonomyLevel]}`}>
             {autonomyLevel}
           </span>

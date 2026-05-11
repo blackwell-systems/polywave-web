@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/autonomy"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/autonomy"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
 )
 
 // handleGetAutonomy serves GET /api/autonomy.
-// Returns the current autonomy config from saw.config.json,
+// Returns the current autonomy config from polywave.config.json,
 // or the default config (gated) if none exists.
 func (s *Server) handleGetAutonomy(w http.ResponseWriter, r *http.Request) {
 	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)

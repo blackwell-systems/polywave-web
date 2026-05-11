@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/journal"
+	"github.com/blackwell-systems/polywave-go/pkg/journal"
 )
 
 // setupTestJournal creates a test journal with sample data

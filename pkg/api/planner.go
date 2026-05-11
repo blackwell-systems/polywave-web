@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // PlannerRunRequest is the JSON body for POST /api/planner/run.
@@ -131,7 +131,7 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 	slug := plannerSlugify(description)
 	programOut := filepath.Join(repoRoot, "docs", "PROGRAM-"+slug+".yaml")
 
-	sawRepo := os.Getenv("SAW_REPO")
+	sawRepo := os.Getenv("POLYWAVE_REPO")
 	if sawRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
@@ -141,7 +141,7 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 			})
 			return
 		}
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+		sawRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	// Read planner model from config.
@@ -160,7 +160,7 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 	execResult := engine.RunPlanner(ctx, engine.RunPlannerOpts{
 		Description:    description,
 		RepoPath:       repoRoot,
-		SAWRepoPath:    sawRepo,
+		PolywaveRepoPath:    sawRepo,
 		ProgramOutPath: programOut,
 		PlannerModel:   plannerModel,
 	}, onChunk)

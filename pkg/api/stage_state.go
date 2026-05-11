@@ -50,7 +50,7 @@ type StageStateFile struct {
 	UpdatedAt    time.Time      `json:"updated_at"`
 }
 
-// stageManager persists stage transitions per slug to .saw-state/<slug>.json
+// stageManager persists stage transitions per slug to .polywave-state/<slug>.json
 // inside the IMPL directory. Safe for concurrent use.
 type stageManager struct {
 	mu      sync.Mutex
@@ -62,7 +62,7 @@ func newStageManager(implDir string) *stageManager {
 }
 
 func (m *stageManager) stateDir() string {
-	return filepath.Join(m.implDir, ".saw-state")
+	return filepath.Join(m.implDir, ".polywave-state")
 }
 
 func (m *stageManager) statePath(slug string) string {

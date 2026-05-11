@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/autonomy"
+	"github.com/blackwell-systems/polywave-go/pkg/autonomy"
 )
 
 // TestHandleGetAutonomy_Default verifies that when no config file exists,

@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // ScaffoldRerunResponse is the JSON body returned by POST /api/impl/{slug}/scaffold/rerun.
@@ -53,10 +53,10 @@ func (s *Server) handleScaffoldRerun(w http.ResponseWriter, r *http.Request) {
 // scaffold_cancelled. The engine itself publishes scaffold_started,
 // scaffold_output, scaffold_failed, and scaffold_complete.
 func (s *Server) runScaffoldAgent(ctx context.Context, slug, runID, implPath string) {
-	sawRepo := os.Getenv("SAW_REPO")
+	sawRepo := os.Getenv("POLYWAVE_REPO")
 	if sawRepo == "" {
 		home, _ := os.UserHomeDir()
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+		sawRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	onEvent := func(ev engine.Event) {

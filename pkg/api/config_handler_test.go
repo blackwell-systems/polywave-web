@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// TestConfigMigration_LegacyRepoPath verifies that a legacy saw.config.json
+// TestConfigMigration_LegacyRepoPath verifies that a legacy polywave.config.json
 // containing only the old "repo.path" field is automatically migrated to the
 // new "repos" registry on GET /api/config, and that the legacy "repo" field
 // is cleared from the response.
@@ -19,7 +19,7 @@ func TestConfigMigration_LegacyRepoPath(t *testing.T) {
 
 	// Write a legacy config: only the old repo.path field, no repos array.
 	legacyJSON := `{"repo":{"path":"/tmp/testrepo"}}`
-	configPath := filepath.Join(dir, "saw.config.json")
+	configPath := filepath.Join(dir, "polywave.config.json")
 	if err := os.WriteFile(configPath, []byte(legacyJSON), 0644); err != nil {
 		t.Fatalf("failed to write legacy config: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestConfigMigration_LegacyRepoPath(t *testing.T) {
 		t.Fatalf("expected status 200, got %d; body: %s", rr.Code, rr.Body.String())
 	}
 
-	var got SAWConfig
+	var got PolywaveConfig
 	if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -55,7 +55,7 @@ func TestConfigMigration_LegacyRepoPath(t *testing.T) {
 		t.Errorf("expected repos[0].path = %q, got %q", "/tmp/testrepo", got.Repos[0].Path)
 	}
 
-	// Legacy "repo" field no longer exists on config.SAWConfig; migration
+	// Legacy "repo" field no longer exists on config.PolywaveConfig; migration
 	// is handled inside config.Load so there's nothing to assert here.
 }
 
@@ -72,7 +72,7 @@ func TestConfigGetSave_ProvidersRoundTrip(t *testing.T) {
 			"bedrock":{"region":"us-west-2","access_key_id":"AKIA789"}
 		}
 	}`
-	configPath := filepath.Join(dir, "saw.config.json")
+	configPath := filepath.Join(dir, "polywave.config.json")
 	if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
 		t.Fatalf("failed to write config: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestConfigGetSave_ProvidersRoundTrip(t *testing.T) {
 		t.Fatalf("expected status 200, got %d; body: %s", rr.Code, rr.Body.String())
 	}
 
-	var got SAWConfig
+	var got PolywaveConfig
 	if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestConfigMigration_NoMigrationWhenReposPresent(t *testing.T) {
 	dir := t.TempDir()
 
 	modernJSON := `{"repos":[{"name":"main","path":"/home/user/project"}]}`
-	configPath := filepath.Join(dir, "saw.config.json")
+	configPath := filepath.Join(dir, "polywave.config.json")
 	if err := os.WriteFile(configPath, []byte(modernJSON), 0644); err != nil {
 		t.Fatalf("failed to write modern config: %v", err)
 	}
@@ -244,7 +244,7 @@ func TestConfigMigration_NoMigrationWhenReposPresent(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", rr.Code)
 	}
 
-	var got SAWConfig
+	var got PolywaveConfig
 	if err := json.NewDecoder(rr.Body).Decode(&got); err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}

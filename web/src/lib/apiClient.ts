@@ -16,7 +16,7 @@ import type {
   WorktreeBatchDeleteRequest,
   WorktreeBatchDeleteResponse,
   FileDiffResponse,
-  SAWConfig,
+  PolyConfig,
   ChatMessage,
   AgentContextResponse,
   ScoutContext,
@@ -161,8 +161,8 @@ export interface SawClient {
     rerunScaffold(slug: string): Promise<void>
   }
   config: {
-    get(): Promise<SAWConfig>
-    save(config: SAWConfig): Promise<void>
+    get(): Promise<PolyConfig>
+    save(config: PolyConfig): Promise<void>
     browse(path?: string): Promise<BrowseResult>
     browseNative(prompt?: string): Promise<string | null>
     validateRepo(path: string): Promise<{ valid: boolean; error?: string; error_code?: string }>
@@ -654,14 +654,14 @@ export function createHttpClient(): SawClient {
 
     // ── config namespace ──────────────────────────────────────────────────
     config: {
-      async get(): Promise<SAWConfig> {
+      async get(): Promise<PolyConfig> {
         const r = await fetch('/api/config')
         if (!r.ok) throw new Error(await r.text())
         const data = await r.json()
         return { ...data, repos: data.repos ?? [] }
       },
 
-      async save(config: SAWConfig): Promise<void> {
+      async save(config: PolyConfig): Promise<void> {
         const r = await fetch('/api/config', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

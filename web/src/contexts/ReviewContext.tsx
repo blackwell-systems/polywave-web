@@ -42,7 +42,7 @@ export function useReviewContext(): ReviewContextValue {
 export function ReviewProvider({ children }: { children: ReactNode }): JSX.Element {
   const [activePanels, setActivePanels] = useState<PanelKey[]>(() => {
     try {
-      const stored = localStorage.getItem('saw-review-panels')
+      const stored = localStorage.getItem('polywave-review-panels')
       if (stored) return JSON.parse(stored) as PanelKey[]
     } catch { /* ignore */ }
     return [...defaultPanels]
@@ -55,7 +55,7 @@ export function ReviewProvider({ children }: { children: ReactNode }): JSX.Eleme
   const togglePanel = useCallback((key: PanelKey) => {
     setActivePanels(prev => {
       const next = prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-      try { localStorage.setItem('saw-review-panels', JSON.stringify(next)) } catch { /* ignore */ }
+      try { localStorage.setItem('polywave-review-panels', JSON.stringify(next)) } catch { /* ignore */ }
       return next
     })
   }, [])

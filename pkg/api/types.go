@@ -1,9 +1,9 @@
 package api
 
 import (
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // APIResponse wraps an API handler result using the unified result.Result[T] type.
@@ -15,7 +15,7 @@ import (
 //	func handleFoo(...) result.Result[FooData] {
 //	    data, err := doFoo()
 //	    if err != nil {
-//	        return result.NewFailure[FooData]([]result.SAWError{{
+//	        return result.NewFailure[FooData]([]result.PolywaveError{{
 //	            Code: "E001", Message: err.Error(), Severity: "fatal",
 //	        }})
 //	    }
@@ -23,8 +23,8 @@ import (
 //	}
 type APIResponse[T any] = result.Result[T]
 
-// APIError is an alias for result.SAWError, used in API handler return values.
-type APIError = result.SAWError
+// APIError is an alias for result.PolywaveError, used in API handler return values.
+type APIError = result.PolywaveError
 
 // PreMortemRowEntry is one row of the pre-mortem risk table.
 type PreMortemRowEntry struct {
@@ -101,7 +101,7 @@ type FileOwnershipEntry struct {
 	Wave      int    `json:"wave"`
 	Action    string `json:"action"`     // "new", "modify", "delete", or ""
 	DependsOn string `json:"depends_on"` // populated when 4th column is "Depends On"
-	Repo      string `json:"repo,omitempty"` // 5th column for cross-repo waves (e.g. "scout-and-wave-web")
+	Repo      string `json:"repo,omitempty"` // 5th column for cross-repo waves (e.g. "polywave-web")
 }
 
 // WaveInfo describes one wave in the IMPL doc.
@@ -248,9 +248,9 @@ type FileDiffResponse struct {
 // unified config.RepoEntry type directly.
 type RepoEntry = config.RepoEntry
 
-// SAWConfig is a type alias for config.SAWConfig. All API handlers use the
-// unified config.SAWConfig type directly.
-type SAWConfig = config.SAWConfig
+// PolywaveConfig is a type alias for config.PolywaveConfig. All API handlers use the
+// unified config.PolywaveConfig type directly.
+type PolywaveConfig = config.PolywaveConfig
 
 // AgentConfig is a type alias for config.AgentConfig.
 type AgentConfig = config.AgentConfig

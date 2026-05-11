@@ -153,7 +153,7 @@ function hashToHue(str: string): number {
  * Uses the same theme-aware saturation/lightness as agent colors
  * so repo colors feel consistent with the rest of the UI.
  *
- * @param repoName - Repository name (e.g. "scout-and-wave-go")
+ * @param repoName - Repository name (e.g. "polywave-go")
  * @returns Hex color code (#rrggbb)
  */
 export function getRepoColor(repoName: string): string {

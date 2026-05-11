@@ -5,8 +5,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/notify"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/notify"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // mockAdapter records Send calls for verification.
@@ -23,7 +23,7 @@ func (m *mockAdapter) Send(_ context.Context, msg notify.Message) result.Result[
 	defer m.mu.Unlock()
 	m.messages = append(m.messages, msg)
 	if m.sendErr != nil {
-		return result.NewFailure[notify.SendData]([]result.SAWError{{Code: "SEND_FAILED", Message: m.sendErr.Error(), Severity: "fatal"}})
+		return result.NewFailure[notify.SendData]([]result.PolywaveError{{Code: "SEND_FAILED", Message: m.sendErr.Error(), Severity: "fatal"}})
 	}
 	return result.NewSuccess(notify.SendData{})
 }

@@ -29,15 +29,15 @@
   },
   "repos": [
     {
-      "name": "scout-and-wave-web",
+      "name": "polywave-web",
       "path": "/Users/dayna.blackwell/code/scout-and-wave-web"
     },
     {
-      "name": "scout-and-wave-go",
+      "name": "polywave-go",
       "path": "/Users/dayna.blackwell/code/scout-and-wave-go"
     },
     {
-      "name": "scout-and-wave",
+      "name": "polywave",
       "path": "/Users/dayna.blackwell/code/scout-and-wave"
     },
     {
@@ -47,6 +47,10 @@
     {
       "name": "vaultmux-server",
       "path": "/Users/dayna.blackwell/code/vaultmux-server"
+    },
+    {
+      "name": "agentskills-cli",
+      "path": "/Users/dayna.blackwell/code/agentskills-cli"
     }
   ],
   "webhooks": {

@@ -38,7 +38,7 @@ func TestWebhookHandler_GetAdapters_Empty(t *testing.T) {
 
 func TestWebhookHandler_GetAdapters_WithConfig(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "saw.config.json")
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
 
 	cfg := map[string]interface{}{
 		"webhooks": WebhookConfig{
@@ -84,7 +84,7 @@ func TestWebhookHandler_GetAdapters_WithConfig(t *testing.T) {
 func TestWebhookHandler_SaveAdapters(t *testing.T) {
 	tmpDir := t.TempDir()
 	// Create initial config with some other data
-	configPath := filepath.Join(tmpDir, "saw.config.json")
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
 	initial := map[string]interface{}{
 		"notifications": map[string]interface{}{"enabled": true},
 	}
@@ -182,7 +182,7 @@ func TestWebhookHandler_TestWebhook_IndexOutOfRange(t *testing.T) {
 
 	// Write empty webhook config
 	configData := []byte(`{"webhooks":{"enabled":true,"adapters":[]}}`)
-	os.WriteFile(filepath.Join(tmpDir, "saw.config.json"), configData, 0644)
+	os.WriteFile(filepath.Join(tmpDir, "polywave.config.json"), configData, 0644)
 
 	idx := 5
 	body, _ := json.Marshal(map[string]interface{}{"adapter_index": idx})

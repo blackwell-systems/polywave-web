@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/notify"
+	"github.com/blackwell-systems/polywave-go/pkg/notify"
 )
 
 // WebhookAdapterConfig represents a single adapter entry in the config file.
@@ -32,7 +32,7 @@ type configWithWebhooks struct {
 	Webhooks json.RawMessage `json:"webhooks,omitempty"`
 }
 
-// readWebhookConfig reads the webhook config from saw.config.json.
+// readWebhookConfig reads the webhook config from polywave.config.json.
 func readWebhookConfig(configPath string) (WebhookConfig, error) {
 	var wc WebhookConfig
 
@@ -58,7 +58,7 @@ func readWebhookConfig(configPath string) (WebhookConfig, error) {
 	return wc, nil
 }
 
-// writeWebhookConfig writes the webhook config to saw.config.json,
+// writeWebhookConfig writes the webhook config to polywave.config.json,
 // preserving all other fields using atomic write.
 func writeWebhookConfig(configPath string, wc WebhookConfig) error {
 	// Read existing config to preserve other fields
@@ -109,9 +109,9 @@ func writeWebhookConfig(configPath string, wc WebhookConfig) error {
 }
 
 // handleGetWebhookAdapters serves GET /api/webhooks.
-// Returns the current webhook adapter configuration from saw.config.json.
+// Returns the current webhook adapter configuration from polywave.config.json.
 func (s *Server) handleGetWebhookAdapters(w http.ResponseWriter, r *http.Request) {
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
+	configPath := filepath.Join(s.cfg.RepoPath, "polywave.config.json")
 	wc, err := readWebhookConfig(configPath)
 	if err != nil {
 		http.Error(w, "failed to read webhook config", http.StatusInternalServerError)
@@ -121,7 +121,7 @@ func (s *Server) handleGetWebhookAdapters(w http.ResponseWriter, r *http.Request
 }
 
 // handleSaveWebhookAdapters serves POST /api/webhooks.
-// Saves webhook adapter configuration to saw.config.json under the "webhooks" key.
+// Saves webhook adapter configuration to polywave.config.json under the "webhooks" key.
 func (s *Server) handleSaveWebhookAdapters(w http.ResponseWriter, r *http.Request) {
 	var wc WebhookConfig
 	if err := decodeJSON(r, &wc); err != nil {
@@ -129,7 +129,7 @@ func (s *Server) handleSaveWebhookAdapters(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
+	configPath := filepath.Join(s.cfg.RepoPath, "polywave.config.json")
 	if err := writeWebhookConfig(configPath, wc); err != nil {
 		http.Error(w, "failed to save webhook config", http.StatusInternalServerError)
 		return
@@ -155,7 +155,7 @@ func (s *Server) handleTestWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Look up adapter config by index from saved config
-	configPath := filepath.Join(s.cfg.RepoPath, "saw.config.json")
+	configPath := filepath.Join(s.cfg.RepoPath, "polywave.config.json")
 	wc, err := readWebhookConfig(configPath)
 	if err != nil {
 		respondJSON(w, http.StatusOK, map[string]interface{}{

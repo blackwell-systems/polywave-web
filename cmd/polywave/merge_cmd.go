@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // runMerge parses --impl and --wave flags and merges the given wave number

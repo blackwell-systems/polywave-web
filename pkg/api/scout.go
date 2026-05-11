@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // ScoutRunRequest is the JSON body for POST /api/scout/run.
@@ -42,7 +42,7 @@ func (s *Server) handleScoutRun(w http.ResponseWriter, r *http.Request) {
 	runID, err := service.StartScout(deps, req.Feature, req.Repo)
 	var startResult result.Result[string]
 	if err != nil {
-		startResult = result.NewFailure[string]([]result.SAWError{{
+		startResult = result.NewFailure[string]([]result.PolywaveError{{
 			Code:     "E001",
 			Message:  err.Error(),
 			Severity: "fatal",
@@ -137,7 +137,7 @@ func (s *Server) handleScoutRerun(w http.ResponseWriter, r *http.Request) {
 	runID, err := service.StartScout(deps, feature, "")
 	var rerunResult result.Result[string]
 	if err != nil {
-		rerunResult = result.NewFailure[string]([]result.SAWError{{
+		rerunResult = result.NewFailure[string]([]result.PolywaveError{{
 			Code:     "E001",
 			Message:  err.Error(),
 			Severity: "fatal",
@@ -161,7 +161,7 @@ func (s *Server) makeDeps() service.Deps {
 		IMPLDir:   s.cfg.IMPLDir,
 		Publisher: publisher,
 		ConfigPath: func(repoPath string) string {
-			return filepath.Join(repoPath, "saw.config.json")
+			return filepath.Join(repoPath, "polywave.config.json")
 		},
 	}
 }

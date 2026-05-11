@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // LoadManifest loads a YAML manifest using the Protocol SDK.
@@ -25,7 +25,7 @@ func LoadManifest(yamlPath string) (*protocol.IMPLManifest, error) {
 // Uses protocol.FullValidate to run all validation checks (struct validation,
 // duplicate key detection, unknown key detection, typed-block validation),
 // ensuring the web app enforces the same rules as the CLI.
-func ValidateManifest(yamlPath string) ([]result.SAWError, error) {
+func ValidateManifest(yamlPath string) ([]result.PolywaveError, error) {
 	res := protocol.FullValidate(context.Background(), yamlPath, protocol.FullValidateOpts{})
 	if res.IsFatal() {
 		return nil, fmt.Errorf("failed to validate manifest: %s", res.Errors[0].Message)

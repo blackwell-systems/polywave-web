@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // capturePublish returns a publish func and a getter for collected events.

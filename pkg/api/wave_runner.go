@@ -13,22 +13,22 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/gatecache"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/orchestrator"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/retry"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/gatecache"
+	"github.com/blackwell-systems/polywave-go/pkg/orchestrator"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/retry"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // gateChannels stores per-slug gate channels used to pause runWaveLoop
 // between waves. Keys are slugs (string), values are chan bool (buffered 1).
 var gateChannels sync.Map
 
-// fallbackSAWConfig is populated once from the server's default repo path.
-// runWaveLoop uses it when the target repo has no saw.config.json of its own.
-var fallbackSAWConfig *config.SAWConfig
+// fallbackPolywaveConfig is populated once from the server's default repo path.
+// runWaveLoop uses it when the target repo has no polywave.config.json of its own.
+var fallbackPolywaveConfig *config.PolywaveConfig
 
 // pkgNotificationBus is the package-level notification bus, set by Server.New().
 // Used by standalone functions (runWaveLoop, runFinalizeSteps) that don't have
@@ -114,7 +114,7 @@ func runWaveLoop(
 
 	// Read config to pick up configured models.
 	// Try the target repo first; fall back to the server's default config
-	// for cross-repo IMPLs that don't have their own saw.config.json.
+	// for cross-repo IMPLs that don't have their own polywave.config.json.
 	waveModel := ""
 	scaffoldModel := ""
 	integrationModel := ""
@@ -123,17 +123,17 @@ func runWaveLoop(
 		scaffoldModel = sawCfg.Agent.ScaffoldModel
 		integrationModel = sawCfg.Agent.IntegrationModel
 	}
-	// Fill empty values from the server's fallback config (the web app's own saw.config.json).
+	// Fill empty values from the server's fallback config (the web app's own polywave.config.json).
 	// Cross-repo IMPLs may live in repos with empty model strings.
-	if fallbackSAWConfig != nil {
+	if fallbackPolywaveConfig != nil {
 		if waveModel == "" {
-			waveModel = fallbackSAWConfig.Agent.WaveModel
+			waveModel = fallbackPolywaveConfig.Agent.WaveModel
 		}
 		if scaffoldModel == "" {
-			scaffoldModel = fallbackSAWConfig.Agent.ScaffoldModel
+			scaffoldModel = fallbackPolywaveConfig.Agent.ScaffoldModel
 		}
 		if integrationModel == "" {
-			integrationModel = fallbackSAWConfig.Agent.IntegrationModel
+			integrationModel = fallbackPolywaveConfig.Agent.IntegrationModel
 		}
 	}
 
@@ -557,9 +557,9 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 		_ = tracker.Start(slug, waveNum, StepRunGates)
 		publishPipelineStep(publish, slug, waveNum, StepRunGates, StepRunning, "")
 
-		stateDir := filepath.Join(repoPath, ".saw-state")
+		stateDir := filepath.Join(repoPath, ".polywave-state")
 		cache := gatecache.New(ctx, stateDir, 5*time.Minute)
-		gateResults := protocol.RunGatesWithCache(ctx, manifest, waveNum, repoPath, cache, slog.Default())
+		gateResults := protocol.RunGatesWithCache(ctx, manifest, waveNum, repoPath, implPath, cache, slog.Default())
 		if gateResults.IsFatal() {
 			err := fmt.Errorf("run-gates fatal error")
 			_ = tracker.Fail(slug, waveNum, StepRunGates, err)
@@ -593,7 +593,7 @@ func runFinalizeSteps(slug string, waveNum int, implPath, repoPath, integrationM
 				})
 				if retryResult.IsSuccess() && retryResult.GetData().Fixed {
 					// Re-run all gates to confirm after fix.
-					gateResults = protocol.RunGatesWithCache(ctx, manifest, waveNum, repoPath, cache, slog.Default())
+					gateResults = protocol.RunGatesWithCache(ctx, manifest, waveNum, repoPath, implPath, cache, slog.Default())
 					if gateResults.IsSuccess() {
 						allPass := true
 						for _, g := range gateResults.Data.Gates {

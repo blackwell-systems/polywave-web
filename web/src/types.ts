@@ -11,7 +11,7 @@ export interface FileOwnershipEntry {
   wave: number
   action: string // "new", "modify", "delete", or ""
   depends_on: string // populated when 4th column is "Depends On"
-  repo?: string // 5th column for cross-repo waves (e.g. "scout-and-wave-web")
+  repo?: string // 5th column for cross-repo waves (e.g. "polywave-web")
 }
 
 export interface WaveInfo {
@@ -275,7 +275,7 @@ export interface FileDiffResponse {
 
 // Settings (v0.18.0-C)
 
-/** One registered repository in the SAWConfig repo registry.
+/** One registered repository in the PolyConfig repo registry.
  *  Mirrors config.RepoEntry from the Go SDK (pkg/config). */
 export interface RepoEntry {
   name: string   // human-readable label, e.g. "web", "go"
@@ -313,8 +313,8 @@ export interface ProviderValidationResponse {
   identity?: string
 }
 
-/** Updated SAWConfig — repos replaces the old repo.path singleton. */
-export interface SAWConfig {
+/** Updated PolyConfig — repos replaces the old repo.path singleton. */
+export interface PolyConfig {
   repos: RepoEntry[]                             // NEW: named repo registry
   repo: { path: string }                         // KEPT for backward compat read
   // Fields correspond to ModelRole values from ./types/models (plus review_model)

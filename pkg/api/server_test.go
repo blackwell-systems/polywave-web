@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 	"bufio"
 	"context"
 	"encoding/json"

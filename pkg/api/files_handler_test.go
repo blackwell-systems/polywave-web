@@ -38,10 +38,10 @@ func setupFilesRepo(t *testing.T) (string, *Server) {
 	mustWrite("export const x = 1;\n", "pkg", "foo", "util.ts")
 	mustWrite("# README\n", "README.md")
 
-	// Write saw.config.json so resolveRepoPath can locate "testrepo".
+	// Write polywave.config.json so resolveRepoPath can locate "testrepo".
 	cfg := `{"repos":[{"name":"testrepo","path":"` + repoDir + `"}]}`
-	if err := os.WriteFile(filepath.Join(repoDir, "saw.config.json"), []byte(cfg), 0644); err != nil {
-		t.Fatalf("write saw.config.json: %v", err)
+	if err := os.WriteFile(filepath.Join(repoDir, "polywave.config.json"), []byte(cfg), 0644); err != nil {
+		t.Fatalf("write polywave.config.json: %v", err)
 	}
 
 	s := New(Config{

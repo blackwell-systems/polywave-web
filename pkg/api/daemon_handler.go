@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
 )
 
 // daemonControl holds the state for a single daemon run.
@@ -98,8 +98,8 @@ func (s *Server) handleDaemonStart(w http.ResponseWriter, r *http.Request) {
 
 	// Load SAW config to get model and repo settings.
 	var chatModel string
-	if fallbackSAWConfig != nil {
-		chatModel = fallbackSAWConfig.Agent.ChatModel
+	if fallbackPolywaveConfig != nil {
+		chatModel = fallbackPolywaveConfig.Agent.ChatModel
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

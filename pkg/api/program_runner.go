@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // program_runner.go — HTTP-specific helpers for program tier execution.

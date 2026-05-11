@@ -27,7 +27,7 @@ type NotificationEvent struct {
 }
 
 // NotificationPreferences controls which notification types are enabled.
-// Stored in saw.config.json under the "notifications" key.
+// Stored in polywave.config.json under the "notifications" key.
 type NotificationPreferences struct {
 	Enabled       bool                    `json:"enabled"`
 	MutedTypes    []NotificationEventType `json:"muted_types,omitempty"`

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/resume"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/resume"
 )
 
 // handleResumeExecution handles POST /api/wave/{slug}/resume.
@@ -154,12 +154,12 @@ func (s *Server) handleResumeExecution(w http.ResponseWriter, r *http.Request) {
 		waveModel = sawCfg.Agent.WaveModel
 		integrationModel = sawCfg.Agent.IntegrationModel
 	}
-	if fallbackSAWConfig != nil {
+	if fallbackPolywaveConfig != nil {
 		if waveModel == "" {
-			waveModel = fallbackSAWConfig.Agent.WaveModel
+			waveModel = fallbackPolywaveConfig.Agent.WaveModel
 		}
 		if integrationModel == "" {
-			integrationModel = fallbackSAWConfig.Agent.IntegrationModel
+			integrationModel = fallbackPolywaveConfig.Agent.IntegrationModel
 		}
 	}
 

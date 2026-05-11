@@ -3,13 +3,13 @@ import { getConfig } from '../api'
 
 export function useDarkMode(): [boolean, () => void] {
   const [isDark, setIsDark] = useState<boolean>(() => {
-    const t = localStorage.getItem('saw-theme')
+    const t = localStorage.getItem('polywave-theme')
     if (t === 'dark') return true
     if (t === 'light') return false
     return window.matchMedia('(prefers-color-scheme: dark)').matches
   })
   const [themeMode, setThemeMode] = useState<'system' | 'light' | 'dark'>(() => {
-    return (localStorage.getItem('saw-theme') as 'system' | 'light' | 'dark') ?? 'system'
+    return (localStorage.getItem('polywave-theme') as 'system' | 'light' | 'dark') ?? 'system'
   })
 
   function getSystemDark(): boolean {
@@ -21,7 +21,7 @@ export function useDarkMode(): [boolean, () => void] {
     getConfig().then(config => {
       const theme = config.appearance?.theme ?? 'system'
       setThemeMode(theme)
-      localStorage.setItem('saw-theme', theme)
+      localStorage.setItem('polywave-theme', theme)
 
       if (theme === 'dark') {
         setIsDark(true)
@@ -61,7 +61,7 @@ export function useDarkMode(): [boolean, () => void] {
     const nextTheme: 'light' | 'dark' = isDark ? 'light' : 'dark'
     setThemeMode(nextTheme)
     setIsDark(nextTheme === 'dark')
-    localStorage.setItem('saw-theme', nextTheme)
+    localStorage.setItem('polywave-theme', nextTheme)
 
     // Persist in background — don't block the UI
     getConfig().then(async config => {

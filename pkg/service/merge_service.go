@@ -10,10 +10,10 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/agent/backend"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/agent/backend"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // RunTracker manages concurrent operation guards using a sync.Map.
@@ -190,7 +190,7 @@ func FixBuild(deps Deps, slug string, wave int, errorLog string, gateType string
 		return fmt.Errorf("wave must be >= 1")
 	}
 
-	// Read chat model from saw.config.json
+	// Read chat model from polywave.config.json
 	chatModel := ""
 	if deps.ConfigPath != nil {
 		cfgPath := deps.ConfigPath(repoPath)

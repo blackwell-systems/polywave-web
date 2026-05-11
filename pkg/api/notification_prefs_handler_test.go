@@ -50,14 +50,14 @@ func TestHandleGetNotificationPrefs_Default(t *testing.T) {
 }
 
 // TestHandleGetNotificationPrefs_Configured verifies that saved preferences
-// are correctly returned from saw.config.json.
+// are correctly returned from polywave.config.json.
 func TestHandleGetNotificationPrefs_Configured(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "saw.config.json")
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
 
 	// Create a config with custom notification preferences
 	cfg := configWithNotifications{
-		SAWConfig: SAWConfig{
+		PolywaveConfig: PolywaveConfig{
 			Agent: AgentConfig{
 				ScoutModel: "bedrock:claude-opus-4-6",
 			},
@@ -115,14 +115,14 @@ func TestHandleGetNotificationPrefs_Configured(t *testing.T) {
 }
 
 // TestHandleSaveNotificationPrefs_Valid verifies that valid preferences
-// are saved to saw.config.json and can be read back.
+// are saved to polywave.config.json and can be read back.
 func TestHandleSaveNotificationPrefs_Valid(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "saw.config.json")
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
 
 	// Create initial config with some existing fields
 	initialCfg := configWithNotifications{
-		SAWConfig: SAWConfig{
+		PolywaveConfig: PolywaveConfig{
 			Agent: AgentConfig{
 				ScoutModel: "bedrock:claude-opus-4-6",
 				WaveModel:  "bedrock:claude-sonnet-4-5",
@@ -218,7 +218,7 @@ func TestHandleSaveNotificationPrefs_Invalid(t *testing.T) {
 // saved even when no config file exists yet.
 func TestHandleSaveNotificationPrefs_NewConfig(t *testing.T) {
 	tmpDir := t.TempDir()
-	configPath := filepath.Join(tmpDir, "saw.config.json")
+	configPath := filepath.Join(tmpDir, "polywave.config.json")
 
 	server := &Server{cfg: Config{RepoPath: tmpDir}}
 

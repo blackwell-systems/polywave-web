@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/notify"
+	"github.com/blackwell-systems/polywave-go/pkg/notify"
 )
 
 // DefaultFormatter produces plain-text Messages from Events.

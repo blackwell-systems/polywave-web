@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // waveTestPublisher is a test double for EventPublisher that records published events.
@@ -48,7 +48,7 @@ func TestStartWave_AlreadyRunning(t *testing.T) {
 		IMPLDir:   "/tmp/nonexistent/docs/IMPL",
 		Publisher: pub,
 		ConfigPath: func(repoPath string) string {
-			return repoPath + "/saw.config.json"
+			return repoPath + "/polywave.config.json"
 		},
 	}
 
@@ -74,7 +74,7 @@ func TestProceedGate_UnblocksChannel(t *testing.T) {
 		RepoPath:  "/tmp/nonexistent",
 		Publisher: pub,
 		ConfigPath: func(repoPath string) string {
-			return repoPath + "/saw.config.json"
+			return repoPath + "/polywave.config.json"
 		},
 	}
 
@@ -102,7 +102,7 @@ func TestProceedGate_NoGatePending(t *testing.T) {
 		RepoPath:  "/tmp/nonexistent",
 		Publisher: pub,
 		ConfigPath: func(repoPath string) string {
-			return repoPath + "/saw.config.json"
+			return repoPath + "/polywave.config.json"
 		},
 	}
 
@@ -120,7 +120,7 @@ func TestStartWave_PublishesRunStarted(t *testing.T) {
 		RepoPath:  "/tmp/nonexistent",
 		Publisher: pub,
 		ConfigPath: func(repoPath string) string {
-			return repoPath + "/saw.config.json"
+			return repoPath + "/polywave.config.json"
 		},
 	}
 
@@ -145,7 +145,7 @@ func TestStopWave_NotRunning(t *testing.T) {
 		RepoPath:  "/tmp/nonexistent",
 		Publisher: pub,
 		ConfigPath: func(repoPath string) string {
-			return repoPath + "/saw.config.json"
+			return repoPath + "/polywave.config.json"
 		},
 	}
 
@@ -161,7 +161,7 @@ func TestRerunAgent_InvalidWave(t *testing.T) {
 		RepoPath:  "/tmp/nonexistent",
 		Publisher: pub,
 		ConfigPath: func(repoPath string) string {
-			return repoPath + "/saw.config.json"
+			return repoPath + "/polywave.config.json"
 		},
 	}
 
@@ -177,7 +177,7 @@ func TestFinalizeWave_InvalidWave(t *testing.T) {
 		RepoPath:  "/tmp/nonexistent",
 		Publisher: pub,
 		ConfigPath: func(repoPath string) string {
-			return repoPath + "/saw.config.json"
+			return repoPath + "/polywave.config.json"
 		},
 	}
 
@@ -190,8 +190,8 @@ func TestFinalizeWave_InvalidWave(t *testing.T) {
 func TestRepoRedirect_SingleRepoDifferentFromServer(t *testing.T) {
 	// Create a temporary directory structure simulating sibling repos.
 	parent := t.TempDir()
-	serverRepo := filepath.Join(parent, "scout-and-wave-web")
-	targetRepo := filepath.Join(parent, "scout-and-wave-go")
+	serverRepo := filepath.Join(parent, "polywave-web")
+	targetRepo := filepath.Join(parent, "polywave-go")
 	if err := os.MkdirAll(serverRepo, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -201,9 +201,9 @@ func TestRepoRedirect_SingleRepoDifferentFromServer(t *testing.T) {
 
 	manifest := &protocol.IMPLManifest{
 		FileOwnership: []protocol.FileOwnership{
-			{File: "pkg/engine/run.go", Agent: "A", Wave: 1, Repo: "scout-and-wave-go"},
-			{File: "pkg/engine/run_test.go", Agent: "A", Wave: 1, Repo: "scout-and-wave-go"},
-			{File: "pkg/protocol/validate.go", Agent: "B", Wave: 1, Repo: "scout-and-wave-go"},
+			{File: "pkg/engine/run.go", Agent: "A", Wave: 1, Repo: "polywave-go"},
+			{File: "pkg/engine/run_test.go", Agent: "A", Wave: 1, Repo: "polywave-go"},
+			{File: "pkg/protocol/validate.go", Agent: "B", Wave: 1, Repo: "polywave-go"},
 		},
 	}
 
@@ -211,8 +211,8 @@ func TestRepoRedirect_SingleRepoDifferentFromServer(t *testing.T) {
 	if !redirected {
 		t.Fatal("expected redirect to be true")
 	}
-	if repoName != "scout-and-wave-go" {
-		t.Fatalf("expected target repo name 'scout-and-wave-go', got %q", repoName)
+	if repoName != "polywave-go" {
+		t.Fatalf("expected target repo name 'polywave-go', got %q", repoName)
 	}
 	if resolvedPath != targetRepo {
 		t.Fatalf("expected resolved path %q, got %q", targetRepo, resolvedPath)
@@ -295,9 +295,9 @@ func TestRepoRedirect_ConfigJsonResolution(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Write saw.config.json with custom repo path.
+	// Write polywave.config.json with custom repo path.
 	configContent := `{"repos": [{"name": "engine", "path": "` + targetRepo + `"}]}`
-	if err := os.WriteFile(filepath.Join(serverRepo, "saw.config.json"), []byte(configContent), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(serverRepo, "polywave.config.json"), []byte(configContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

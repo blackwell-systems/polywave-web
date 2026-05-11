@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // TestTypesAPIResponseAlias verifies that APIResponse[T] is a usable alias for result.Result[T].
@@ -25,7 +25,7 @@ func TestTypesAPIResponseAlias(t *testing.T) {
 
 // TestTypesAPIResponseFailure verifies APIResponse[T] correctly represents a failure.
 func TestTypesAPIResponseFailure(t *testing.T) {
-	r := result.NewFailure[IMPLDocResponse]([]result.SAWError{
+	r := result.NewFailure[IMPLDocResponse]([]result.PolywaveError{
 		{Code: "E001", Message: "not found", Severity: "fatal"},
 	})
 
@@ -48,7 +48,7 @@ func TestTypesAPIResponseFailure(t *testing.T) {
 // TestTypesAPIResponsePartial verifies APIResponse[T] correctly represents partial success.
 func TestTypesAPIResponsePartial(t *testing.T) {
 	data := WaveStatusResponse{Slug: "partial-slug"}
-	warnings := []result.SAWError{
+	warnings := []result.PolywaveError{
 		{Code: "W001", Message: "some warning", Severity: "warning"},
 	}
 	r := result.NewPartial(data, warnings)
@@ -67,7 +67,7 @@ func TestTypesAPIResponsePartial(t *testing.T) {
 	}
 }
 
-// TestTypesAPIErrorAlias verifies that APIError is usable as result.SAWError.
+// TestTypesAPIErrorAlias verifies that APIError is usable as result.PolywaveError.
 func TestTypesAPIErrorAlias(t *testing.T) {
 	var e APIError
 	e.Code = "E042"
@@ -84,7 +84,7 @@ func TestTypesAPIErrorAlias(t *testing.T) {
 	if err != nil {
 		t.Fatalf("json.Marshal failed: %v", err)
 	}
-	var decoded result.SAWError
+	var decoded result.PolywaveError
 	if err := json.Unmarshal(b, &decoded); err != nil {
 		t.Fatalf("json.Unmarshal failed: %v", err)
 	}

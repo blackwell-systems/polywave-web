@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 
@@ -54,7 +54,7 @@ func (s *Server) HandleValidateManifest(w http.ResponseWriter, r *http.Request) 
 		"errors": validationErrs,
 	}
 	if validationErrs == nil {
-		response["errors"] = []result.SAWError{}
+		response["errors"] = []result.PolywaveError{}
 	}
 
 	respondJSON(w, http.StatusOK, response)

@@ -9,10 +9,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/orchestrator"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/orchestrator"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // gateChannels stores per-slug gate channels used to pause wave execution
@@ -23,9 +23,9 @@ var gateChannels sync.Map
 // Used by StartWave to prevent duplicate runs. Exported for test access.
 var ActiveWaves sync.Map
 
-// FallbackSAWConfig is populated once from the server's default repo path.
-// StartWave uses it when the target repo has no saw.config.json of its own.
-var FallbackSAWConfig *config.SAWConfig
+// FallbackPolywaveConfig is populated once from the server's default repo path.
+// StartWave uses it when the target repo has no polywave.config.json of its own.
+var FallbackPolywaveConfig *config.PolywaveConfig
 
 // StartWave loads the IMPL manifest for the given slug, resolves paths,
 // and launches wave execution in a background goroutine. It returns
@@ -211,7 +211,7 @@ func runWaveLoop(
 		})
 	}
 
-	// Read saw.config.json to pick up configured models.
+	// Read polywave.config.json to pick up configured models.
 	waveModel, scaffoldModel, _ := resolveModelsFromPath(repoPath)
 
 	// Load the YAML manifest to get wave structure.
@@ -242,8 +242,8 @@ func runWaveLoop(
 		publish("run_failed", map[string]string{
 			"error": fmt.Sprintf(
 				"IMPL targets repo %q but it cannot be resolved. "+
-					"Not found as sibling of %s or in saw.config.json repos list. "+
-					"Configure the repo path in saw.config.json or ensure it exists as a sibling directory.",
+					"Not found as sibling of %s or in polywave.config.json repos list. "+
+					"Configure the repo path in polywave.config.json or ensure it exists as a sibling directory.",
 				targetRepo, repoPath),
 		})
 		return
@@ -266,7 +266,7 @@ func runWaveLoop(
 		})
 		// Override repoPath for the remainder of this wave loop.
 		repoPath = resolvedPath
-		// Re-resolve models from the target repo's saw.config.json.
+		// Re-resolve models from the target repo's polywave.config.json.
 		waveModel, scaffoldModel, _ = resolveModelsFromPath(repoPath)
 	}
 
@@ -510,8 +510,8 @@ func resolveIMPLPath(deps Deps, slug string) (string, string, error) {
 	return "", "", fmt.Errorf("IMPL doc not found for slug: %s", slug)
 }
 
-// resolveModels reads model configuration from saw.config.json in the
-// given repo, falling back to FallbackSAWConfig for missing values.
+// resolveModels reads model configuration from polywave.config.json in the
+// given repo, falling back to FallbackPolywaveConfig for missing values.
 func resolveModels(deps Deps, repoPath string) (waveModel, scaffoldModel, integrationModel string) {
 	if r := config.Load(repoPath); r.IsSuccess() {
 		sawCfg := r.GetData()
@@ -519,15 +519,15 @@ func resolveModels(deps Deps, repoPath string) (waveModel, scaffoldModel, integr
 		scaffoldModel = sawCfg.Agent.ScaffoldModel
 		integrationModel = sawCfg.Agent.IntegrationModel
 	}
-	if FallbackSAWConfig != nil {
+	if FallbackPolywaveConfig != nil {
 		if waveModel == "" {
-			waveModel = FallbackSAWConfig.Agent.WaveModel
+			waveModel = FallbackPolywaveConfig.Agent.WaveModel
 		}
 		if scaffoldModel == "" {
-			scaffoldModel = FallbackSAWConfig.Agent.ScaffoldModel
+			scaffoldModel = FallbackPolywaveConfig.Agent.ScaffoldModel
 		}
 		if integrationModel == "" {
-			integrationModel = FallbackSAWConfig.Agent.IntegrationModel
+			integrationModel = FallbackPolywaveConfig.Agent.IntegrationModel
 		}
 	}
 	return
@@ -542,15 +542,15 @@ func resolveModelsFromPath(repoPath string) (waveModel, scaffoldModel, integrati
 		scaffoldModel = sawCfg.Agent.ScaffoldModel
 		integrationModel = sawCfg.Agent.IntegrationModel
 	}
-	if FallbackSAWConfig != nil {
+	if FallbackPolywaveConfig != nil {
 		if waveModel == "" {
-			waveModel = FallbackSAWConfig.Agent.WaveModel
+			waveModel = FallbackPolywaveConfig.Agent.WaveModel
 		}
 		if scaffoldModel == "" {
-			scaffoldModel = FallbackSAWConfig.Agent.ScaffoldModel
+			scaffoldModel = FallbackPolywaveConfig.Agent.ScaffoldModel
 		}
 		if integrationModel == "" {
-			integrationModel = FallbackSAWConfig.Agent.IntegrationModel
+			integrationModel = FallbackPolywaveConfig.Agent.IntegrationModel
 		}
 	}
 	return
@@ -603,7 +603,7 @@ func splitLines(s string) []string {
 // resolveTargetRepoFromManifest inspects the manifest's FileOwnership entries
 // to determine if the IMPL targets a repo different from repoPath. If all
 // repo: fields point to a single repo name that differs from repoPath's
-// basename, it attempts to resolve the actual path from saw.config.json repos
+// basename, it attempts to resolve the actual path from polywave.config.json repos
 // or sibling directories. Returns the resolved path (which may be the original
 // repoPath if no redirect is needed) and the target repo name (empty if no
 // redirect).
@@ -642,7 +642,7 @@ func resolveTargetRepoFromManifest(manifest *protocol.IMPLManifest, repoPath str
 	}
 
 	// Target repo differs -- attempt resolution.
-	// 1. Try saw.config.json repos list.
+	// 1. Try polywave.config.json repos list.
 	if r := config.Load(repoPath); r.IsSuccess() {
 		for _, repo := range r.GetData().Repos {
 			if repo.Name == targetRepo && repo.Path != "" {

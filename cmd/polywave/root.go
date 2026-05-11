@@ -8,7 +8,7 @@ var repoDir string
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "saw",
-		Short:   "SAW Orchestration CLI with embedded web UI",
+		Short:   "Polywave Orchestration CLI with embedded web UI",
 		Version: version,
 	}
 	cmd.PersistentFlags().StringVar(&repoDir, "repo-dir", ".", "Repository root directory")

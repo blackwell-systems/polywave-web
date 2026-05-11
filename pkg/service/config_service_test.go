@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
 )
 
 // testDeps creates a Deps pointing at a temp directory for testing.
@@ -16,7 +16,7 @@ func testDeps(t *testing.T) Deps {
 	return Deps{
 		RepoPath: dir,
 		ConfigPath: func(repoPath string) string {
-			return filepath.Join(repoPath, "saw.config.json")
+			return filepath.Join(repoPath, "polywave.config.json")
 		},
 	}
 }
@@ -50,7 +50,7 @@ func TestGetConfig_WithLegacyRepoPath(t *testing.T) {
 		"repo": map[string]string{"path": "/old/repo"},
 	}
 	data, _ := json.Marshal(legacy)
-	os.WriteFile(filepath.Join(deps.RepoPath, "saw.config.json"), data, 0644)
+	os.WriteFile(filepath.Join(deps.RepoPath, "polywave.config.json"), data, 0644)
 
 	cfg, err := GetConfig(deps)
 	if err != nil {
@@ -68,7 +68,7 @@ func TestGetConfig_WithLegacyRepoPath(t *testing.T) {
 func TestSaveConfig_AtomicWrite(t *testing.T) {
 	deps := testDeps(t)
 
-	cfg := &config.SAWConfig{
+	cfg := &config.PolywaveConfig{
 		Repos: []config.RepoEntry{{Name: "test", Path: "/test/path"}},
 		Agent: config.AgentConfig{ScoutModel: "claude-3"},
 	}
@@ -78,13 +78,13 @@ func TestSaveConfig_AtomicWrite(t *testing.T) {
 	}
 
 	// Verify file was written
-	configPath := filepath.Join(deps.RepoPath, "saw.config.json")
+	configPath := filepath.Join(deps.RepoPath, "polywave.config.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatalf("failed to read saved config: %v", err)
 	}
 
-	var saved config.SAWConfig
+	var saved config.PolywaveConfig
 	if err := json.Unmarshal(data, &saved); err != nil {
 		t.Fatalf("failed to parse saved config: %v", err)
 	}
@@ -100,7 +100,7 @@ func TestSaveConfig_AtomicWrite(t *testing.T) {
 func TestSaveConfig_InvalidModel(t *testing.T) {
 	deps := testDeps(t)
 
-	cfg := &config.SAWConfig{
+	cfg := &config.PolywaveConfig{
 		Agent: config.AgentConfig{ScoutModel: "bad model name!"},
 	}
 
@@ -154,7 +154,7 @@ func TestGetConfiguredRepos_Fallback(t *testing.T) {
 func TestSaveConfig_ProvidersRoundTrip(t *testing.T) {
 	deps := testDeps(t)
 
-	cfg := &config.SAWConfig{
+	cfg := &config.PolywaveConfig{
 		Repos: []config.RepoEntry{{Name: "test", Path: "/test/path"}},
 		Providers: config.ProvidersConfig{
 			Anthropic: config.AnthropicProvider{APIKey: "sk-ant-test"},
@@ -200,7 +200,7 @@ func TestSaveConfig_ProvidersRoundTrip(t *testing.T) {
 func TestSaveConfig_EmptyProviders_OmittedFromJSON(t *testing.T) {
 	deps := testDeps(t)
 
-	cfg := &config.SAWConfig{
+	cfg := &config.PolywaveConfig{
 		Repos: []config.RepoEntry{{Name: "test", Path: "/test/path"}},
 	}
 
@@ -209,7 +209,7 @@ func TestSaveConfig_EmptyProviders_OmittedFromJSON(t *testing.T) {
 	}
 
 	// Read raw JSON and verify providers is omitted when empty
-	configPath := filepath.Join(deps.RepoPath, "saw.config.json")
+	configPath := filepath.Join(deps.RepoPath, "polywave.config.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		t.Fatalf("failed to read config: %v", err)
@@ -271,14 +271,14 @@ func TestValidateBedrockCredentials_MissingFields(t *testing.T) {
 func TestGetConfiguredRepos_FromFile(t *testing.T) {
 	deps := testDeps(t)
 
-	cfg := config.SAWConfig{
+	cfg := config.PolywaveConfig{
 		Repos: []config.RepoEntry{
 			{Name: "alpha", Path: "/alpha"},
 			{Name: "beta", Path: "/beta"},
 		},
 	}
 	data, _ := json.Marshal(cfg)
-	os.WriteFile(filepath.Join(deps.RepoPath, "saw.config.json"), data, 0644)
+	os.WriteFile(filepath.Join(deps.RepoPath, "polywave.config.json"), data, 0644)
 
 	repos := GetConfiguredRepos(deps)
 	if len(repos) != 2 {

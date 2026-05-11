@@ -104,7 +104,7 @@ export default function AmendPanel(props: AmendPanelProps): JSX.Element {
     try {
       const result = await callAmend(slug, { operation: 'extend-scope' })
       if (result.success) {
-        const warningText = result.warnings?.join('\n') ?? 'Use /saw amend --extend-scope in Claude Code to re-engage Scout.'
+        const warningText = result.warnings?.join('\n') ?? 'Use /polywave amend --extend-scope in Claude Code to re-engage Scout.'
         setExtendMessage({ type: 'info', text: warningText })
         onAmendComplete?.()
       } else {
@@ -254,7 +254,7 @@ export default function AmendPanel(props: AmendPanelProps): JSX.Element {
           <p className="text-sm text-gray-600">
             Re-engage Scout with the current IMPL as context to add new waves. This is an
             orchestrator-level operation — use{' '}
-            <code className="bg-gray-100 px-1 rounded text-xs">/saw amend --extend-scope</code>{' '}
+            <code className="bg-gray-100 px-1 rounded text-xs">/polywave amend --extend-scope</code>{' '}
             in Claude Code.
           </p>
 

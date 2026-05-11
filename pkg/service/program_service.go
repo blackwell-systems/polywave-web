@@ -7,10 +7,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/result"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/result"
 )
 
 // ProgramRuns is the package-level RunTracker for program tier executions.
@@ -94,7 +94,7 @@ func ExecuteTier(deps Deps, slug string, tier int, auto bool) error {
 }
 
 // ReplanProgram launches the Planner agent to revise the PROGRAM manifest.
-// Reads the planner model from the repo's saw.config.json if available.
+// Reads the planner model from the repo's polywave.config.json if available.
 func ReplanProgram(deps Deps, slug string, reason string, failedTier int) error {
 	programPath, repoPath, err := ResolveProgramPath(deps, slug)
 	if err != nil {

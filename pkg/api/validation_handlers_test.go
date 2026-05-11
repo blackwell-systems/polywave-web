@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // newValidationTestServer creates a Server wired with RegisterValidationRoutes()
@@ -20,7 +20,7 @@ func newValidationTestServer(t *testing.T, implDir string) *Server {
 		RepoPath: implDir,
 		IMPLDir:  implDir,
 		ConfigPath: func(repoPath string) string {
-			return filepath.Join(repoPath, "saw.config.json")
+			return filepath.Join(repoPath, "polywave.config.json")
 		},
 	}
 	s := &Server{

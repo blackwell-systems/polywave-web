@@ -9,7 +9,7 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // runRunGates executes verification gates for a specific wave.
@@ -48,7 +48,7 @@ func runRunGates(args []string) error {
 	}
 
 	// Run gates
-	gateResults := protocol.RunGatesWithCache(ctx, manifest, *waveFlag, *repoDirFlag, nil, slog.Default())
+	gateResults := protocol.RunGatesWithCache(ctx, manifest, *waveFlag, *repoDirFlag, manifestPath, nil, slog.Default())
 	if gateResults.IsFatal() {
 		return fmt.Errorf("run-gates fatal error")
 	}

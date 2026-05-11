@@ -1,4 +1,4 @@
-module github.com/blackwell-systems/scout-and-wave-web
+module github.com/blackwell-systems/polywave-web
 
 go 1.25.0
 
@@ -40,7 +40,7 @@ require (
 )
 
 require (
-	github.com/blackwell-systems/scout-and-wave-go v0.98.0
+	github.com/blackwell-systems/polywave-go v0.98.0
 	github.com/creack/pty v1.1.24 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
@@ -48,4 +48,4 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 )
 
-replace github.com/blackwell-systems/scout-and-wave-go => /Users/dayna.blackwell/code/scout-and-wave-go
+replace github.com/blackwell-systems/polywave-go => /Users/dayna.blackwell/code/polywave-go

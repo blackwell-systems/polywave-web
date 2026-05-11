@@ -1,5 +1,5 @@
 // TypeScript types for the program layer API
-// Mirrors Go SDK protocol types from github.com/blackwell-systems/scout-and-wave-go/pkg/protocol
+// Mirrors Go SDK protocol types from github.com/blackwell-systems/polywave-go/pkg/protocol
 
 import type { ImplReference, PipelineMetrics, PipelineEntry } from './autonomy'
 

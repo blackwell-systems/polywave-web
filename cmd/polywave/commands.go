@@ -12,8 +12,8 @@ import (
 	"regexp"
 	"strings"
 
-	engine "github.com/blackwell-systems/scout-and-wave-go/pkg/engine"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	engine "github.com/blackwell-systems/polywave-go/pkg/engine"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // waveOrchestrator is the minimal interface runWave needs from an Orchestrator.
@@ -398,16 +398,16 @@ func slugify(s string) string {
 	return s
 }
 
-// locatePromptFile returns the path to a prompt file, checking $SAW_REPO first,
-// then falling back to ~/code/scout-and-wave.
+// locatePromptFile returns the path to a prompt file, checking $POLYWAVE_REPO first,
+// then falling back to ~/code/polywave.
 func locatePromptFile(relPath string) (string, error) {
-	sawRepo := os.Getenv("SAW_REPO")
+	sawRepo := os.Getenv("POLYWAVE_REPO")
 	if sawRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("cannot determine home directory: %w", err)
 		}
-		sawRepo = filepath.Join(home, "code", "scout-and-wave")
+		sawRepo = filepath.Join(home, "code", "polywave")
 	}
 	p := filepath.Join(sawRepo, relPath)
 	if _, err := os.Stat(p); err == nil {
@@ -427,7 +427,7 @@ func runScout(args []string) error {
 	feature := fs.String("feature", "", "One-line feature description (required)")
 	implPath := fs.String("impl", "", "Output path for IMPL doc (optional)")
 	repoFlag := fs.String("repo", "", "Repository root (optional; default: auto-detect from cwd)")
-	fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: SAW_BACKEND)")
+	fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: POLYWAVE_BACKEND)")
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -474,7 +474,7 @@ func runScout(args []string) error {
 	if scoutResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:     *feature,
 		RepoPath:    repoRoot,
-		SAWRepoPath: sawRepo,
+		PolywaveRepoPath: sawRepo,
 		IMPLOutPath: implOut,
 	}, func(s string) { fmt.Print(s) }); scoutResult.IsFatal() {
 		return fmt.Errorf("scout: %s", scoutResult.Errors[0].Error())
@@ -491,7 +491,7 @@ func runScaffold(args []string) error {
 	fs := flag.NewFlagSet("scaffold", flag.ContinueOnError)
 	implPath := fs.String("impl", "", "Path to IMPL doc (required)")
 	repoFlag := fs.String("repo", "", "Repository root (optional; default: auto-detect from cwd)")
-	fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: SAW_BACKEND)")
+	fs.String("backend", "", "Backend to use: api, cli, or auto (default: auto; env: POLYWAVE_BACKEND)")
 
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {

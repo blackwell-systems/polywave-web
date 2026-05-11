@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // handleGetConfig serves GET /api/config.
-// Reads saw.config.json from the repo root and returns it as SAWConfig JSON.
-// If the file does not exist, returns a default SAWConfig{}.
+// Reads polywave.config.json from the repo root and returns it as PolywaveConfig JSON.
+// If the file does not exist, returns a default PolywaveConfig{}.
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	cfg := config.LoadOrDefault(s.cfg.RepoPath)
 
@@ -27,9 +27,9 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleSaveConfig serves POST /api/config.
-// Decodes SAWConfig JSON body and atomically writes it to saw.config.json.
+// Decodes PolywaveConfig JSON body and atomically writes it to polywave.config.json.
 func (s *Server) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
-	var cfg config.SAWConfig
+	var cfg config.PolywaveConfig
 	if err := decodeJSON(r, &cfg); err != nil {
 		respondError(w, "invalid config JSON", http.StatusBadRequest)
 		return

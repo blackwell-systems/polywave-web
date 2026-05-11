@@ -14,7 +14,7 @@ func implTestDeps(t *testing.T) (Deps, string) {
 		RepoPath: tmpDir,
 		IMPLDir:  filepath.Join(tmpDir, "docs", "IMPL"),
 		ConfigPath: func(repoPath string) string {
-			return filepath.Join(repoPath, "saw.config.json")
+			return filepath.Join(repoPath, "polywave.config.json")
 		},
 	}, tmpDir
 }
@@ -118,7 +118,7 @@ func TestFindImplPath_SearchesMultipleRepos(t *testing.T) {
 
 	// Write config pointing to both repos
 	configJSON := `{"repos":[{"name":"repo1","path":"` + repo1 + `"},{"name":"repo2","path":"` + repo2 + `"}]}`
-	configPath := filepath.Join(deps.RepoPath, "saw.config.json")
+	configPath := filepath.Join(deps.RepoPath, "polywave.config.json")
 	if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
 		t.Fatal(err)
 	}

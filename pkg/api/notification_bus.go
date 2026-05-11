@@ -13,7 +13,7 @@ import "sync"
 //     clients via globalBroker.broadcastJSON()
 //   - The frontend (/api/events listener) receives these events and decides
 //     whether to show a toast, browser notification, or both based on user
-//     preferences stored in saw.config.json
+//     preferences stored in polywave.config.json
 //
 // Concurrency:
 //   - Notify() is safe to call from multiple goroutines (wave runners, merge

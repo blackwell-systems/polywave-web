@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
 // runMarkComplete writes a SAW:COMPLETE marker to an IMPL doc.

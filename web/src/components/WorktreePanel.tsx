@@ -171,7 +171,7 @@ export default function WorktreePanel({ slug, onClose, onWorktreeDeleted }: { sl
         {loading ? (
           <p className="text-sm text-muted-foreground py-4 text-center">Loading worktrees...</p>
         ) : worktrees.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No SAW branches found</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">No Polywave branches found</p>
         ) : (
           <Table>
             <TableHeader>

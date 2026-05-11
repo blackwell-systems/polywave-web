@@ -11,11 +11,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/notify"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/observability"
-	"github.com/blackwell-systems/scout-and-wave-web/build"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/notify"
+	"github.com/blackwell-systems/polywave-go/pkg/observability"
+	"github.com/blackwell-systems/polywave-web/build"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
@@ -100,7 +100,7 @@ func (a *ssoServiceAdapter) PollSSODeviceAuth(ctx context.Context, req SSOPollRe
 	}, nil
 }
 
-// getConfiguredRepos reads saw.config.json using the SDK config package and
+// getConfiguredRepos reads polywave.config.json using the SDK config package and
 // returns the list of configured repos. Falls back to a single entry using
 // s.cfg.RepoPath if no config or no repos are configured.
 func (s *Server) getConfiguredRepos() []config.RepoEntry {
@@ -129,7 +129,7 @@ func New(cfg Config) *Server {
 		IMPLDir:   cfg.IMPLDir,
 		Publisher: ssePublisher,
 		ConfigPath: func(repoPath string) string {
-			return filepath.Join(repoPath, "saw.config.json")
+			return filepath.Join(repoPath, "polywave.config.json")
 		},
 	}
 
@@ -148,12 +148,12 @@ func New(cfg Config) *Server {
 		svcDeps:         svcDeps,
 	}
 
-	// Initialize webhook bridge from saw.config.json "webhooks" key.
-	s.webhookBridge = initWebhookBridge(filepath.Join(cfg.RepoPath, "saw.config.json"))
+	// Initialize webhook bridge from polywave.config.json "webhooks" key.
+	s.webhookBridge = initWebhookBridge(filepath.Join(cfg.RepoPath, "polywave.config.json"))
 
 	// Populate fallback config so runWaveLoop can use it for cross-repo IMPLs
-	// that don't have their own saw.config.json.
-	fallbackSAWConfig = config.LoadOrDefault(cfg.RepoPath)
+	// that don't have their own polywave.config.json.
+	fallbackPolywaveConfig = config.LoadOrDefault(cfg.RepoPath)
 
 	// Set the package-level pipeline tracker so runFinalizeSteps can use it.
 	defaultPipelineTracker = s.pipelineTracker
@@ -340,7 +340,7 @@ func New(cfg Config) *Server {
 // Used by NotificationBus.Notify to forward events to external services.
 var pkgWebhookBridge *WebhookBridge
 
-// initWebhookBridge reads webhook config from saw.config.json and creates
+// initWebhookBridge reads webhook config from polywave.config.json and creates
 // a WebhookBridge with configured adapters. Returns nil if no webhooks
 // are configured or if the config cannot be read.
 func initWebhookBridge(configPath string) *WebhookBridge {

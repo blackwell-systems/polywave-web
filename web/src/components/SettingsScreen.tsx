@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { X, CheckCircle2, FolderGit2, Key, Bot, ShieldCheck, Palette, Bell } from 'lucide-react'
 import { getConfig, saveConfig } from '../api'
-import { SAWConfig, RepoEntry } from '../types'
+import { PolyConfig, RepoEntry } from '../types'
 import { sawClient } from '../lib/apiClient'
 import DirPicker from './DirPicker'
 import ModelPicker from './ModelPicker'
@@ -68,7 +68,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
   const { preferences, updatePreferences, browserPermission, requestPermission } = useNotifications()
 
   const [activeSection, setActiveSection] = useState<SettingsSection>('repos')
-  const [config, setConfig] = useState<SAWConfig>({
+  const [config, setConfig] = useState<PolyConfig>({
     repos: [],
     repo: { path: '' },
     agent: { scout_model: 'claude-sonnet-4-6', wave_model: 'claude-sonnet-4-6', integration_model: 'claude-sonnet-4-6', chat_model: 'claude-sonnet-4-6' },
@@ -195,7 +195,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
       path: r.path,
     }))
 
-    const configToSave: SAWConfig & { providers: ProvidersConfig } = { ...config, repos: normalizedRepos, providers }
+    const configToSave: PolyConfig & { providers: ProvidersConfig } = { ...config, repos: normalizedRepos, providers }
 
     setSaving(true)
     setError(null)
@@ -204,7 +204,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
       await saveConfig(configToSave)
       setConfig(configToSave)
       onReposChange?.(normalizedRepos)
-      window.dispatchEvent(new CustomEvent('saw:contrast-changed', { detail: configToSave.appearance.contrast }))
+      window.dispatchEvent(new CustomEvent('polywave:contrast-changed', { detail: configToSave.appearance.contrast }))
       setSavedMsg(true)
       setTimeout(() => {
         setSavedMsg(false)
@@ -272,7 +272,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
 
                 {config.repos.length === 0 && (
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p>No repositories configured. Add one below, or run <code className="bg-muted px-1 py-0.5 rounded text-[11px]">sawtools init</code> in your project directory to auto-generate a config.</p>
+                    <p>No repositories configured. Add one below, or run <code className="bg-muted px-1 py-0.5 rounded text-[11px]">polywave-tools init</code> in your project directory to auto-generate a config.</p>
                   </div>
                 )}
 

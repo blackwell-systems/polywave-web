@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/config"
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/protocol"
-	"github.com/blackwell-systems/scout-and-wave-web/pkg/service"
+	"github.com/blackwell-systems/polywave-go/pkg/config"
+	"github.com/blackwell-systems/polywave-go/pkg/protocol"
+	"github.com/blackwell-systems/polywave-web/pkg/service"
 )
 
 // implCache is an in-memory cache for parsed IMPL doc metadata used by
@@ -60,7 +60,7 @@ func (c *implCache) set(entries map[string]cachedImplEntry) {
 // implListEntry is one item in the GET /api/impl response.
 type implListEntry struct {
 	Slug         string   `json:"slug"`
-	Repo         string   `json:"repo"`           // repo name (from saw.config.json) this IMPL belongs to
+	Repo         string   `json:"repo"`           // repo name (from polywave.config.json) this IMPL belongs to
 	RepoPath     string   `json:"repo_path"`      // absolute path to the repo
 	DocStatus    string   `json:"doc_status"`     // "active" or "complete"
 	WaveCount    int      `json:"wave_count"`     // number of waves (0 if not yet planned)

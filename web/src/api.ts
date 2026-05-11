@@ -3,7 +3,7 @@
 // so existing imports continue to work without breaking anything.
 
 import { sawClient } from './lib/apiClient'
-import type { IMPLDocResponse, IMPLListEntry, WorktreeListResponse, WorktreeBatchDeleteRequest, WorktreeBatchDeleteResponse, FileDiffResponse, SAWConfig, ChatMessage, AgentContextResponse, ScoutContext, InterruptedSession } from './types'
+import type { IMPLDocResponse, IMPLListEntry, WorktreeListResponse, WorktreeBatchDeleteRequest, WorktreeBatchDeleteResponse, FileDiffResponse, PolyConfig, ChatMessage, AgentContextResponse, ScoutContext, InterruptedSession } from './types'
 import type { FileTreeResponse, FileContentResponse, GitStatusResponse, FileResolveResponse } from './types/filebrowser'
 
 // Re-export types that consumers may import from this file
@@ -122,7 +122,7 @@ export async function fetchFileDiff(slug: string, agent: string, wave: number, f
 }
 
 // Settings
-export async function getConfig(): Promise<SAWConfig> {
+export async function getConfig(): Promise<PolyConfig> {
   return sawClient.config.get()
 }
 
@@ -136,7 +136,7 @@ export async function browseNative(prompt?: string): Promise<string | null> {
   return sawClient.config.browseNative(prompt)
 }
 
-export async function saveConfig(config: SAWConfig): Promise<void> {
+export async function saveConfig(config: PolyConfig): Promise<void> {
   return sawClient.config.save(config)
 }
 

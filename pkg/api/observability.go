@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/observability"
+	"github.com/blackwell-systems/polywave-go/pkg/observability"
 )
 
 // RegisterObservabilityRoutes registers all observability API endpoints on the server mux.

@@ -59,7 +59,7 @@ type PipelineState struct {
 }
 
 // pipelineTracker persists step-level finalization state per slug to
-// .saw-state/<slug>-pipeline.json inside the IMPL directory.
+// .polywave-state/<slug>-pipeline.json inside the IMPL directory.
 // Safe for concurrent use.
 type pipelineTracker struct {
 	mu      sync.Mutex
@@ -71,7 +71,7 @@ func newPipelineTracker(implDir string) *pipelineTracker {
 }
 
 func (t *pipelineTracker) stateDir() string {
-	return filepath.Join(t.implDir, ".saw-state")
+	return filepath.Join(t.implDir, ".polywave-state")
 }
 
 func (t *pipelineTracker) statePath(slug string) string {

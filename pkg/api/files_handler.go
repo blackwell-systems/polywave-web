@@ -107,7 +107,7 @@ var languageMap = map[string]string{
 	".txt":   "text",
 }
 
-// resolveRepoPath looks up the named repo from saw.config.json in the server's
+// resolveRepoPath looks up the named repo from polywave.config.json in the server's
 // RepoPath directory and returns the absolute filesystem path for that repo.
 // Returns "", false if the repo name is not found.
 func (s *Server) resolveRepoPath(repoName string) (string, bool) {

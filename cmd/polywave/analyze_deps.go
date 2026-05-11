@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/blackwell-systems/scout-and-wave-go/pkg/analyzer"
+	"github.com/blackwell-systems/polywave-go/pkg/analyzer"
 	"gopkg.in/yaml.v3"
 )
 
