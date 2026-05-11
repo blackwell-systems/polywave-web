@@ -2,7 +2,7 @@ title: 'Visual Polish v2 - CSS Animations, Accessibility, and UI Refinements'
 feature_slug: visual-polish-v2
 verdict: SUITABLE
 suitability_assessment: |
-  Work is SUITABLE for SAW with strong parallelization potential.
+  Work is SUITABLE for Polywave with strong parallelization potential.
 
   **Suitability Gate Assessment:**
 
@@ -36,12 +36,12 @@ suitability_assessment: |
   - Scout phase: ~8 min (CSS contract definitions, component analysis, wave structure)
   - Agent execution: ~35 min (10 agents × ~5 min avg, 3 waves with parallelism)
   - Merge & verification: ~6 min (3 wave merges + visual QA)
-  Total SAW time: ~49 min
+  Total Polywave time: ~49 min
 
   Sequential baseline: ~75 min (10 agents × 7.5 min avg sequential)
   Time savings: ~26 min (35% faster)
 
-  Recommendation: Clear speedup. Proceed with SAW.
+  Recommendation: Clear speedup. Proceed with Polywave.
 
   **Note on v1 history:** Original IMPL-visual-polish-v1.yaml was created but execution
   was skipped. Current codebase shows 22% completion (orb animations exist and exceed

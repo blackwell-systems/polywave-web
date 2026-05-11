@@ -14,7 +14,7 @@ suitability_assessment: |
     3. Interface discoverability: Yes. SDK signatures are fixed and verified.
     4. Pre-implementation status: All errors are TODO (none partially fixed).
     5. Parallelization value: Low. Mechanical edits in 3 files, ~10 min sequential.
-       Single agent avoids SAW overhead. Value is coordination/tracking, not speed.
+       Single agent avoids Polywave overhead. Value is coordination/tracking, not speed.
 
     Test cascade: merge_service_test.go line 86 assigns MergeFunc with old signature
     (func(...) error). Changing MergeFunc's type to return result.Result will break
@@ -24,7 +24,7 @@ suitability_assessment: |
     - Scout phase: ~5 min
     - Agent execution: ~5 min (1 agent, mechanical changes)
     - Merge & verification: ~1 min
-    Total SAW time: ~11 min
+    Total Polywave time: ~11 min
     Sequential baseline: ~10 min
     Time savings: ~-1 min (overhead slightly exceeds savings)
     Recommendation: Marginal gains. Value is in tracking, not parallelization.

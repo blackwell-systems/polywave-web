@@ -27,7 +27,7 @@ suitability_assessment: |
   - Scout phase: ~8 min
   - Agent execution: ~12 min (4 agents, ~8 min avg, 2 waves with 3+1 parallelism)
   - Merge and verification: ~5 min
-  Total SAW time: ~25 min
+  Total Polywave time: ~25 min
 
   Sequential baseline: ~35 min (4 agents x ~8 min avg + overhead)
   Time savings: ~10 min (29% faster)
