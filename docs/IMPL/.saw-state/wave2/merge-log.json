@@ -1,0 +1,55 @@
+{
+  "wave": 2,
+  "merges": [
+    {
+      "agent": "F",
+      "merge_sha": "01f4a72afdd8e915bbd6884b6c4779afd5ef3dd7",
+      "timestamp": "2026-03-15T17:50:16.372905-07:00"
+    },
+    {
+      "agent": "D",
+      "merge_sha": "deaae5163d3f8cdf50f8c0851fe8ab1f93ce87fe",
+      "timestamp": "2026-03-15T21:49:10.986558-07:00"
+    },
+    {
+      "agent": "E",
+      "merge_sha": "a87c7cb9c1d030700f6c881228525a10d165adea",
+      "timestamp": "2026-03-15T21:49:14.901752-07:00"
+    },
+    {
+      "agent": "C",
+      "merge_sha": "27bbdf5e6961797fc0f3af8a6eefb1e0769f4256",
+      "timestamp": "2026-03-16T19:15:46.901836-07:00"
+    },
+    {
+      "agent": "D",
+      "merge_sha": "84f92a59e8ffe2079889f3340d8b0035d3b411c1",
+      "timestamp": "2026-03-16T19:15:47.176308-07:00"
+    },
+    {
+      "agent": "B",
+      "merge_sha": "408be95f564103f98fc6954c30a104d085e48ff4",
+      "timestamp": "2026-03-16T22:01:34.603391-07:00"
+    },
+    {
+      "agent": "D",
+      "merge_sha": "7261dd64f723403c31d9e0fd75c9fc395ed6bfb4",
+      "timestamp": "2026-03-17T03:49:24.675932-07:00"
+    },
+    {
+      "agent": "E",
+      "merge_sha": "6e95f15261a62b43d06766d9ba8f9a98acd66711",
+      "timestamp": "2026-03-17T03:49:24.934992-07:00"
+    },
+    {
+      "agent": "D",
+      "merge_sha": "2eeedc7c7d905956a8a2d132f31012bf19f8329b",
+      "timestamp": "2026-03-17T15:13:12.248108-07:00"
+    },
+    {
+      "agent": "E",
+      "merge_sha": "4940d467a1945aeb7809fa88fb095c2e5954b04d",
+      "timestamp": "2026-03-17T15:13:12.391861-07:00"
+    }
+  ]
+}

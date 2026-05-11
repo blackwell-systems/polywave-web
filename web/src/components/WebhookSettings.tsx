@@ -28,7 +28,7 @@ const ADAPTER_FIELDS: Record<WebhookAdapter['type'], AdapterFieldDef[]> = {
     { key: 'mode', label: 'Mode', type: 'select', options: ['webhook', 'token'] },
     { key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://hooks.slack.com/services/...', showWhen: { mode: 'webhook' } },
     { key: 'token', label: 'Bot Token', placeholder: 'xoxb-...', showWhen: { mode: 'token' } },
-    { key: 'destination', label: 'Channel', placeholder: '#saw-notifications', showWhen: { mode: 'token' } },
+    { key: 'destination', label: 'Channel', placeholder: '#polywave-notifications', showWhen: { mode: 'token' } },
   ],
   discord: [
     { key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://discord.com/api/webhooks/...' },

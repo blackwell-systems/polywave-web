@@ -1,0 +1,21 @@
+{
+  "slug": "integration-agent",
+  "current_stage": "wave_execute",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-16T10:58:32.81121-07:00",
+      "completed_at": "2026-03-16T10:58:32.812096-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "failed",
+      "wave_num": 1,
+      "message": "orchestrator: agent A: create worktree: manager: create worktree for wave 1 agent A: git worktree add failed: exit status 255: Preparing worktree (new branch 'wave1-agent-A')\nfatal: a branch named 'wave1-agent-A' already exists",
+      "started_at": "2026-03-16T10:58:32.861391-07:00",
+      "completed_at": "2026-03-16T10:58:32.909601-07:00"
+    }
+  ],
+  "updated_at": "2026-03-16T10:58:32.909601-07:00"
+}

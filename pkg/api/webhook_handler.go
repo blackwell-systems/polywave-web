@@ -91,7 +91,7 @@ func writeWebhookConfig(configPath string, wc WebhookConfig) error {
 	}
 
 	// Atomic write
-	tmpFile, err := os.CreateTemp(filepath.Dir(configPath), "saw-config-*.json.tmp")
+	tmpFile, err := os.CreateTemp(filepath.Dir(configPath), "polywave-config-*.json.tmp")
 	if err != nil {
 		return err
 	}
@@ -200,8 +200,8 @@ func (s *Server) handleTestWebhook(w http.ResponseWriter, r *http.Request) {
 	testEvent := notify.Event{
 		Type:      "test",
 		Severity:  notify.SeverityInfo,
-		Title:     "SAW Webhook Test",
-		Body:      "This is a test notification from Scout-and-Wave.",
+		Title:     "Polywave Webhook Test",
+		Body:      "This is a test notification from Polywave.",
 		Fields:    map[string]string{"source": "webhook_test"},
 		Timestamp: time.Now(),
 	}

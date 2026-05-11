@@ -514,10 +514,10 @@ func resolveIMPLPath(deps Deps, slug string) (string, string, error) {
 // given repo, falling back to FallbackPolywaveConfig for missing values.
 func resolveModels(deps Deps, repoPath string) (waveModel, scaffoldModel, integrationModel string) {
 	if r := config.Load(repoPath); r.IsSuccess() {
-		sawCfg := r.GetData()
-		waveModel = sawCfg.Agent.WaveModel
-		scaffoldModel = sawCfg.Agent.ScaffoldModel
-		integrationModel = sawCfg.Agent.IntegrationModel
+		pwCfg := r.GetData()
+		waveModel = pwCfg.Agent.WaveModel
+		scaffoldModel = pwCfg.Agent.ScaffoldModel
+		integrationModel = pwCfg.Agent.IntegrationModel
 	}
 	if FallbackPolywaveConfig != nil {
 		if waveModel == "" {
@@ -537,10 +537,10 @@ func resolveModels(deps Deps, repoPath string) (waveModel, scaffoldModel, integr
 // without needing Deps (used by runWaveLoop which doesn't receive Deps).
 func resolveModelsFromPath(repoPath string) (waveModel, scaffoldModel, integrationModel string) {
 	if r := config.Load(repoPath); r.IsSuccess() {
-		sawCfg := r.GetData()
-		waveModel = sawCfg.Agent.WaveModel
-		scaffoldModel = sawCfg.Agent.ScaffoldModel
-		integrationModel = sawCfg.Agent.IntegrationModel
+		pwCfg := r.GetData()
+		waveModel = pwCfg.Agent.WaveModel
+		scaffoldModel = pwCfg.Agent.ScaffoldModel
+		integrationModel = pwCfg.Agent.IntegrationModel
 	}
 	if FallbackPolywaveConfig != nil {
 		if waveModel == "" {
@@ -556,11 +556,11 @@ func resolveModelsFromPath(repoPath string) (waveModel, scaffoldModel, integrati
 	return
 }
 
-// detectStaleBranches finds SAW agent branches that are older than 7 days.
+// detectStaleBranches finds Polywave agent branches that are older than 7 days.
 func detectStaleBranches(repoPath string) []string {
 	out, err := exec.Command("git", "-C", repoPath, "for-each-ref",
 		"--format=%(refname:short) %(committerdate:unix)",
-		"refs/heads/saw/").Output()
+		"refs/heads/polywave/").Output()
 	if err != nil {
 		return nil
 	}

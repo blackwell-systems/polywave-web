@@ -1,6 +1,6 @@
-# saw API Reference
+# polywave API Reference
 
-The `saw serve` command exposes an HTTP API on `localhost:7432` (configurable via `--addr`). All endpoints return JSON unless otherwise noted. SSE (Server-Sent Events) endpoints stream `text/event-stream`.
+The `polywave serve` command exposes an HTTP API on `localhost:7432` (configurable via `--addr`). All endpoints return JSON unless otherwise noted. SSE (Server-Sent Events) endpoints stream `text/event-stream`.
 
 **Base URL:** `http://localhost:7432`
 
@@ -65,8 +65,8 @@ The `saw serve` command exposes an HTTP API on `localhost:7432` (configurable vi
 | `/api/impl/{slug}/agent/{letter}/context` | GET | Context | Get agent context payload |
 | `/api/context` | GET | Context | Get CONTEXT.md content |
 | `/api/context` | PUT | Context | Update CONTEXT.md |
-| `/api/config` | GET | Config | Get saw.config.json |
-| `/api/config` | POST | Config | Update saw.config.json |
+| `/api/config` | GET | Config | Get polywave.config.json |
+| `/api/config` | POST | Config | Update polywave.config.json |
 | `/api/config/validate-repo` | POST | Config | Validate a repository path |
 | `/api/bootstrap/run` | POST | Bootstrap | Run bootstrap for new project |
 | `/api/notifications/preferences` | GET | Notifications | Get notification preferences |
@@ -1411,7 +1411,7 @@ Update CONTEXT.md content.
 
 ### GET /api/config
 
-Get current `saw.config.json` configuration.
+Get current `polywave.config.json` configuration.
 
 **Response:**
 ```json
@@ -1445,7 +1445,7 @@ Get current `saw.config.json` configuration.
 
 ### POST /api/config
 
-Update `saw.config.json` configuration.
+Update `polywave.config.json` configuration.
 
 **Request body:** Same structure as GET response
 
@@ -2527,7 +2527,7 @@ es.addEventListener('wave_started', (e) => {
 
 ## Authentication
 
-Currently, the API has no authentication. It's intended for local development only. Do not expose `saw serve` to untrusted networks.
+Currently, the API has no authentication. It's intended for local development only. Do not expose `polywave serve` to untrusted networks.
 
 ---
 
@@ -2540,5 +2540,5 @@ No rate limiting. All operations are synchronous or streamed.
 ## See Also
 
 - [CLI Reference](cli-reference.md) -- Command-line interface
-- [Configuration Reference](configuration.md) -- `saw.config.json` structure
-- [Protocol Specification](https://github.com/blackwell-systems/scout-and-wave) -- SAW protocol invariants
+- [Configuration Reference](configuration.md) -- `polywave.config.json` structure
+- [Protocol Specification](https://github.com/blackwell-systems/polywave) -- Polywave protocol invariants

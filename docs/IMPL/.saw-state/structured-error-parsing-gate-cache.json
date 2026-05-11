@@ -1,0 +1,28 @@
+{
+  "slug": "structured-error-parsing-gate-cache",
+  "current_stage": "wave_merge",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-17T13:10:21.566391-07:00",
+      "completed_at": "2026-03-17T13:10:21.567064-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-17T13:10:21.593045-07:00",
+      "completed_at": "2026-03-17T13:13:03.581137-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "failed",
+      "wave_num": 2,
+      "message": "engine.FinalizeWave: merge-agents encountered conflicts",
+      "started_at": "2026-03-17T13:13:03.581457-07:00",
+      "completed_at": "2026-03-17T13:13:05.795807-07:00"
+    }
+  ],
+  "updated_at": "2026-03-17T13:13:05.795807-07:00"
+}

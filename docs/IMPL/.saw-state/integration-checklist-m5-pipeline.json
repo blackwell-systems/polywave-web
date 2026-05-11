@@ -1,0 +1,43 @@
+{
+  "slug": "integration-checklist-m5",
+  "wave": 1,
+  "steps": {
+    "cleanup": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:32.19415-07:00"
+    },
+    "fix_go_mod": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:17.612626-07:00"
+    },
+    "integration_agent": {
+      "status": "skipped",
+      "timestamp": "2026-03-18T20:29:31.771056-07:00"
+    },
+    "merge_agents": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:17.611997-07:00"
+    },
+    "run_gates": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:17.335954-07:00"
+    },
+    "scan_stubs": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:15.346053-07:00"
+    },
+    "validate_integration": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:17.338045-07:00"
+    },
+    "verify_build": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:31.77064-07:00"
+    },
+    "verify_commits": {
+      "status": "complete",
+      "timestamp": "2026-03-18T20:29:15.345048-07:00"
+    }
+  },
+  "updated_at": "2026-03-18T20:29:32.19415-07:00"
+}

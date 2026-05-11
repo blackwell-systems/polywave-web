@@ -53,10 +53,10 @@ func (s *Server) handleScaffoldRerun(w http.ResponseWriter, r *http.Request) {
 // scaffold_cancelled. The engine itself publishes scaffold_started,
 // scaffold_output, scaffold_failed, and scaffold_complete.
 func (s *Server) runScaffoldAgent(ctx context.Context, slug, runID, implPath string) {
-	sawRepo := os.Getenv("POLYWAVE_REPO")
-	if sawRepo == "" {
+	pwRepo := os.Getenv("POLYWAVE_REPO")
+	if pwRepo == "" {
 		home, _ := os.UserHomeDir()
-		sawRepo = filepath.Join(home, "code", "polywave")
+		pwRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	onEvent := func(ev engine.Event) {
@@ -65,8 +65,8 @@ func (s *Server) runScaffoldAgent(ctx context.Context, slug, runID, implPath str
 
 	// Read scaffold model from config.
 	scaffoldModel := ""
-	if sawCfg := config.LoadOrDefault(s.cfg.RepoPath); sawCfg != nil {
-		scaffoldModel = sawCfg.Agent.ScaffoldModel
+	if pwCfg := config.LoadOrDefault(s.cfg.RepoPath); pwCfg != nil {
+		scaffoldModel = pwCfg.Agent.ScaffoldModel
 	}
 
 	scaffoldResult := engine.RunScaffold(engine.RunScaffoldOpts{

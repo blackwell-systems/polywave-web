@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 import { useGlobalEvents } from './useGlobalEvents'
 import type { CriticResult, CriticFixRequest, IMPLDocResponse } from '../types'
 
@@ -53,7 +53,7 @@ export function useCriticState(slug: string, impl: IMPLDocResponse | null): Crit
   }, [impl])
 
   const fetchCritic = useCallback(() => {
-    sawClient.impl.criticReview(slug)
+    polywaveClient.impl.criticReview(slug)
       .then(data => { setCriticReport(data); setCriticRunning(false) })
       .catch(() => { setCriticReport(null); setCriticRunning(false) })
   }, [slug])
@@ -63,7 +63,7 @@ export function useCriticState(slug: string, impl: IMPLDocResponse | null): Crit
   const runCritic = useCallback(async () => {
     setCriticRunning(true)
     try {
-      await sawClient.impl.runCritic(slug)
+      await polywaveClient.impl.runCritic(slug)
       // SSE critic_review_complete will trigger fetchCritic
     } catch {
       setCriticRunning(false)
@@ -115,7 +115,7 @@ export function useCriticState(slug: string, impl: IMPLDocResponse | null): Crit
   })
 
   const applyCriticFix = useCallback(async (fix: CriticFixRequest) => {
-    await sawClient.impl.applyCriticFix(slug, fix)
+    await polywaveClient.impl.applyCriticFix(slug, fix)
     fetchCritic()
   }, [slug, fetchCritic])
 

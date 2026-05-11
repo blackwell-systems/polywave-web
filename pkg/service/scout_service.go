@@ -64,7 +64,7 @@ func CancelScout(_ Deps, runID string) error {
 }
 
 // sawConfig mirrors the polywave.config.json structure needed for scout model lookup.
-type sawConfig struct {
+type pwConfig struct {
 	Agent struct {
 		ScoutModel string `json:"scout_model"`
 	} `json:"agent"`
@@ -94,9 +94,9 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 	slug := Slugify(feature)
 	implOut := filepath.Join(repoRoot, "docs", "IMPL", "IMPL-"+slug+".yaml")
 
-	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("POLYWAVE_REPO")
-	if sawRepo == "" {
+	// Locate Polywave repo for prompt files.
+	pwRepo := os.Getenv("POLYWAVE_REPO")
+	if pwRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			publish("scout_failed", map[string]string{
@@ -105,7 +105,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 			})
 			return
 		}
-		sawRepo = filepath.Join(home, "code", "polywave")
+		pwRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	// Read polywave.config.json to pick up the configured scout model.
@@ -115,7 +115,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		cfgPath = deps.ConfigPath(repoRoot)
 	}
 	if cfgData, err := os.ReadFile(cfgPath); err == nil {
-		var cfg sawConfig
+		var cfg pwConfig
 		if json.Unmarshal(cfgData, &cfg) == nil {
 			scoutModel = cfg.Agent.ScoutModel
 		}
@@ -132,7 +132,7 @@ func runScoutAgent(ctx context.Context, deps Deps, runID, feature, repoOverride 
 		ScoutOpts: engine.RunScoutOpts{
 			Feature:             feature,
 			RepoPath:            repoRoot,
-			PolywaveRepoPath:         sawRepo,
+			PolywaveRepoPath:         pwRepo,
 			IMPLOutPath:         implOut,
 			ScoutModel:          scoutModel,
 			UseStructuredOutput: true,

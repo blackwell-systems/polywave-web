@@ -1,11 +1,11 @@
-# saw CLI Reference
+# polywave CLI Reference
 
-`saw` is the Scout-and-Wave web orchestration binary. It provides both a web UI (via `saw serve`) and a CLI for SAW operations.
+`saw` is the Polywave web orchestration binary. It provides both a web UI (via `polywave serve`) and a CLI for Polywave operations.
 
 ```
-saw [command] [args] [flags]
-saw --version
-saw --help
+polywave [command] [args] [flags]
+polywave --version
+polywave --help
 ```
 
 ## Quick Reference
@@ -24,7 +24,7 @@ saw --help
 | `extract-context` | Context | Extract agent-specific context as JSON |
 | `set-completion` | Status | Register completion report for an agent |
 | `render` | Format | Render YAML manifest as markdown |
-| `mark-complete` | Status | Write SAW:COMPLETE marker to IMPL doc |
+| `mark-complete` | Status | Write POLYWAVE:COMPLETE marker to IMPL doc |
 | `run-gates` | Quality | Run quality gate checks for a wave |
 | `check-conflicts` | Quality | Detect file ownership conflicts |
 | `update-agent-prompt` | Maintenance | Update agent's task prompt in manifest |
@@ -45,7 +45,7 @@ saw --help
 Start the HTTP server with React web interface for reviewing IMPL docs and monitoring wave execution.
 
 ```bash
-saw serve [flags]
+polywave serve [flags]
 ```
 
 **Flags:**
@@ -64,13 +64,13 @@ saw serve [flags]
 **Examples:**
 ```bash
 # Start server with defaults (localhost:7432, auto-detect repo)
-saw serve
+polywave serve
 
 # Custom port and repo path
-saw serve --addr :8080 --repo /path/to/project
+polywave serve --addr :8080 --repo /path/to/project
 
 # Custom IMPL directory, don't open browser
-saw serve --impl-dir /custom/impls --no-browser
+polywave serve --impl-dir /custom/impls --no-browser
 ```
 
 **See also:** [API Reference](api-reference.md) for HTTP endpoints
@@ -84,12 +84,12 @@ saw serve --impl-dir /custom/impls --no-browser
 Run Scout agent to analyze codebase and generate an IMPL doc for a feature request.
 
 ```bash
-saw scout --feature "description" [flags]
+polywave scout --feature "description" [flags]
 ```
 
 **Flags:**
 - `--feature string` -- One-line feature description (required)
-- `--backend string` -- Backend to use: `api`, `cli`, or `auto` (default: `auto`; env: `SAW_BACKEND`)
+- `--backend string` -- Backend to use: `api`, `cli`, or `auto` (default: `auto`; env: `POLYWAVE_BACKEND`)
 - `--impl string` -- Output path for IMPL doc (optional; default: auto-generated in `docs/IMPL/`)
 - `--repo string` -- Repository root (optional; default: auto-detect from cwd)
 
@@ -105,17 +105,17 @@ saw scout --feature "description" [flags]
 **Examples:**
 ```bash
 # Generate IMPL doc with auto backend
-saw scout --feature "add OAuth 2.0 authentication"
+polywave scout --feature "add OAuth 2.0 authentication"
 
 # Force API backend
 export ANTHROPIC_API_KEY=sk-ant-...
-saw scout --feature "add caching layer" --backend api
+polywave scout --feature "add caching layer" --backend api
 
 # Force CLI backend (Claude Max plan)
-saw scout --feature "refactor database layer" --backend cli
+polywave scout --feature "refactor database layer" --backend cli
 
 # Specify output path
-saw scout --feature "add rate limiting" --impl docs/IMPL/IMPL-rate-limit.yaml
+polywave scout --feature "add rate limiting" --impl docs/IMPL/IMPL-rate-limit.yaml
 ```
 
 **See also:** `scaffold` (next step after Scout)
@@ -127,12 +127,12 @@ saw scout --feature "add rate limiting" --impl docs/IMPL/IMPL-rate-limit.yaml
 Run Scaffold agent to create interface contract stubs from an IMPL doc (I2 enforcement).
 
 ```bash
-saw scaffold --impl <path> [flags]
+polywave scaffold --impl <path> [flags]
 ```
 
 **Flags:**
 - `--impl string` -- Path to IMPL doc (required)
-- `--backend string` -- Backend to use: `api`, `cli`, or `auto` (default: `auto`; env: `SAW_BACKEND`)
+- `--backend string` -- Backend to use: `api`, `cli`, or `auto` (default: `auto`; env: `POLYWAVE_BACKEND`)
 - `--repo string` -- Repository root (optional; default: auto-detect from cwd)
 
 **Behavior:**
@@ -144,10 +144,10 @@ saw scaffold --impl <path> [flags]
 **Examples:**
 ```bash
 # Create scaffolds with auto backend
-saw scaffold --impl docs/IMPL/IMPL-oauth.yaml
+polywave scaffold --impl docs/IMPL/IMPL-oauth.yaml
 
 # Force specific backend
-saw scaffold --impl docs/IMPL/IMPL-caching.yaml --backend cli
+polywave scaffold --impl docs/IMPL/IMPL-caching.yaml --backend cli
 ```
 
 **See also:** `wave` (next step after scaffolding)
@@ -159,7 +159,7 @@ saw scaffold --impl docs/IMPL/IMPL-caching.yaml --backend cli
 Execute agents for a specific wave from an IMPL doc.
 
 ```bash
-saw wave --impl <path> [flags]
+polywave wave --impl <path> [flags]
 ```
 
 **Flags:**
@@ -177,16 +177,16 @@ saw wave --impl <path> [flags]
 **Examples:**
 ```bash
 # Execute wave 1 (interactive, pause after completion)
-saw wave --impl docs/IMPL/IMPL-oauth.yaml
+polywave wave --impl docs/IMPL/IMPL-oauth.yaml
 
 # Execute wave 2 specifically
-saw wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2
+polywave wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2
 
 # Execute all waves automatically (no pauses)
-saw wave --impl docs/IMPL/IMPL-oauth.yaml --auto
+polywave wave --impl docs/IMPL/IMPL-oauth.yaml --auto
 
 # Start from wave 2, continue automatically
-saw wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2 --auto
+polywave wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2 --auto
 ```
 
 **See also:** `merge`, `status`
@@ -198,7 +198,7 @@ saw wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2 --auto
 Manually merge agent worktrees for a completed wave (recovery/debugging tool).
 
 ```bash
-saw merge --impl <path> --wave <n>
+polywave merge --impl <path> --wave <n>
 ```
 
 **Flags:**
@@ -215,10 +215,10 @@ saw merge --impl <path> --wave <n>
 **Examples:**
 ```bash
 # Merge wave 1
-saw merge --impl docs/IMPL/IMPL-oauth.yaml --wave 1
+polywave merge --impl docs/IMPL/IMPL-oauth.yaml --wave 1
 
 # Merge wave 3
-saw merge --impl docs/IMPL/IMPL-oauth.yaml --wave 3
+polywave merge --impl docs/IMPL/IMPL-oauth.yaml --wave 3
 ```
 
 **Note:** Normally called automatically by `wave --auto`. Use this for manual recovery when `wave` is interrupted.
@@ -234,7 +234,7 @@ saw merge --impl docs/IMPL/IMPL-oauth.yaml --wave 3
 Show current wave/agent completion status from an IMPL doc.
 
 ```bash
-saw status --impl <path> [flags]
+polywave status --impl <path> [flags]
 ```
 
 **Flags:**
@@ -276,13 +276,13 @@ Wave 2: In Progress (1/2 agents)
 **Examples:**
 ```bash
 # Human-readable status
-saw status --impl docs/IMPL/IMPL-oauth.yaml
+polywave status --impl docs/IMPL/IMPL-oauth.yaml
 
 # JSON output for scripting
-saw status --impl docs/IMPL/IMPL-oauth.yaml --json
+polywave status --impl docs/IMPL/IMPL-oauth.yaml --json
 
 # Show only incomplete agents
-saw status --impl docs/IMPL/IMPL-oauth.yaml --missing
+polywave status --impl docs/IMPL/IMPL-oauth.yaml --missing
 ```
 
 **See also:** `current-wave`, `merge-wave`
@@ -294,7 +294,7 @@ saw status --impl docs/IMPL/IMPL-oauth.yaml --missing
 Return the wave number of the first incomplete wave, or "complete" if all waves finished.
 
 ```bash
-saw current-wave <manifest-path>
+polywave current-wave <manifest-path>
 ```
 
 **Arguments:**
@@ -311,11 +311,11 @@ saw current-wave <manifest-path>
 **Examples:**
 ```bash
 # Get current wave
-saw current-wave docs/IMPL/IMPL-oauth.yaml
+polywave current-wave docs/IMPL/IMPL-oauth.yaml
 # Output: 2
 
 # Use in scripts
-WAVE=$(saw current-wave docs/IMPL/IMPL-oauth.yaml)
+WAVE=$(polywave current-wave docs/IMPL/IMPL-oauth.yaml)
 if [ "$WAVE" = "complete" ]; then
   echo "All waves finished"
 else
@@ -332,7 +332,7 @@ fi
 Check if a wave is ready to merge and output JSON status (used internally by orchestrator).
 
 ```bash
-saw merge-wave <manifest-path> <wave-number>
+polywave merge-wave <manifest-path> <wave-number>
 ```
 
 **Arguments:**
@@ -343,10 +343,10 @@ saw merge-wave <manifest-path> <wave-number>
 
 **Examples:**
 ```bash
-saw merge-wave docs/IMPL/IMPL-oauth.yaml 1
+polywave merge-wave docs/IMPL/IMPL-oauth.yaml 1
 # {"ready": true, "agents": ["A", "B", "C"]}
 
-saw merge-wave docs/IMPL/IMPL-oauth.yaml 2
+polywave merge-wave docs/IMPL/IMPL-oauth.yaml 2
 # {"ready": false, "reason": "Agent E has no completion report"}
 ```
 
@@ -361,7 +361,7 @@ saw merge-wave docs/IMPL/IMPL-oauth.yaml 2
 Validate a YAML IMPL manifest against protocol invariants (E1-E23).
 
 ```bash
-saw validate <manifest-path>
+polywave validate <manifest-path>
 ```
 
 **Arguments:**
@@ -375,7 +375,7 @@ saw validate <manifest-path>
 
 **Examples:**
 ```bash
-saw validate docs/IMPL/IMPL-oauth.yaml
+polywave validate docs/IMPL/IMPL-oauth.yaml
 
 # Output (valid):
 # {"valid": true, "errors": []}
@@ -395,7 +395,7 @@ saw validate docs/IMPL/IMPL-oauth.yaml
 Detect file ownership conflicts across agents in an IMPL manifest (I1 validation).
 
 ```bash
-saw check-conflicts <manifest-path>
+polywave check-conflicts <manifest-path>
 ```
 
 **Arguments:**
@@ -409,7 +409,7 @@ saw check-conflicts <manifest-path>
 
 **Examples:**
 ```bash
-saw check-conflicts docs/IMPL/IMPL-oauth.yaml
+polywave check-conflicts docs/IMPL/IMPL-oauth.yaml
 
 # Output (no conflicts):
 # []
@@ -430,7 +430,7 @@ saw check-conflicts docs/IMPL/IMPL-oauth.yaml
 Run quality gate checks for a wave (test/lint commands from manifest).
 
 ```bash
-saw run-gates --wave <n> [flags]
+polywave run-gates --wave <n> [flags]
 ```
 
 **Flags:**
@@ -444,8 +444,8 @@ saw run-gates --wave <n> [flags]
 
 **Examples:**
 ```bash
-saw run-gates --wave 1
-saw run-gates --wave 2 --repo-dir /path/to/repo
+polywave run-gates --wave 1
+polywave run-gates --wave 2 --repo-dir /path/to/repo
 ```
 
 **See also:** `validate`
@@ -457,7 +457,7 @@ saw run-gates --wave 2 --repo-dir /path/to/repo
 Validate that scaffold files declared in manifest are committed to the repository.
 
 ```bash
-saw validate-scaffolds <manifest-path>
+polywave validate-scaffolds <manifest-path>
 ```
 
 **Arguments:**
@@ -471,7 +471,7 @@ saw validate-scaffolds <manifest-path>
 
 **Examples:**
 ```bash
-saw validate-scaffolds docs/IMPL/IMPL-oauth.yaml
+polywave validate-scaffolds docs/IMPL/IMPL-oauth.yaml
 
 # Output (valid):
 # {"valid": true, "missing": []}
@@ -489,7 +489,7 @@ saw validate-scaffolds docs/IMPL/IMPL-oauth.yaml
 Check IMPL manifest for interface contract freeze violations (E17).
 
 ```bash
-saw freeze-check <manifest-path>
+polywave freeze-check <manifest-path>
 ```
 
 **Arguments:**
@@ -503,7 +503,7 @@ saw freeze-check <manifest-path>
 
 **Examples:**
 ```bash
-saw freeze-check docs/IMPL/IMPL-oauth.yaml
+polywave freeze-check docs/IMPL/IMPL-oauth.yaml
 ```
 
 **See also:** `validate`
@@ -517,7 +517,7 @@ saw freeze-check docs/IMPL/IMPL-oauth.yaml
 Analyze Go repository dependencies and produce a dependency graph.
 
 ```bash
-saw analyze-deps [flags]
+polywave analyze-deps [flags]
 ```
 
 **Flags:**
@@ -530,8 +530,8 @@ saw analyze-deps [flags]
 
 **Examples:**
 ```bash
-saw analyze-deps
-saw analyze-deps --repo-dir /path/to/go/project
+polywave analyze-deps
+polywave analyze-deps --repo-dir /path/to/go/project
 ```
 
 ---
@@ -541,7 +541,7 @@ saw analyze-deps --repo-dir /path/to/go/project
 Scan codebase for pre-implementation status of requirements.
 
 ```bash
-saw analyze-suitability [flags]
+polywave analyze-suitability [flags]
 ```
 
 **Flags:**
@@ -554,8 +554,8 @@ saw analyze-suitability [flags]
 
 **Examples:**
 ```bash
-saw analyze-suitability
-saw analyze-suitability --repo-dir /path/to/project
+polywave analyze-suitability
+polywave analyze-suitability --repo-dir /path/to/project
 ```
 
 ---
@@ -565,7 +565,7 @@ saw analyze-suitability --repo-dir /path/to/project
 Detect cascade candidates from type renames via AST analysis.
 
 ```bash
-saw detect-cascades [flags]
+polywave detect-cascades [flags]
 ```
 
 **Flags:**
@@ -578,8 +578,8 @@ saw detect-cascades [flags]
 
 **Examples:**
 ```bash
-saw detect-cascades
-saw detect-cascades --repo-dir /path/to/project
+polywave detect-cascades
+polywave detect-cascades --repo-dir /path/to/project
 ```
 
 ---
@@ -589,7 +589,7 @@ saw detect-cascades --repo-dir /path/to/project
 Detect shared types that need scaffold files from interface contracts.
 
 ```bash
-saw detect-scaffolds [flags]
+polywave detect-scaffolds [flags]
 ```
 
 **Flags:**
@@ -602,8 +602,8 @@ saw detect-scaffolds [flags]
 
 **Examples:**
 ```bash
-saw detect-scaffolds
-saw detect-scaffolds --repo-dir /path/to/project
+polywave detect-scaffolds
+polywave detect-scaffolds --repo-dir /path/to/project
 ```
 
 ---
@@ -613,7 +613,7 @@ saw detect-scaffolds --repo-dir /path/to/project
 Extract build/test/lint/format commands from CI configs and project manifests.
 
 ```bash
-saw extract-commands [flags]
+polywave extract-commands [flags]
 ```
 
 **Flags:**
@@ -626,8 +626,8 @@ saw extract-commands [flags]
 
 **Examples:**
 ```bash
-saw extract-commands
-saw extract-commands --repo-dir /path/to/project
+polywave extract-commands
+polywave extract-commands --repo-dir /path/to/project
 ```
 
 ---
@@ -639,7 +639,7 @@ saw extract-commands --repo-dir /path/to/project
 Extract agent-specific context from an IMPL manifest as JSON (E23 context payload).
 
 ```bash
-saw extract-context --impl <path> --agent <id>
+polywave extract-context --impl <path> --agent <id>
 ```
 
 **Flags:**
@@ -654,7 +654,7 @@ saw extract-context --impl <path> --agent <id>
 
 **Examples:**
 ```bash
-saw extract-context --impl docs/IMPL/IMPL-oauth.yaml --agent A
+polywave extract-context --impl docs/IMPL/IMPL-oauth.yaml --agent A
 
 # Output:
 # {
@@ -674,7 +674,7 @@ saw extract-context --impl docs/IMPL/IMPL-oauth.yaml --agent A
 Register a completion report for an agent in a manifest (reads YAML from stdin).
 
 ```bash
-saw set-completion <manifest-path> <agent-id> < completion-report.yaml
+polywave set-completion <manifest-path> <agent-id> < completion-report.yaml
 ```
 
 **Arguments:**
@@ -690,7 +690,7 @@ saw set-completion <manifest-path> <agent-id> < completion-report.yaml
 
 **Examples:**
 ```bash
-cat <<EOF | saw set-completion docs/IMPL/IMPL-oauth.yaml A
+cat <<EOF | polywave set-completion docs/IMPL/IMPL-oauth.yaml A
 status: complete
 summary: Implemented OAuth client with PKCE flow
 files_modified:
@@ -710,7 +710,7 @@ EOF
 Update an agent's task prompt in a manifest (interactive editor).
 
 ```bash
-saw update-agent-prompt --agent <id> < manifest.yaml > updated.yaml
+polywave update-agent-prompt --agent <id> < manifest.yaml > updated.yaml
 ```
 
 **Flags:**
@@ -723,7 +723,7 @@ saw update-agent-prompt --agent <id> < manifest.yaml > updated.yaml
 
 **Examples:**
 ```bash
-saw update-agent-prompt --agent B < docs/IMPL/IMPL-oauth.yaml > /tmp/updated.yaml
+polywave update-agent-prompt --agent B < docs/IMPL/IMPL-oauth.yaml > /tmp/updated.yaml
 mv /tmp/updated.yaml docs/IMPL/IMPL-oauth.yaml
 ```
 
@@ -738,7 +738,7 @@ mv /tmp/updated.yaml docs/IMPL/IMPL-oauth.yaml
 Render a YAML IMPL manifest as markdown (for human readability).
 
 ```bash
-saw render < manifest.yaml > output.md
+polywave render < manifest.yaml > output.md
 ```
 
 **Input:** Reads YAML manifest from stdin
@@ -752,20 +752,20 @@ saw render < manifest.yaml > output.md
 **Examples:**
 ```bash
 # Render to stdout
-saw render < docs/IMPL/IMPL-oauth.yaml
+polywave render < docs/IMPL/IMPL-oauth.yaml
 
 # Save to file
-saw render < docs/IMPL/IMPL-oauth.yaml > /tmp/IMPL-oauth.md
+polywave render < docs/IMPL/IMPL-oauth.yaml > /tmp/IMPL-oauth.md
 ```
 
 ---
 
 ### mark-complete
 
-Write `SAW:COMPLETE` marker to an IMPL doc with completion date.
+Write `POLYWAVE:COMPLETE` marker to an IMPL doc with completion date.
 
 ```bash
-saw mark-complete --date <YYYY-MM-DD> < manifest.yaml > updated.yaml
+polywave mark-complete --date <YYYY-MM-DD> < manifest.yaml > updated.yaml
 ```
 
 **Flags:**
@@ -776,11 +776,11 @@ saw mark-complete --date <YYYY-MM-DD> < manifest.yaml > updated.yaml
 
 **Examples:**
 ```bash
-saw mark-complete < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
+polywave mark-complete < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
 mv /tmp/complete.yaml docs/IMPL/IMPL-oauth.yaml
 
 # Custom date
-saw mark-complete --date 2026-03-15 < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
+polywave mark-complete --date 2026-03-15 < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
 ```
 
 **See also:** `status`
@@ -800,7 +800,7 @@ All commands support:
 
 | Variable | Commands | Description |
 |----------|----------|-------------|
-| `SAW_BACKEND` | `scout`, `scaffold` | Default backend: `api`, `cli`, or `auto` |
+| `POLYWAVE_BACKEND` | `scout`, `scaffold` | Default backend: `api`, `cli`, or `auto` |
 | `ANTHROPIC_API_KEY` | All (when using API backend) | Anthropic API key |
 
 ---
@@ -815,5 +815,5 @@ All commands support:
 ## See Also
 
 - [API Reference](api-reference.md) -- HTTP endpoints for web UI
-- [Configuration Reference](configuration.md) -- `saw.config.json` structure
-- [Protocol Specification](https://github.com/blackwell-systems/scout-and-wave) -- SAW protocol invariants
+- [Configuration Reference](configuration.md) -- `polywave.config.json` structure
+- [Protocol Specification](https://github.com/blackwell-systems/polywave) -- Polywave protocol invariants

@@ -40,14 +40,14 @@ func TestParseWorktreePorcelain_UnmergedBranch(t *testing.T) {
 	}
 }
 
-func TestParseWorktreePorcelain_FiltersNonSAWBranches(t *testing.T) {
+func TestParseWorktreePorcelain_FiltersNonPolywaveBranches(t *testing.T) {
 	data := []byte("worktree /tmp/repo\nHEAD abc123\nbranch refs/heads/main\n\nworktree /tmp/repo/.claude/worktrees/wave1-agent-A\nHEAD def456\nbranch refs/heads/wave1-agent-A\n\nworktree /tmp/repo/feature\nHEAD ghi789\nbranch refs/heads/feature-branch\n\n")
 	merged := map[string]bool{}
 
 	entries := parseWorktreePorcelain(data, merged)
 
 	if len(entries) != 1 {
-		t.Fatalf("expected 1 SAW entry, got %d", len(entries))
+		t.Fatalf("expected 1 Polywave entry, got %d", len(entries))
 	}
 	if entries[0].Branch != "wave1-agent-A" {
 		t.Errorf("expected wave1-agent-A, got %s", entries[0].Branch)
@@ -112,23 +112,23 @@ func TestHandleBatchDeleteWorktrees_InvalidJSON(t *testing.T) {
 
 // TestDetectStaleBranches_IMPLAware verifies that detectStaleBranches uses
 // IMPL-aware detection via protocol.DetectStaleWorktrees. In a real git repo
-// with no SAW worktrees or IMPL docs, it should return an empty list (the
+// with no Polywave worktrees or IMPL docs, it should return an empty list (the
 // protocol function finds nothing stale, not an error).
 func TestDetectStaleBranches_IMPLAware(t *testing.T) {
 	repoDir := initGitRepo(t)
 	branches := detectStaleBranches(repoDir)
-	// A fresh repo has no SAW branches, so nothing should be stale
+	// A fresh repo has no Polywave branches, so nothing should be stale
 	if len(branches) != 0 {
 		t.Errorf("expected 0 stale branches in fresh repo, got %d: %v", len(branches), branches)
 	}
 }
 
 // TestDetectStaleBranchesLegacy_Fallback verifies the legacy fallback still
-// works correctly — it detects unmerged SAW-pattern branches.
+// works correctly — it detects unmerged Polywave-pattern branches.
 func TestDetectStaleBranchesLegacy_Fallback(t *testing.T) {
 	repoDir := initGitRepo(t)
 	branches := detectStaleBranchesLegacy(repoDir)
-	// A fresh repo has no SAW branches
+	// A fresh repo has no Polywave branches
 	if len(branches) != 0 {
 		t.Errorf("expected 0 stale branches in fresh repo, got %d: %v", len(branches), branches)
 	}

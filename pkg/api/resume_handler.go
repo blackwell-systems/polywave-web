@@ -9,7 +9,7 @@ import (
 )
 
 // handleInterruptedSessions serves GET /api/sessions/interrupted.
-// Scans all configured repos for interrupted SAW sessions and returns
+// Scans all configured repos for interrupted Polywave sessions and returns
 // a JSON array of session state objects.
 //
 // Uses resume.DetectWithConfig to scan all repos in a single call,

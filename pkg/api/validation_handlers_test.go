@@ -250,7 +250,7 @@ verdict: SUITABLE
 wiring:
   - symbol: RegisterRoutes
     defined_in: pkg/api/routes.go
-    must_be_called_from: cmd/saw/serve_cmd.go
+    must_be_called_from: cmd/polywave/serve_cmd.go
     agent: A
     wave: 1
 waves:
@@ -278,7 +278,7 @@ waves:
 		t.Fatalf("failed to parse response: %v", err)
 	}
 
-	// The caller file cmd/saw/serve_cmd.go doesn't exist in the temp dir and
+	// The caller file cmd/polywave/serve_cmd.go doesn't exist in the temp dir and
 	// doesn't contain "RegisterRoutes", so we expect gaps and valid=false.
 	if resp.Valid {
 		t.Error("expected valid=false when caller file is missing, got true")

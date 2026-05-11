@@ -159,7 +159,7 @@ export interface AgentFailedData {
   message: string
 }
 
-export interface SAWError {
+export interface PolywaveError {
   code: string
   message: string
   severity: 'fatal' | 'error' | 'warning' | 'info'
@@ -182,7 +182,7 @@ export interface GateResult {
   skipped?: boolean
   skip_reason?: string
   from_cache?: boolean
-  parsed_errors?: SAWError[]
+  parsed_errors?: PolywaveError[]
 }
 
 /** @deprecated Use GateResult instead. Kept for backward compatibility with SSE event consumers. */

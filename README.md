@@ -1,37 +1,37 @@
-# Scout-and-Wave Web
+# Polywave Web
 
 [![Blackwell Systems™](https://raw.githubusercontent.com/blackwell-systems/blackwell-docs-theme/main/badge-trademark.svg)](https://github.com/blackwell-systems)
-[![CI](https://github.com/blackwell-systems/scout-and-wave-web/actions/workflows/ci.yml/badge.svg)](https://github.com/blackwell-systems/scout-and-wave-web/actions/workflows/ci.yml)
+[![CI](https://github.com/blackwell-systems/polywave-web/actions/workflows/ci.yml/badge.svg)](https://github.com/blackwell-systems/polywave-web/actions/workflows/ci.yml)
 ![Version](https://img.shields.io/badge/version-0.20.3-blue)
 [![Buy Me A Coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg)](https://buymeacoffee.com/blackwellsystems)
 
-**Web UI for the [Scout-and-Wave protocol](https://github.com/blackwell-systems/scout-and-wave)** — review IMPL docs, monitor live wave execution, and chat with Claude about your implementation plans.
+**Web UI for the [Polywave protocol](https://github.com/blackwell-systems/polywave)** — review IMPL docs, monitor live wave execution, and chat with Claude about your implementation plans.
 
 ## What is this?
 
-Scout-and-Wave (SAW) coordinates multiple AI agents working in parallel on non-overlapping parts of a codebase. This repo provides the **`saw` binary** — the user-facing web UI + orchestration tool.
+Polywave coordinates multiple AI agents working in parallel on non-overlapping parts of a codebase. This repo provides the **`polywave` binary** — the user-facing web UI + orchestration tool.
 
 **Features:**
 - **Interactive web UI** for reviewing IMPL docs (implementation plans) with visual dependency graphs, wave timelines, and file ownership tables
 - **Live wave dashboard** with real-time agent status, streaming logs, and progress tracking
 - **Chat interface** to ask Claude questions about IMPL docs with full conversation context
-- **HTTP API** (42 endpoints) for programmatic access to SAW operations
-- **CLI interface** (`./saw`) as an alternative to the web UI
+- **HTTP API** (42 endpoints) for programmatic access to Polywave operations
+- **CLI interface** (`./polywave`) as an alternative to the web UI
 
-The web server imports the [scout-and-wave-go](https://github.com/blackwell-systems/scout-and-wave-go) engine package for all SAW orchestration logic. The protocol specification lives in [scout-and-wave](https://github.com/blackwell-systems/scout-and-wave).
+The web server imports the [polywave-go](https://github.com/blackwell-systems/polywave-go) engine package for all Polywave orchestration logic. The protocol specification lives in [polywave](https://github.com/blackwell-systems/polywave).
 
-**Note:** There's also a separate `sawtools` CLI in scout-and-wave-go for protocol-level operations (CI/CD, power users). See [scout-and-wave-go/docs/binaries.md](https://github.com/blackwell-systems/scout-and-wave-go/blob/develop/docs/binaries.md) for when to use which binary.
+**Note:** There's also a separate `polywavetools` CLI in polywave-go for protocol-level operations (CI/CD, power users). See [polywave-go/docs/binaries.md](https://github.com/blackwell-systems/polywave-go/blob/develop/docs/binaries.md) for when to use which binary.
 
 ## Quickstart
 
 ```bash
 # Clone and build
-git clone https://github.com/blackwell-systems/scout-and-wave-web.git
-cd scout-and-wave-web
+git clone https://github.com/blackwell-systems/polywave-web.git
+cd polywave-web
 make build
 
 # Start the web server
-./saw serve
+./polywave serve
 # Opens http://localhost:7432 in your browser
 ```
 
@@ -46,7 +46,7 @@ The web UI provides:
 
 - **Go 1.25+** — required by `go.mod`
 - **Node.js 18+** — required for web UI build
-- **git** — SAW creates/merges git worktrees during wave execution
+- **git** — Polywave creates/merges git worktrees during wave execution
 - **`claude` CLI** *(optional)* — required only if using `--backend cli` (Claude Max plan, no API key); install from [claude.ai/code](https://claude.ai/code)
 - **`ANTHROPIC_API_KEY`** *(optional)* — required only if using `--backend api`; default is `auto` (uses whichever is available)
 
@@ -55,19 +55,19 @@ The web UI provides:
 ### From source
 
 ```bash
-git clone https://github.com/blackwell-systems/scout-and-wave-web.git
-cd scout-and-wave-web
+git clone https://github.com/blackwell-systems/polywave-web.git
+cd polywave-web
 make build
-./saw --version
+./polywave --version
 ```
 
-The `make build` target builds the React frontend (`web/`) and embeds it into the Go binary via `go:embed`. You can then copy `./saw` anywhere on your `$PATH`.
+The `make build` target builds the React frontend (`web/`) and embeds it into the Go binary via `go:embed`. You can then copy `./polywave` anywhere on your `$PATH`.
 
 ### Docker (coming soon)
 
 ```bash
-docker pull blackwellsystems/scout-and-wave-web:latest
-docker run -p 7432:7432 -v $(pwd):/workspace blackwellsystems/scout-and-wave-web
+docker pull blackwellsystems/polywave-web:latest
+docker run -p 7432:7432 -v $(pwd):/workspace blackwellsystems/polywave-web
 ```
 
 ## Usage
@@ -76,13 +76,13 @@ docker run -p 7432:7432 -v $(pwd):/workspace blackwellsystems/scout-and-wave-web
 
 ```bash
 # Start server and open browser
-./saw serve
+./polywave serve
 
 # Custom port and repo path
-./saw serve --addr :8080 --repo /path/to/your/project
+./polywave serve --addr :8080 --repo /path/to/your/project
 
 # Don't auto-open browser
-./saw serve --no-browser
+./polywave serve --no-browser
 ```
 
 The web UI provides three main views:
@@ -115,20 +115,20 @@ The binary also provides a CLI for scripting and CI/CD:
 
 ```bash
 # Analyze codebase and generate IMPL doc
-./saw scout --feature "add caching layer"
+./polywave scout --feature "add caching layer"
 
 # Create scaffold files from IMPL doc
-./saw scaffold --impl docs/IMPL/IMPL-caching.md
+./polywave scaffold --impl docs/IMPL/IMPL-caching.md
 
 # Execute all waves automatically
-./saw wave --impl docs/IMPL/IMPL-caching.md --auto
+./polywave wave --impl docs/IMPL/IMPL-caching.md --auto
 
 # Check status
-./saw status --impl docs/IMPL/IMPL-caching.md
-./saw status --impl docs/IMPL/IMPL-caching.md --json
+./polywave status --impl docs/IMPL/IMPL-caching.md
+./polywave status --impl docs/IMPL/IMPL-caching.md --json
 
 # Manual merge (recovery)
-./saw merge --impl docs/IMPL/IMPL-caching.md --wave 1
+./polywave merge --impl docs/IMPL/IMPL-caching.md --wave 1
 ```
 
 See [CLI Reference](docs/reference/cli-reference.md) for full command reference.
@@ -143,7 +143,7 @@ Click "Ask Claude about this IMPL" in any review screen to open the chat panel. 
 - **Per-IMPL history**: Switch between IMPLs and return — conversations persist in memory
 - **Markdown rendering**: Code blocks with syntax highlighting, proper paragraph spacing
 - **Resizable panel**: Drag the divider to adjust chat width
-- **Explanatory mode**: When using the CLI backend (no API key), Claude provides educational insights about SAW patterns
+- **Explanatory mode**: When using the CLI backend (no API key), Claude provides educational insights about Polywave patterns
 
 Example conversation:
 
@@ -186,7 +186,7 @@ The dependency graph panel renders an interactive SVG:
 
 ### Live wave execution
 
-When running `./saw wave --auto` (or via API), the Wave Dashboard streams live updates:
+When running `./polywave wave --auto` (or via API), the Wave Dashboard streams live updates:
 
 - Per-wave progress bars
 - Per-agent status cards (pending → running → complete/failed)
@@ -199,34 +199,34 @@ All updates arrive over SSE (`/api/wave/{slug}/events`), so no polling required.
 ## Architecture
 
 ```
-scout-and-wave-web/
-├── cmd/saw/              # CLI entry point (wraps pkg/api + pkg/engine calls)
+polywave-web/
+├── cmd/polywave/         # CLI entry point (wraps pkg/api + pkg/engine calls)
 ├── pkg/
 │   ├── api/             # HTTP server, SSE broker, REST endpoints
 │   │   ├── server.go    # Main server with embedded web bundle
 │   │   ├── chat_handler.go    # Chat SSE endpoint
 │   │   └── wave_handler.go    # Wave execution SSE endpoint
-│   └── protocol/        # IMPL doc parser (wraps scout-and-wave-go/pkg/protocol)
+│   └── protocol/        # IMPL doc parser (wraps polywave-go/pkg/protocol)
 ├── web/                 # React + TypeScript + Tailwind
 │   ├── src/
 │   │   ├── components/  # UI components (ReviewScreen, WaveBoard, ChatPanel)
 │   │   ├── hooks/       # useChatWithClaude, useWaveEvents (SSE)
 │   │   └── api.ts       # HTTP client (fetch wrappers)
 │   └── dist/            # Built bundle (go:embed'ed into binary)
-└── docs/IMPL/           # IMPL docs generated by `saw scout`
+└── docs/IMPL/           # IMPL docs generated by `polywave scout`
 ```
 
 **Dependency chain**:
-- `scout-and-wave-web` (this repo) → imports `scout-and-wave-go` (engine) → references `scout-and-wave` (protocol spec)
+- `polywave-web` (this repo) → imports `polywave-go` (engine) → references `polywave` (protocol spec)
 
-The engine repo (`scout-and-wave-go`) provides:
+The engine repo (`polywave-go`) provides:
 - `pkg/engine` — RunScout, RunChat, StartWave, MergeWave
 - `pkg/agent` — Agent runner with tool-use loop
 - `pkg/agent/backend` — Anthropic API client + Claude CLI shim
 - `pkg/orchestrator` — 10-state machine
 - `pkg/protocol` — IMPL doc parser
 
-This repo (`scout-and-wave-web`) provides:
+This repo (`polywave-web`) provides:
 - Web UI (React)
 - HTTP server with SSE streaming
 - REST API for IMPL operations
@@ -252,7 +252,7 @@ npm run build  # outputs to web/dist/
 ### Build the Go binary
 
 ```bash
-go build -o saw ./cmd/saw
+go build -o polywave ./cmd/polywave
 ```
 
 Or use the Makefile:
@@ -271,14 +271,14 @@ cd web
 npm run dev  # Vite dev server on port 5173 with hot-reload
 ```
 
-The Vite dev server proxies API requests to `http://localhost:7432` (configure in `vite.config.ts`). Run `./saw serve` in another terminal to provide the backend.
+The Vite dev server proxies API requests to `http://localhost:7432` (configure in `vite.config.ts`). Run `./polywave serve` in another terminal to provide the backend.
 
 **Backend changes**:
 ```bash
 # Edit Go files
-go build -o saw ./cmd/saw
-pkill -f "saw serve"
-./saw serve &>/tmp/saw-serve.log &
+go build -o polywave ./cmd/polywave
+pkill -f "polywave serve"
+./polywave serve &>/tmp/polywave-serve.log &
 ```
 
 Or use the restart helper:
@@ -288,14 +288,14 @@ make restart  # kills server, rebuilds, restarts
 
 **Full rebuild** (after frontend changes):
 ```bash
-cd web && npm run build && cd .. && go build -o saw ./cmd/saw
+cd web && npm run build && cd .. && go build -o polywave ./cmd/polywave
 ```
 
 The binary embeds `web/dist/` via `go:embed`, so you must rebuild the Go binary after every npm build for changes to appear.
 
 ### Logs
 
-- **Server logs**: `/tmp/saw-serve.log` (configure with `--log-file`)
+- **Server logs**: `/tmp/polywave-serve.log` (configure with `--log-file`)
 - **Chat sessions**: Logged with `[chat]` prefix (includes runID, slug, historyLen)
 - **Wave execution**: Logged with `[wave]` prefix (includes waveNum, agent letters)
 
@@ -311,25 +311,25 @@ Example log output:
 
 - **[CLI Reference](docs/reference/cli-reference.md)** — Complete command-line interface documentation for all 18 commands
 - **[API Reference](docs/reference/api-reference.md)** — HTTP endpoint documentation for all 42 REST/SSE endpoints
-- **[Configuration Reference](docs/reference/configuration.md)** — `saw.config.json` structure and settings
+- **[Configuration Reference](docs/reference/configuration.md)** — `polywave.config.json` structure and settings
 
 ### Quick CLI Examples
 
 ```bash
 # Generate IMPL doc
-./saw scout --feature "add OAuth support"
+./polywave scout --feature "add OAuth support"
 
 # Create interface scaffolds
-./saw scaffold --impl docs/IMPL/IMPL-oauth.yaml
+./polywave scaffold --impl docs/IMPL/IMPL-oauth.yaml
 
 # Execute waves
-./saw wave --impl docs/IMPL/IMPL-oauth.yaml --auto
+./polywave wave --impl docs/IMPL/IMPL-oauth.yaml --auto
 
 # Check status
-./saw status --impl docs/IMPL/IMPL-oauth.yaml
+./polywave status --impl docs/IMPL/IMPL-oauth.yaml
 
 # Start web server
-./saw serve
+./polywave serve
 ```
 
 ### Quick API Examples
@@ -352,7 +352,7 @@ curl -N http://localhost:7432/api/wave/oauth/events
 
 ## Protocol Compliance
 
-Implements [SAW Protocol v0.14.5](https://github.com/blackwell-systems/scout-and-wave):
+Implements [Polywave Protocol v0.14.5](https://github.com/blackwell-systems/polywave):
 
 | Invariant | Enforcement |
 |-----------|-------------|
@@ -375,7 +375,7 @@ ScoutPending → Reviewed → ScaffoldPending → WavePending → WaveExecuting
 
 Terminal states: `NotSuitable`, `Complete`. Recovery state: `Blocked`.
 
-See [protocol/state-machine.md](https://github.com/blackwell-systems/scout-and-wave/blob/main/protocol/state-machine.md) for transition logic.
+See [protocol/state-machine.md](https://github.com/blackwell-systems/polywave/blob/main/protocol/state-machine.md) for transition logic.
 
 ## Troubleshooting
 
@@ -383,7 +383,7 @@ See [protocol/state-machine.md](https://github.com/blackwell-systems/scout-and-w
 
 ```bash
 # Run the validator manually
-bash ~/.claude/skills/saw/scripts/validate-impl.sh docs/IMPL/IMPL-feature.md
+bash ~/.claude/skills/polywave/scripts/validate-impl.sh docs/IMPL/IMPL-feature.md
 ```
 
 Common issues:
@@ -395,7 +395,7 @@ Common issues:
 
 Check logs:
 ```bash
-tail -f /tmp/saw-serve.log | grep "\[wave\]"
+tail -f /tmp/polywave-serve.log | grep "\[wave\]"
 ```
 
 Common causes:
@@ -412,13 +412,13 @@ pgrep -f "claude.*chat"
 
 2. Check logs for errors:
 ```bash
-tail -20 /tmp/saw-serve.log | grep "\[chat\]"
+tail -20 /tmp/polywave-serve.log | grep "\[chat\]"
 ```
 
 3. Restart server:
 ```bash
-pkill -f "saw serve"
-./saw serve &>/tmp/saw-serve.log &
+pkill -f "polywave serve"
+./polywave serve &>/tmp/polywave-serve.log &
 ```
 
 ### "Merge conflict detected"
@@ -426,7 +426,7 @@ pkill -f "saw serve"
 This means I1 was violated (overlapping file ownership). Check the file ownership table in the IMPL doc:
 
 ```bash
-./saw status --impl docs/IMPL/IMPL-feature.md --missing
+./polywave status --impl docs/IMPL/IMPL-feature.md --missing
 ```
 
 If two agents claim the same file, edit the IMPL doc to reassign ownership, then re-run the wave.
@@ -441,6 +441,6 @@ Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Links
 
-- **Protocol spec**: [scout-and-wave](https://github.com/blackwell-systems/scout-and-wave)
-- **Go engine**: [scout-and-wave-go](https://github.com/blackwell-systems/scout-and-wave-go)
+- **Protocol spec**: [polywave](https://github.com/blackwell-systems/polywave)
+- **Go engine**: [polywave-go](https://github.com/blackwell-systems/polywave-go)
 - **Buy me a coffee**: [buymeacoffee.com/blackwellsystems](https://buymeacoffee.com/blackwellsystems)

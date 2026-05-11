@@ -118,10 +118,10 @@ func runWaveLoop(
 	waveModel := ""
 	scaffoldModel := ""
 	integrationModel := ""
-	if sawCfg := config.LoadOrDefault(repoPath); sawCfg != nil {
-		waveModel = sawCfg.Agent.WaveModel
-		scaffoldModel = sawCfg.Agent.ScaffoldModel
-		integrationModel = sawCfg.Agent.IntegrationModel
+	if pwCfg := config.LoadOrDefault(repoPath); pwCfg != nil {
+		waveModel = pwCfg.Agent.WaveModel
+		scaffoldModel = pwCfg.Agent.ScaffoldModel
+		integrationModel = pwCfg.Agent.IntegrationModel
 	}
 	// Fill empty values from the server's fallback config (the web app's own polywave.config.json).
 	// Cross-repo IMPLs may live in repos with empty model strings.

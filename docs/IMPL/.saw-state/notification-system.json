@@ -1,0 +1,26 @@
+{
+  "slug": "notification-system",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T18:41:46.711134-07:00",
+      "completed_at": "2026-03-18T18:45:41.642774-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T18:45:41.64298-07:00",
+      "completed_at": "2026-03-18T18:45:55.020019-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-18T18:45:55.023192-07:00"
+    }
+  ],
+  "updated_at": "2026-03-18T18:45:55.023192-07:00"
+}

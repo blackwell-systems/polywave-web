@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { IMPLDocResponse } from '../types'
 import { useCriticState } from '../hooks/useCriticState'
 import { listWorktrees, batchDeleteWorktrees, fetchDiskWaveStatus, DiskWaveStatus } from '../api'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 import { useExecutionSync, ExecutionSyncState, AgentExecStatus } from '../hooks/useExecutionSync'
 import { useGlobalEvents } from '../hooks/useGlobalEvents'
 import ActionButtons from './ActionButtons'
@@ -211,7 +211,7 @@ export default function ReviewScreen(props: ReviewScreenProps): JSX.Element {
   async function handleMarkComplete() {
     setMarkingComplete(true)
     try {
-      await sawClient.wave.forceMarkComplete(slug)
+      await polywaveClient.wave.forceMarkComplete(slug)
       onRefreshImpl?.(slug)
     } catch (err) {
       console.error('Failed to mark complete:', err)

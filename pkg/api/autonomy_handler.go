@@ -12,8 +12,8 @@ import (
 // Returns the current autonomy config from polywave.config.json,
 // or the default config (gated) if none exists.
 func (s *Server) handleGetAutonomy(w http.ResponseWriter, r *http.Request) {
-	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
-	cfg := sawCfg.Autonomy
+	pwCfg := config.LoadOrDefault(s.cfg.RepoPath)
+	cfg := pwCfg.Autonomy
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(cfg) //nolint:errcheck
@@ -35,10 +35,10 @@ func (s *Server) handleSaveAutonomy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load existing config, update autonomy section, save back
-	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
-	sawCfg.Autonomy = cfg
+	pwCfg := config.LoadOrDefault(s.cfg.RepoPath)
+	pwCfg.Autonomy = cfg
 
-	res := config.Save(s.cfg.RepoPath, sawCfg)
+	res := config.Save(s.cfg.RepoPath, pwCfg)
 	if !res.IsSuccess() {
 		http.Error(w, "failed to save autonomy config: "+res.Errors[0].Message, http.StatusInternalServerError)
 		return

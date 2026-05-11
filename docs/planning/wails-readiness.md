@@ -1,7 +1,7 @@
 # Wails Portability Readiness
 
 **Audience:** Developers planning a future native desktop port using [Wails v2/v3](https://wails.io).
-**Scope:** `scout-and-wave-web` frontend and `pkg/api` backend layer; references `scout-and-wave-go` engine where relevant.
+**Scope:** `polywave-web` frontend and `pkg/api` backend layer; references `polywave-go` engine where relevant.
 **Rule:** Every recommendation must leave the existing web app working and strictly better — no Wails imports, no speculative abstractions.
 
 ---
@@ -16,7 +16,7 @@ The five highest-leverage changes, in priority order:
 
 3. **Consolidate the three separate API client modules** (`api.ts`, `programApi.ts`, `autonomyApi.ts`) behind a single `client` object or factory. Today each module hard-codes `/api/...` paths. A single seam makes it trivial to swap HTTP for Wails RPC. **Effort: half a day; largely mechanical.**
 
-4. **Move the `SAWConfig`-reading logic out of individual HTTP handlers** (`wave_runner.go:109`, `scout.go:193`, etc.) and into a `ConfigService` called once at startup or on demand. Handlers re-read `saw.config.json` from disk on every request. A shared service would be cheaper for HTTP and essential for Wails, which has no per-request lifecycle. **Effort: 1 day.**
+4. **Move the `PolywaveConfig`-reading logic out of individual HTTP handlers** (`wave_runner.go:109`, `scout.go:193`, etc.) and into a `ConfigService` called once at startup or on demand. Handlers re-read `polywave.config.json` from disk on every request. A shared service would be cheaper for HTTP and essential for Wails, which has no per-request lifecycle. **Effort: 1 day.**
 
 5. **Adopt `fsnotify` event callbacks instead of polling in `usePipeline`** — already done on the server side; the hook still opens its own redundant `/api/events` SSE stream alongside the one in `App.tsx`. Deduplicate by lifting the global SSE connection to a React context. Improves the web app today and maps directly to Wails `runtime.EventsOn`. **Effort: half a day.**
 
@@ -44,13 +44,13 @@ pkg/api/daemon_handler.go                       ← daemon start/stop + SSE brok
 pkg/api/global_events.go                        ← fsnotify watcher, global SSE broker
 pkg/api/notification_bus.go                     ← NotificationBus → globalBroker
 
-scout-and-wave-go/pkg/engine/                   ← Pure Go engine; returns engine.Event callbacks
-scout-and-wave-go/pkg/protocol/                 ← IMPL manifest I/O, validators, mergers
+polywave-go/pkg/engine/                   ← Pure Go engine; returns engine.Event callbacks
+polywave-go/pkg/protocol/                 ← IMPL manifest I/O, validators, mergers
 ```
 
 ### What is already well-separated
 
-- **`scout-and-wave-go` is entirely transport-agnostic.** `engine.RunSingleWave`, `engine.RunScout`, `protocol.MergeAgents`, etc. accept a callback (`func(engine.Event)`) and never touch HTTP or SSE. This is the ideal design.
+- **`polywave-go` is entirely transport-agnostic.** `engine.RunSingleWave`, `engine.RunScout`, `protocol.MergeAgents`, etc. accept a callback (`func(engine.Event)`) and never touch HTTP or SSE. This is the ideal design.
 - **The API client layer is centralized in three files.** There are no `fetch('/api/...')` calls scattered through components; components call named functions from `api.ts`, `programApi.ts`, or `autonomyApi.ts`.
 - **React hooks encapsulate SSE subscriptions.** Components never call `new EventSource(...)` directly. The SSE wiring lives in `useWaveEvents.ts`, `useNotifications.ts`, `useDaemon.ts`, and `usePipeline.ts`.
 - **The reducer pattern in `waveEventsReducer.ts` is pure.** State transitions are pure functions of actions with no transport dependencies — they would work identically with Wails events.
@@ -69,7 +69,7 @@ Wails replaces the following components of the web app:
 | `fetch('/api/...')` in TypeScript | `runtime.Call(ctx, "MethodName", args)` bound Go methods |
 | `new EventSource('/api/...')` in TypeScript | `runtime.EventsOn(name, callback)` |
 | `GET /api/browse/native` (osascript) | `runtime.OpenDirectoryDialog` |
-| `os.ReadFile(saw.config.json)` per-request | One-time read at app init; file watch via `fsnotify` |
+| `os.ReadFile(polywave.config.json)` per-request | One-time read at app init; file watch via `fsnotify` |
 | `//go:embed dist` | Wails `frontend/` with its own dev server |
 
 The key implication: **every `http.ResponseWriter`-using handler must be replaced by a Go method with a return value**; every `s.broker.Publish(...)` call must become a `runtime.EventsEmit(...)` call. None of this requires changing the engine or protocol layer.
@@ -96,7 +96,7 @@ The `publish func(event string, data interface{})` signature already exists as t
 - Thin wrapper in `pkg/api/wave_runner.go` (handler stays, body calls `svc.RunWave`)
 - Thin wrapper in `pkg/api/scout.go` (handler stays, body calls `svc.RunScout`)
 
-**Rough effort:** 2–3 days (the functions have many callsites through internal state like `defaultPipelineTracker` and `fallbackSAWConfig` that must be passed explicitly rather than read from package-level vars).
+**Rough effort:** 2–3 days (the functions have many callsites through internal state like `defaultPipelineTracker` and `fallbackPolywaveConfig` that must be passed explicitly rather than read from package-level vars).
 
 ---
 
@@ -164,23 +164,23 @@ The existing named exports (`listImpls`, `runScout`) become re-exports from `cli
 
 ---
 
-### R4. Centralize `SAWConfig` reads into a `ConfigService` (medium leverage)
+### R4. Centralize `PolywaveConfig` reads into a `ConfigService` (medium leverage)
 
-**What:** `saw.config.json` is read from disk inside:
+**What:** `polywave.config.json` is read from disk inside:
 - `wave_runner.go:109` — `runWaveLoop` reads it for model names
 - `wave_runner.go:739` — `handleWaveAgentRerun` reads it
 - `wave_runner.go:820` — `handleWaveFinalize` reads it
 - `scout.go:193` — `runScoutAgent` reads it
 - `planner.go` — likely similar
 
-Each read is a `os.ReadFile` + `json.Unmarshal` + field extraction. There is also `fallbackSAWConfig` (a package-level var), which is a partial attempt at caching.
+Each read is a `os.ReadFile` + `json.Unmarshal` + field extraction. There is also `fallbackPolywaveConfig` (a package-level var), which is a partial attempt at caching.
 
 **Concrete form:**
 
 ```go
 // pkg/svc/config.go
-type ConfigService struct { mu sync.RWMutex; cfg SAWConfig; path string }
-func (c *ConfigService) Get() SAWConfig { ... }
+type ConfigService struct { mu sync.RWMutex; cfg PolywaveConfig; path string }
+func (c *ConfigService) Get() PolywaveConfig { ... }
 func (c *ConfigService) Reload() error { ... }
 ```
 
@@ -252,7 +252,7 @@ This is not an interface or abstraction — it's documentation that the seam exi
 
 **The `fsnotify` watcher in `global_events.go`** does real work that translates directly to Wails: filesystem change detection → UI notification. The Go logic is fine. Only the broadcast mechanism changes (from `globalBroker.broadcast` to `runtime.EventsEmit`).
 
-**The `pkg/api/types.go` shared types** (`SAWConfig`, `IMPLDocResponse`, etc.) are already transport-agnostic data structures. They can be used by both the HTTP handlers and Wails bindings without modification.
+**The `pkg/api/types.go` shared types** (`PolywaveConfig`, `IMPLDocResponse`, etc.) are already transport-agnostic data structures. They can be used by both the HTTP handlers and Wails bindings without modification.
 
 **`handleBrowseNative`** calls `osascript` — macOS-specific. This is intentional and documented in the file. Wails provides `runtime.OpenDirectoryDialog` which is cross-platform. Leave the handler in place for the web app; replace it entirely in the Wails port.
 

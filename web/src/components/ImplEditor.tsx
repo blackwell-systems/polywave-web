@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 
 interface ImplEditorProps {
   slug: string
@@ -17,7 +17,7 @@ export default function ImplEditor({ slug }: ImplEditorProps): JSX.Element {
     setLoading(true)
     setLoadError(null)
     try {
-      const text = await sawClient.impl.getRaw(slug)
+      const text = await polywaveClient.impl.getRaw(slug)
       setContent(text)
       setSavedContent(text)
     } catch (err) {
@@ -37,7 +37,7 @@ export default function ImplEditor({ slug }: ImplEditorProps): JSX.Element {
     setSaveStatus('saving')
     setSaveError(null)
     try {
-      await sawClient.impl.saveRaw(slug, content)
+      await polywaveClient.impl.saveRaw(slug, content)
       setSavedContent(content)
       setSaveStatus('saved')
       setTimeout(() => setSaveStatus('idle'), 2000)

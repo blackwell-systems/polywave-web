@@ -9,10 +9,10 @@ vi.mock('../api', () => ({
   cancelScout: vi.fn(),
 }))
 
-// Mock sawClient
+// Mock polywaveClient
 const mockImplGet = vi.fn()
 vi.mock('../lib/apiClient', () => ({
-  sawClient: {
+  polywaveClient: {
     impl: {
       get: (...args: unknown[]) => mockImplGet(...args),
     },
@@ -106,7 +106,7 @@ describe('ScoutLauncher completion banner', () => {
       es.dispatchEvent('scout_complete', { slug: 'test-feature' })
     })
 
-    // Wait for sawClient.impl.get to resolve
+    // Wait for polywaveClient.impl.get to resolve
     await waitFor(() => {
       expect(mockImplGet).toHaveBeenCalledWith('test-feature')
     })

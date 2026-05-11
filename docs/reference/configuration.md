@@ -1,8 +1,8 @@
-# saw Configuration Reference
+# polywave Configuration Reference
 
-The `saw` binary can be configured via `saw.config.json` in your project root. Configuration is optional — all settings have sensible defaults.
+The `polywave` binary can be configured via `polywave.config.json` in your project root. Configuration is optional — all settings have sensible defaults.
 
-**Location:** `<repo-root>/saw.config.json`
+**Location:** `<repo-root>/polywave.config.json`
 
 ## Configuration File Structure
 
@@ -66,7 +66,7 @@ Array of repository entries for multi-repo support (future feature).
 }
 ```
 
-**Note:** Currently, `saw serve --repo` flag takes precedence. The `repos` array is for future multi-repo workspace support.
+**Note:** Currently, `polywave serve --repo` flag takes precedence. The `repos` array is for future multi-repo workspace support.
 
 ---
 
@@ -87,7 +87,7 @@ Model selection for Scout, Wave, and Chat agents.
 
 #### agent.scout_model
 
-Model used for `saw scout` (IMPL doc generation).
+Model used for `polywave scout` (IMPL doc generation).
 
 **Type:** `string`
 
@@ -235,7 +235,7 @@ Whether to require test execution after each wave merge.
 }
 ```
 
-**Note:** The test command is defined in the IMPL manifest, not in `saw.config.json`:
+**Note:** The test command is defined in the IMPL manifest, not in `polywave.config.json`:
 ```yaml
 quality_gates:
   test_command: "go test ./..."
@@ -418,7 +418,7 @@ Maximum quality — use Opus for critical production features. Slower but highes
 
 Some settings can be overridden via environment variables:
 
-### SAW_BACKEND
+### POLYWAVE_BACKEND
 
 Override agent backend selection globally.
 
@@ -426,8 +426,8 @@ Override agent backend selection globally.
 
 **Example:**
 ```bash
-export SAW_BACKEND=cli
-saw scout --feature "add OAuth"
+export POLYWAVE_BACKEND=cli
+polywave scout --feature "add OAuth"
 ```
 
 **Precedence:** CLI flag > environment variable > config file
@@ -443,14 +443,14 @@ Anthropic API key for `--backend api` or `--backend auto`.
 **Example:**
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-api03-...
-saw scout --feature "add OAuth" --backend api
+polywave scout --feature "add OAuth" --backend api
 ```
 
 ---
 
 ### AWS Credentials (for Bedrock)
 
-AWS Bedrock uses the AWS SDK v2 default credential chain — no special configuration needed in `saw.config.json`.
+AWS Bedrock uses the AWS SDK v2 default credential chain — no special configuration needed in `polywave.config.json`.
 
 **Required:** Only when using `bedrock:` model prefix
 
@@ -465,7 +465,7 @@ export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
 export AWS_REGION=us-east-1
 
-saw scout --feature "add OAuth"
+polywave scout --feature "add OAuth"
 ```
 
 **Option B: AWS Credentials File**
@@ -502,11 +502,11 @@ Use the `bedrock:` prefix with full inference profile ID:
 
 ### Reading Configuration
 
-The web UI loads `saw.config.json` from the repository root specified by `--repo` flag.
+The web UI loads `polywave.config.json` from the repository root specified by `--repo` flag.
 
 **API:** `GET /api/config`
 
-**CLI:** No direct CLI command; use `cat saw.config.json`
+**CLI:** No direct CLI command; use `cat polywave.config.json`
 
 ---
 
@@ -521,13 +521,13 @@ The web UI loads `saw.config.json` from the repository root specified by `--repo
 ```bash
 curl -X POST http://localhost:7432/api/config \
   -H "Content-Type: application/json" \
-  -d @saw.config.json
+  -d @polywave.config.json
 ```
 
 **Via CLI:**
 ```bash
 # Edit directly
-vim saw.config.json
+vim polywave.config.json
 ```
 
 ---
@@ -560,7 +560,7 @@ The server validates configuration on load:
 
 ## Default Behavior Without Config
 
-If `saw.config.json` doesn't exist, `saw` uses these defaults:
+If `polywave.config.json` doesn't exist, `polywave` uses these defaults:
 
 ```json
 {
@@ -601,7 +601,7 @@ agent_config:
   model: "claude-opus-4"  # Override wave_model for this IMPL
 ```
 
-**Precedence:** IMPL manifest > `saw.config.json` > defaults
+**Precedence:** IMPL manifest > `polywave.config.json` > defaults
 
 ---
 
@@ -636,11 +636,11 @@ agent_config:
 
 ### "Config file not found"
 
-This is **not an error**. `saw` works without `saw.config.json`. Defaults are applied.
+This is **not an error**. `polywave` works without `polywave.config.json`. Defaults are applied.
 
 **To create config:**
 ```bash
-cat > saw.config.json <<EOF
+cat > polywave.config.json <<EOF
 {
   "agent": {
     "scout_model": "claude-sonnet-4",
@@ -653,13 +653,13 @@ EOF
 
 ---
 
-### "Invalid JSON in saw.config.json"
+### "Invalid JSON in polywave.config.json"
 
 **Error:** `failed to parse config: invalid character ',' at line 12`
 
 **Fix:** Validate JSON syntax:
 ```bash
-jq . saw.config.json
+jq . polywave.config.json
 ```
 
 **Common mistakes:**
@@ -687,19 +687,19 @@ echo $ANTHROPIC_API_KEY
 claude --version
 
 # Check model ID spelling
-cat saw.config.json | jq .agent.scout_model
+cat polywave.config.json | jq .agent.scout_model
 ```
 
 ---
 
 ### Configuration not taking effect
 
-**Symptoms:** Config changes don't apply after editing `saw.config.json`
+**Symptoms:** Config changes don't apply after editing `polywave.config.json`
 
 **Fix:** Restart the server:
 ```bash
-pkill -f "saw serve"
-saw serve
+pkill -f "polywave serve"
+polywave serve
 ```
 
 The server only loads config on startup.
@@ -710,4 +710,4 @@ The server only loads config on startup.
 
 - [CLI Reference](cli-reference.md) — Command-line flags and options
 - [API Reference](api-reference.md) — `GET /api/config` and `POST /api/config` endpoints
-- [Protocol Specification](https://github.com/blackwell-systems/scout-and-wave) — IMPL manifest structure
+- [Protocol Specification](https://github.com/blackwell-systems/polywave) — IMPL manifest structure

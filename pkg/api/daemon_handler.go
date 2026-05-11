@@ -93,10 +93,10 @@ func (s *Server) handleDaemonStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Load autonomy config for daemon opts via unified config.
-	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
-	autoCfg := sawCfg.Autonomy
+	pwCfg := config.LoadOrDefault(s.cfg.RepoPath)
+	autoCfg := pwCfg.Autonomy
 
-	// Load SAW config to get model and repo settings.
+	// Load Polywave config to get model and repo settings.
 	var chatModel string
 	if fallbackPolywaveConfig != nil {
 		chatModel = fallbackPolywaveConfig.Agent.ChatModel

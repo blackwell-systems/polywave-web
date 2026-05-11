@@ -1,0 +1,39 @@
+{
+  "slug": "slug-scoped-branches",
+  "wave": 1,
+  "steps": {
+    "cleanup": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:26:05.656626-07:00"
+    },
+    "fix_go_mod": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:26:05.52321-07:00"
+    },
+    "merge_agents": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:26:04.518001-07:00"
+    },
+    "run_gates": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:25:58.227532-07:00"
+    },
+    "scan_stubs": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:25:49.009337-07:00"
+    },
+    "validate_integration": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:25:58.997944-07:00"
+    },
+    "verify_build": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:26:05.526501-07:00"
+    },
+    "verify_commits": {
+      "status": "complete",
+      "timestamp": "2026-03-17T19:25:45.544866-07:00"
+    }
+  },
+  "updated_at": "2026-03-17T19:26:05.656631-07:00"
+}

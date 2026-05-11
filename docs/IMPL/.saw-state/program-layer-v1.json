@@ -1,0 +1,22 @@
+{
+  "slug": "program-layer-v1",
+  "current_stage": "wave_merge",
+  "entries": [
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 3,
+      "started_at": "2026-03-18T14:40:13.509963-07:00",
+      "completed_at": "2026-03-18T14:44:59.954462-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "failed",
+      "wave_num": 3,
+      "message": "merge-agents encountered conflicts",
+      "started_at": "2026-03-18T14:44:59.954742-07:00",
+      "completed_at": "2026-03-18T14:45:02.648212-07:00"
+    }
+  ],
+  "updated_at": "2026-03-18T14:45:02.648212-07:00"
+}

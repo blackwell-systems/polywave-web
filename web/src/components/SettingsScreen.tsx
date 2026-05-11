@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, CheckCircle2, FolderGit2, Key, Bot, ShieldCheck, Palette, Bell } from 'lucide-react'
 import { getConfig, saveConfig } from '../api'
 import { PolyConfig, RepoEntry } from '../types'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 import DirPicker from './DirPicker'
 import ModelPicker from './ModelPicker'
 import { Button } from './ui/button'
@@ -117,7 +117,7 @@ export default function SettingsScreen({ onClose, onReposChange }: SettingsScree
       return
     }
     try {
-      const data = await sawClient.config.validateRepo(path)
+      const data = await polywaveClient.config.validateRepo(path)
       setRepoValidation(prev => ({
         ...prev,
         [index]: {

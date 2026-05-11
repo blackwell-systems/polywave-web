@@ -5,7 +5,7 @@ package api
 // Why this exists:
 //
 // The IMPL doc list can change without the web UI knowing about it. A CLI
-// `/saw scout` run, a background agent, or an external file copy all write
+// `/polywave scout` run, a background agent, or an external file copy all write
 // new IMPL docs to docs/IMPL/ — but the frontend only calls listImpls()
 // on mount and after in-app scout runs via SSE completion events.
 //
@@ -232,7 +232,7 @@ func (s *Server) implWatchDirs(fallbackDir string) []string {
 }
 
 // EmitCriticReviewComplete broadcasts a critic_review_complete SSE event
-// to all connected clients. Called after sawtools run-critic completes.
+// to all connected clients. Called after polywavetools run-critic completes.
 func (s *Server) EmitCriticReviewComplete(slug string, result *protocol.CriticData) {
 	s.globalBroker.broadcastJSON("critic_review_complete", map[string]interface{}{
 		"slug":   slug,

@@ -16,10 +16,10 @@ func programTestDeps(t *testing.T, repos []config.RepoEntry) Deps {
 	tmpDir := t.TempDir()
 
 	if repos != nil {
-		type sawConfig struct {
+		type pwConfig struct {
 			Repos []config.RepoEntry `json:"repos,omitempty"`
 		}
-		cfg := sawConfig{Repos: repos}
+		cfg := pwConfig{Repos: repos}
 		data, _ := json.Marshal(cfg)
 		configPath := filepath.Join(tmpDir, "polywave.config.json")
 		os.WriteFile(configPath, data, 0644)

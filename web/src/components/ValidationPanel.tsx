@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 
 // ─── Response types (implemented by Agent B's API endpoints) ─────────────────
 
@@ -144,7 +144,7 @@ export default function ValidationPanel({ slug, currentWave }: ValidationPanelPr
     setIsValidating(true)
     setError(null)
     try {
-      const result = await (sawClient.impl as any).validateIntegration(slug, currentWave)
+      const result = await (polywaveClient.impl as any).validateIntegration(slug, currentWave)
       setIntegrationResult(result as ValidateIntegrationResponse)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Integration validation failed')
@@ -157,7 +157,7 @@ export default function ValidationPanel({ slug, currentWave }: ValidationPanelPr
     setIsValidating(true)
     setError(null)
     try {
-      const result = await (sawClient.impl as any).validateWiring(slug)
+      const result = await (polywaveClient.impl as any).validateWiring(slug)
       setWiringResult(result as ValidateWiringResponse)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Wiring validation failed')

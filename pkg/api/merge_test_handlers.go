@@ -455,8 +455,8 @@ func (s *Server) handleFixBuild(w http.ResponseWriter, r *http.Request) {
 
 	// Read chat model from config.
 	chatModel := ""
-	if sawCfg := config.LoadOrDefault(repoPath); sawCfg != nil {
-		chatModel = sawCfg.Agent.ChatModel
+	if pwCfg := config.LoadOrDefault(repoPath); pwCfg != nil {
+		chatModel = pwCfg.Agent.ChatModel
 	}
 
 	publish := s.makePublisher(slug)

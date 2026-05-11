@@ -11,12 +11,12 @@ import (
 	"github.com/blackwell-systems/polywave-go/pkg/protocol"
 )
 
-// waveAgentBranchRe matches SAW-managed branches in both legacy format
-// ("wave1-agent-A") and slug-scoped format ("saw/my-slug/wave1-agent-A").
+// waveAgentBranchRe matches Polywave-managed branches in both legacy format
+// ("wave1-agent-A") and slug-scoped format ("polywave/my-slug/wave1-agent-A").
 var waveAgentBranchRe = regexp.MustCompile(`^(?:saw/[a-z0-9][-a-z0-9]*/)?wave\d+-agent-[A-Z][2-9]?$`)
 
 // handleListWorktrees serves GET /api/impl/{slug}/worktrees.
-// Parses `git worktree list --porcelain` output, filters to SAW-managed
+// Parses `git worktree list --porcelain` output, filters to Polywave-managed
 // branches, checks merged status, and returns WorktreeListResponse JSON.
 func (s *Server) handleListWorktrees(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
@@ -198,7 +198,7 @@ func (s *Server) handleBatchDeleteWorktrees(w http.ResponseWriter, r *http.Reque
 }
 
 // parseWorktreePorcelain parses the output of `git worktree list --porcelain`
-// and returns WorktreeEntry values for branches matching the SAW wave pattern.
+// and returns WorktreeEntry values for branches matching the Polywave wave pattern.
 func parseWorktreePorcelain(data []byte, mergedBranches map[string]bool) []WorktreeEntry {
 	var entries []WorktreeEntry
 	scanner := bufio.NewScanner(bytes.NewReader(data))
@@ -323,7 +323,7 @@ func getMergedBranches(repoPath string) map[string]bool {
 	return merged
 }
 
-// detectStaleBranches returns the names of SAW-managed branches that are stale,
+// detectStaleBranches returns the names of Polywave-managed branches that are stale,
 // using IMPL-aware detection via protocol.DetectStaleWorktrees. Falls back to
 // the legacy heuristic (merged-status check) if the protocol function fails.
 // Called by wave_runner.go before each run to emit an advisory SSE event.
@@ -378,7 +378,7 @@ func detectStaleBranchesLegacy(repoPath string) []string {
 	return stale
 }
 
-// detectStaleBranchesFromRefs lists local SAW-pattern branches that are not
+// detectStaleBranchesFromRefs lists local Polywave-pattern branches that are not
 // merged into main. This catches branches whose worktrees have already been
 // removed.
 func detectStaleBranchesFromRefs(repoPath string) []string {

@@ -132,7 +132,7 @@ function convertBase16(scheme) {
 
 console.log(`Fetching scheme list from GitHub (branch: ${BRANCH})…`)
 const listRes = await fetch(API_URL, {
-  headers: { 'User-Agent': 'saw-theme-fetcher' },
+  headers: { 'User-Agent': 'polywave-theme-fetcher' },
 })
 if (!listRes.ok) throw new Error(`GitHub API error: ${listRes.status} ${listRes.statusText}`)
 

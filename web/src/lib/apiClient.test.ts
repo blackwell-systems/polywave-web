@@ -1,5 +1,5 @@
 /**
- * Tests for the SawClient API layer.
+ * Tests for the PolywaveClient API layer.
  *
  * Validates:
  * 1. Shape: the client object has all expected namespaces and methods.
@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createHttpClient, sawClient } from './apiClient'
-import type { SawClient } from './apiClient'
+import { createHttpClient, polywaveClient } from './apiClient'
+import type { PolywaveClient } from './apiClient'
 
 // ── Mock fetch globally ─────────────────────────────────────────────────────
 
@@ -39,12 +39,12 @@ beforeEach(() => {
 
 // ── Shape tests ─────────────────────────────────────────────────────────────
 
-describe('SawClient shape', () => {
+describe('PolywaveClient shape', () => {
   const client = createHttpClient()
 
   it('exports a default singleton', () => {
-    expect(sawClient).toBeDefined()
-    expect(typeof sawClient.impl.list).toBe('function')
+    expect(polywaveClient).toBeDefined()
+    expect(typeof polywaveClient.impl.list).toBe('function')
   })
 
   it('has impl namespace with all methods', () => {
@@ -140,7 +140,7 @@ describe('SawClient shape', () => {
 
 // ── Fetch URL tests ─────────────────────────────────────────────────────────
 
-describe('SawClient fetch URLs', () => {
+describe('PolywaveClient fetch URLs', () => {
   const client = createHttpClient()
 
   it('impl.list calls GET /api/impl', async () => {
@@ -219,7 +219,7 @@ describe('SawClient fetch URLs', () => {
 
 // ── Error handling tests ────────────────────────────────────────────────────
 
-describe('SawClient error handling', () => {
+describe('PolywaveClient error handling', () => {
   const client = createHttpClient()
 
   it('throws on non-ok response', async () => {

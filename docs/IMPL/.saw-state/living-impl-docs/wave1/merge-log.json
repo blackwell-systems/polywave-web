@@ -1,0 +1,30 @@
+{
+  "wave": 1,
+  "merges": [
+    {
+      "agent": "D",
+      "merge_sha": "005fcdf5fc95e053c0d331e8267145faad5ddf81",
+      "timestamp": "2026-03-19T15:36:11.091786-07:00"
+    },
+    {
+      "agent": "E",
+      "merge_sha": "c7bb7fe6d8bc772a5b16a803b6c2bc1547743c46",
+      "timestamp": "2026-03-19T15:36:11.184657-07:00"
+    },
+    {
+      "agent": "A",
+      "merge_sha": "24b14f43091af6dd916438c7832bde50276c5dad",
+      "timestamp": "2026-03-19T15:36:11.278068-07:00"
+    },
+    {
+      "agent": "B",
+      "merge_sha": "dc3ac876741c75d98422f8989fdf84927841b934",
+      "timestamp": "2026-03-19T15:36:11.371345-07:00"
+    },
+    {
+      "agent": "C",
+      "merge_sha": "5aa1a25bbecb34b6cb92d5b8669ff01e3efacaca",
+      "timestamp": "2026-03-19T15:36:11.458706-07:00"
+    }
+  ]
+}

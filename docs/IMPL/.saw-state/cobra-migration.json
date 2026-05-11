@@ -1,0 +1,13 @@
+{
+  "slug": "cobra-migration",
+  "current_stage": "scaffold",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-15T18:05:39.465885-07:00",
+      "completed_at": "2026-03-15T18:05:39.466894-07:00"
+    }
+  ],
+  "updated_at": "2026-03-15T18:05:39.466894-07:00"
+}

@@ -195,13 +195,13 @@ func FixBuild(deps Deps, slug string, wave int, errorLog string, gateType string
 	if deps.ConfigPath != nil {
 		cfgPath := deps.ConfigPath(repoPath)
 		if cfgData, readErr := os.ReadFile(cfgPath); readErr == nil {
-			var sawCfg struct {
+			var pwCfg struct {
 				Agent struct {
 					ChatModel string `json:"chat_model"`
 				} `json:"agent"`
 			}
-			if json.Unmarshal(cfgData, &sawCfg) == nil {
-				chatModel = sawCfg.Agent.ChatModel
+			if json.Unmarshal(cfgData, &pwCfg) == nil {
+				chatModel = pwCfg.Agent.ChatModel
 			}
 		}
 	}

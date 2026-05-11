@@ -1,6 +1,6 @@
 # Binaries
-/saw
-/cmd/saw/saw
+/polywave
+/cmd/polywave/polywave
 *.exe
 *.exe~
 *.dll
@@ -31,9 +31,9 @@ vendor/
 .DS_Store
 Thumbs.db
 
-# SAW artifacts
+# Polywave artifacts
 .claude/
 .claire/
-.saw-state/
+.polywave-state/
 web/dist/
 node_modules/

@@ -9,7 +9,7 @@ import StageTimeline from './StageTimeline'
 import FileOwnershipTable from './FileOwnershipTable'
 import { AgentStatus, RepoEntry, FileOwnershipEntry, IMPLDocResponse } from '../types'
 import { mergeWave, runWaveTests, rerunAgent, batchDeleteWorktrees, startWave, retryFinalize, fixBuild, fetchImpl } from '../api'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 import { useCriticState } from '../hooks/useCriticState'
 import { CriticOutputPanel } from './CriticOutputPanel'
 import ScaffoldCard from './wave/ScaffoldCard'
@@ -136,9 +136,9 @@ export default function WaveBoard({ slug, compact, onRescout, repos }: WaveBoard
 
   async function handleProceedGate(nextWave: number): Promise<void> {
     try {
-      await sawClient.wave.proceedGate(slug)
+      await polywaveClient.wave.proceedGate(slug)
     } catch {
-      await sawClient.wave.start(slug)
+      await polywaveClient.wave.start(slug)
     }
     void nextWave
   }

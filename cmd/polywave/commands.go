@@ -401,15 +401,15 @@ func slugify(s string) string {
 // locatePromptFile returns the path to a prompt file, checking $POLYWAVE_REPO first,
 // then falling back to ~/code/polywave.
 func locatePromptFile(relPath string) (string, error) {
-	sawRepo := os.Getenv("POLYWAVE_REPO")
-	if sawRepo == "" {
+	pwRepo := os.Getenv("POLYWAVE_REPO")
+	if pwRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("cannot determine home directory: %w", err)
 		}
-		sawRepo = filepath.Join(home, "code", "polywave")
+		pwRepo = filepath.Join(home, "code", "polywave")
 	}
-	p := filepath.Join(sawRepo, relPath)
+	p := filepath.Join(pwRepo, relPath)
 	if _, err := os.Stat(p); err == nil {
 		return p, nil
 	}
@@ -468,13 +468,13 @@ func runScout(args []string) error {
 		return fmt.Errorf("scout: %w", err)
 	}
 
-	sawRepo := filepath.Dir(filepath.Dir(scoutMdPath))
+	pwRepo := filepath.Dir(filepath.Dir(scoutMdPath))
 
 	ctx := context.Background()
 	if scoutResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:     *feature,
 		RepoPath:    repoRoot,
-		PolywaveRepoPath: sawRepo,
+		PolywaveRepoPath: pwRepo,
 		IMPLOutPath: implOut,
 	}, func(s string) { fmt.Print(s) }); scoutResult.IsFatal() {
 		return fmt.Errorf("scout: %s", scoutResult.Errors[0].Error())
@@ -525,13 +525,13 @@ func runScaffold(args []string) error {
 		}
 	}
 
-	// Locate scaffold-agent.md to verify it exists and resolve sawRepo.
+	// Locate scaffold-agent.md to verify it exists and resolve pwRepo.
 	scaffoldMdPath, err := locatePromptFile(filepath.Join("prompts", "scaffold-agent.md"))
 	if err != nil {
 		return fmt.Errorf("scaffold: %w", err)
 	}
 
-	_ = scaffoldMdPath // sawRepo no longer needed by RunScaffoldOpts
+	_ = scaffoldMdPath // pwRepo no longer needed by RunScaffoldOpts
 
 	ctx := context.Background()
 	if scaffoldResult := engine.RunScaffold(engine.RunScaffoldOpts{

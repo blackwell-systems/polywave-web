@@ -1,10 +1,10 @@
 /**
- * Unified API client for the SAW web application.
+ * Unified API client for the Polywave web application.
  *
- * Provides a structured, namespaced interface (`SawClient`) that wraps all
+ * Provides a structured, namespaced interface (`PolywaveClient`) that wraps all
  * existing fetch() calls from api.ts, autonomyApi.ts, and programApi.ts.
  * The transport layer can be swapped (e.g. Wails native calls) by providing
- * a different implementation of `SawClient`.
+ * a different implementation of `PolywaveClient`.
  *
  * Created by Wave 1 Agent A (react-refactor).
  */
@@ -53,7 +53,7 @@ import type {
 // Re-export types that api.ts currently exports so consumers can migrate
 // their imports to this module without breakage.
 // DiskAgentStatus, DiskWaveStatus, and BrowseResult are defined below
-// alongside the SawClient interface.
+// alongside the PolywaveClient interface.
 
 // ─── Interview / Validation / Import types ───────────────────────────────────
 
@@ -97,9 +97,9 @@ export interface ImportIMPLsResponse {
   skipped: string[]
 }
 
-// ─── SawClient interface ────────────────────────────────────────────────────
+// ─── PolywaveClient interface ────────────────────────────────────────────────────
 
-export interface SawClient {
+export interface PolywaveClient {
   impl: {
     list(): Promise<IMPLListEntry[]>
     get(slug: string): Promise<IMPLDocResponse>
@@ -260,7 +260,7 @@ async function checkShort(r: Response): Promise<void> {
 
 // ─── HTTP transport implementation ──────────────────────────────────────────
 
-export function createHttpClient(): SawClient {
+export function createHttpClient(): PolywaveClient {
   return {
     // ── impl namespace ────────────────────────────────────────────────────
     impl: {
@@ -948,4 +948,4 @@ export function createHttpClient(): SawClient {
 
 // ─── Default singleton instance ─────────────────────────────────────────────
 
-export const sawClient = createHttpClient()
+export const polywaveClient = createHttpClient()

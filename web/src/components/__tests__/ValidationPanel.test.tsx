@@ -4,9 +4,9 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import ValidationPanel from '../ValidationPanel'
 import type { ValidateIntegrationResponse, ValidateWiringResponse } from '../ValidationPanel'
 
-// Mock sawClient so we can control the API responses
+// Mock polywaveClient so we can control the API responses
 vi.mock('../../lib/apiClient', () => ({
-  sawClient: {
+  polywaveClient: {
     impl: {
       validateIntegration: vi.fn(),
       validateWiring: vi.fn(),
@@ -15,8 +15,8 @@ vi.mock('../../lib/apiClient', () => ({
 }))
 
 // Import the mock after vi.mock is set up
-import { sawClient } from '../../lib/apiClient'
-const mockImpl = sawClient.impl as any
+import { polywaveClient } from '../../lib/apiClient'
+const mockImpl = polywaveClient.impl as any
 
 describe('ValidationPanel', () => {
   beforeEach(() => {

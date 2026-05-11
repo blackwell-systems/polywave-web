@@ -82,7 +82,7 @@ func runServe(args []string) error {
 		openBrowser(scheme + "://" + *addr)
 	}
 
-	fmt.Printf("saw serve: listening on %s://%s\n", scheme, *addr)
+	fmt.Printf("polywave serve: listening on %s://%s\n", scheme, *addr)
 	if useTLS {
 		return s.StartTLS(ctx, certFile, keyFile)
 	}

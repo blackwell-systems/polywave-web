@@ -1,0 +1,28 @@
+{
+  "slug": "live-execution-viz",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-15T21:14:18.909113-07:00",
+      "completed_at": "2026-03-15T21:14:18.910275-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-15T21:14:18.910435-07:00",
+      "completed_at": "2026-03-15T21:17:46.453402-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "failed",
+      "wave_num": 2,
+      "message": "engine.FinalizeWave: merge-agents encountered conflicts",
+      "started_at": "2026-03-15T21:17:46.453604-07:00",
+      "completed_at": "2026-03-15T21:17:53.247023-07:00"
+    }
+  ],
+  "updated_at": "2026-03-15T21:17:53.247023-07:00"
+}

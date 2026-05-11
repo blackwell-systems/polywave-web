@@ -1,0 +1,28 @@
+{
+  "slug": "bug-fixes",
+  "current_stage": "wave_merge",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-16T20:07:56.219391-07:00",
+      "completed_at": "2026-03-16T20:07:56.220295-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 3,
+      "started_at": "2026-03-16T20:07:56.244977-07:00",
+      "completed_at": "2026-03-16T20:10:33.94303-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "failed",
+      "wave_num": 3,
+      "message": "engine.FinalizeWave: merge-agents encountered conflicts",
+      "started_at": "2026-03-16T20:10:33.943213-07:00",
+      "completed_at": "2026-03-16T20:10:36.46873-07:00"
+    }
+  ],
+  "updated_at": "2026-03-16T20:10:36.46873-07:00"
+}

@@ -34,8 +34,8 @@ func runCodeReviewStep(
 	publish func(string, interface{}),
 ) error {
 	var reviewCfg codereview.CodeReviewConfig
-	if sawCfg := config.LoadOrDefault(repoPath); sawCfg != nil {
-		cr := sawCfg.Quality.CodeReview
+	if pwCfg := config.LoadOrDefault(repoPath); pwCfg != nil {
+		cr := pwCfg.Quality.CodeReview
 		reviewCfg = codereview.CodeReviewConfig{
 			Enabled:   cr.Enabled,
 			Blocking:  cr.Blocking,
@@ -43,7 +43,7 @@ func runCodeReviewStep(
 			Threshold: cr.Threshold,
 		}
 		if reviewCfg.Model == "" {
-			reviewCfg.Model = sawCfg.Agent.ReviewModel
+			reviewCfg.Model = pwCfg.Agent.ReviewModel
 		}
 	}
 

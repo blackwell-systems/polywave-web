@@ -18,7 +18,7 @@ func TestWiringPopulation(t *testing.T) {
 			{
 				Symbol:             "CheckWiringOwnership",
 				DefinedIn:          "pkg/protocol/wiring.go",
-				MustBeCalledFrom:   "cmd/saw/prepare_wave.go",
+				MustBeCalledFrom:   "cmd/polywave/prepare_wave.go",
 				Agent:              "C",
 				Wave:               2,
 				IntegrationPattern: "pre-flight check",
@@ -26,7 +26,7 @@ func TestWiringPopulation(t *testing.T) {
 			{
 				Symbol:           "ValidateWiringDeclarations",
 				DefinedIn:        "pkg/protocol/wiring_validation.go",
-				MustBeCalledFrom: "cmd/saw/finalize_wave.go",
+				MustBeCalledFrom: "cmd/polywave/finalize_wave.go",
 				Agent:            "D",
 				Wave:             2,
 			},
@@ -47,8 +47,8 @@ func TestWiringPopulation(t *testing.T) {
 	if e0.DefinedIn != "pkg/protocol/wiring.go" {
 		t.Errorf("entry[0].DefinedIn: expected %q, got %q", "pkg/protocol/wiring.go", e0.DefinedIn)
 	}
-	if e0.MustBeCalledFrom != "cmd/saw/prepare_wave.go" {
-		t.Errorf("entry[0].MustBeCalledFrom: expected %q, got %q", "cmd/saw/prepare_wave.go", e0.MustBeCalledFrom)
+	if e0.MustBeCalledFrom != "cmd/polywave/prepare_wave.go" {
+		t.Errorf("entry[0].MustBeCalledFrom: expected %q, got %q", "cmd/polywave/prepare_wave.go", e0.MustBeCalledFrom)
 	}
 	if e0.Agent != "C" {
 		t.Errorf("entry[0].Agent: expected %q, got %q", "C", e0.Agent)
@@ -71,8 +71,8 @@ func TestWiringPopulation(t *testing.T) {
 	if e1.DefinedIn != "pkg/protocol/wiring_validation.go" {
 		t.Errorf("entry[1].DefinedIn: expected %q, got %q", "pkg/protocol/wiring_validation.go", e1.DefinedIn)
 	}
-	if e1.MustBeCalledFrom != "cmd/saw/finalize_wave.go" {
-		t.Errorf("entry[1].MustBeCalledFrom: expected %q, got %q", "cmd/saw/finalize_wave.go", e1.MustBeCalledFrom)
+	if e1.MustBeCalledFrom != "cmd/polywave/finalize_wave.go" {
+		t.Errorf("entry[1].MustBeCalledFrom: expected %q, got %q", "cmd/polywave/finalize_wave.go", e1.MustBeCalledFrom)
 	}
 	if e1.Status != "declared" {
 		t.Errorf("entry[1].Status: expected %q, got %q", "declared", e1.Status)

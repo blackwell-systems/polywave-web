@@ -1,0 +1,39 @@
+{
+  "slug": "agent-progress-tracking",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-15T18:18:52.035581-07:00",
+      "completed_at": "2026-03-15T18:18:52.036245-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-15T18:18:52.036383-07:00",
+      "completed_at": "2026-03-15T18:22:42.70425-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-15T18:22:42.704513-07:00",
+      "completed_at": "2026-03-15T18:22:42.898437-07:00"
+    },
+    {
+      "stage": "wave_verify",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-15T18:22:42.898661-07:00",
+      "completed_at": "2026-03-15T18:22:43.696084-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-15T18:22:43.696808-07:00"
+    }
+  ],
+  "updated_at": "2026-03-15T18:22:43.696808-07:00"
+}

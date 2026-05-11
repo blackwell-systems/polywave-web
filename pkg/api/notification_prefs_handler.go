@@ -97,7 +97,7 @@ func (s *Server) handleSaveNotificationPrefs(w http.ResponseWriter, r *http.Requ
 	}
 
 	// Atomic write: write to temp file in same directory, then rename
-	tmpFile, err := os.CreateTemp(filepath.Dir(configPath), "saw-config-*.json.tmp")
+	tmpFile, err := os.CreateTemp(filepath.Dir(configPath), "polywave-config-*.json.tmp")
 	if err != nil {
 		http.Error(w, "failed to create temp file", http.StatusInternalServerError)
 		return

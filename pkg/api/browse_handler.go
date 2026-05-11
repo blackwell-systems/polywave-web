@@ -7,7 +7,7 @@
 // path on disk, and webkitdirectory only works for uploading — neither works
 // for configuring a repo path that the Go server needs to resolve.
 //
-// Since the saw server runs on localhost with full OS access, we expose a
+// Since the polywave server runs on localhost with full OS access, we expose a
 // /api/browse endpoint that walks the real filesystem and returns directory
 // listings as JSON. The React frontend renders these as a navigable picker,
 // giving users a proper folder-selection experience without any native dialog.

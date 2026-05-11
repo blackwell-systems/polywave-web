@@ -131,8 +131,8 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 	slug := plannerSlugify(description)
 	programOut := filepath.Join(repoRoot, "docs", "PROGRAM-"+slug+".yaml")
 
-	sawRepo := os.Getenv("POLYWAVE_REPO")
-	if sawRepo == "" {
+	pwRepo := os.Getenv("POLYWAVE_REPO")
+	if pwRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			publish("planner_failed", map[string]string{
@@ -141,13 +141,13 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 			})
 			return
 		}
-		sawRepo = filepath.Join(home, "code", "polywave")
+		pwRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	// Read planner model from config.
 	plannerModel := ""
-	if sawCfg := config.LoadOrDefault(repoRoot); sawCfg != nil {
-		plannerModel = sawCfg.Agent.PlannerModel
+	if pwCfg := config.LoadOrDefault(repoRoot); pwCfg != nil {
+		plannerModel = pwCfg.Agent.PlannerModel
 	}
 
 	onChunk := func(chunk string) {
@@ -160,7 +160,7 @@ func (s *Server) runPlannerAgent(ctx context.Context, runID, description, repoOv
 	execResult := engine.RunPlanner(ctx, engine.RunPlannerOpts{
 		Description:    description,
 		RepoPath:       repoRoot,
-		PolywaveRepoPath:    sawRepo,
+		PolywaveRepoPath:    pwRepo,
 		ProgramOutPath: programOut,
 		PlannerModel:   plannerModel,
 	}, onChunk)

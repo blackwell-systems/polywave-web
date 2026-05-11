@@ -196,7 +196,7 @@ type SSEEvent struct {
 	Data  interface{} `json:"data"`
 }
 
-// WorktreeEntry describes one SAW-managed git worktree.
+// WorktreeEntry describes one Polywave-managed git worktree.
 type WorktreeEntry struct {
 	Branch        string `json:"branch"`
 	Path          string `json:"path"`

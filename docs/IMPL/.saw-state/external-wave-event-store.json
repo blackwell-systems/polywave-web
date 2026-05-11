@@ -1,0 +1,53 @@
+{
+  "slug": "external-wave-event-store",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-18T09:43:40.163669-07:00",
+      "completed_at": "2026-03-18T09:43:40.164311-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T09:43:40.196556-07:00",
+      "completed_at": "2026-03-18T09:48:46.195214-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T09:48:46.195598-07:00",
+      "completed_at": "2026-03-18T09:49:01.30309-07:00"
+    },
+    {
+      "stage": "wave_gate",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T09:49:01.3041-07:00",
+      "completed_at": "2026-03-18T10:03:34.520689-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T10:03:34.62243-07:00",
+      "completed_at": "2026-03-18T10:10:18.841632-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T10:10:18.84188-07:00",
+      "completed_at": "2026-03-18T10:10:18.842643-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-18T10:10:18.845051-07:00"
+    }
+  ],
+  "updated_at": "2026-03-18T10:10:18.845051-07:00"
+}

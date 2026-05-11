@@ -1,0 +1,47 @@
+{
+  "slug": "program-layer-web-integration",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T19:08:16.052253-07:00",
+      "completed_at": "2026-03-18T19:12:11.374158-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T19:12:11.374495-07:00",
+      "completed_at": "2026-03-18T19:12:47.654528-07:00"
+    },
+    {
+      "stage": "wave_gate",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T19:12:47.655545-07:00",
+      "completed_at": "2026-03-18T19:12:50.681227-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T19:12:50.774758-07:00",
+      "completed_at": "2026-03-18T19:15:23.754582-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T19:15:23.754958-07:00",
+      "completed_at": "2026-03-18T19:15:23.756642-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-18T19:15:23.760388-07:00"
+    }
+  ],
+  "updated_at": "2026-03-18T19:15:23.760388-07:00"
+}

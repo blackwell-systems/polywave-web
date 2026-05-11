@@ -1,0 +1,49 @@
+{
+  "slug": "autonomy-layer",
+  "current_stage": "wave_merge",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-17T02:37:03.128649-07:00",
+      "completed_at": "2026-03-17T02:37:03.129563-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-17T02:37:03.154599-07:00",
+      "completed_at": "2026-03-17T02:45:48.883774-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-17T02:45:48.883985-07:00",
+      "completed_at": "2026-03-17T02:45:56.145327-07:00"
+    },
+    {
+      "stage": "wave_gate",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-17T02:45:56.145781-07:00",
+      "completed_at": "2026-03-17T02:47:12.294531-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 3,
+      "started_at": "2026-03-17T02:47:12.346222-07:00",
+      "completed_at": "2026-03-17T03:01:34.802959-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "failed",
+      "wave_num": 3,
+      "message": "engine.FinalizeWave: required gate \"test\" failed",
+      "started_at": "2026-03-17T03:01:34.803203-07:00",
+      "completed_at": "2026-03-17T03:01:36.928033-07:00"
+    }
+  ],
+  "updated_at": "2026-03-17T03:01:36.928033-07:00"
+}

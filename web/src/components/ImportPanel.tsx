@@ -1,14 +1,14 @@
 /**
  * ImportPanel — UI for importing existing IMPL docs into a PROGRAM manifest.
  *
- * Consumes POST /api/impl/import via sawClient.impl.importImpls().
+ * Consumes POST /api/impl/import via polywaveClient.impl.importImpls().
  * Added by Wave 2 Agent G (webapp-api-parity).
  */
 
 import { useState } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
 import { Button } from './ui/button'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -74,9 +74,9 @@ export default function ImportPanel({ initialProgramSlug = '' }: ImportPanelProp
       }
 
       // Cast needed because importImpls is added by Agent F and may not yet
-      // be reflected in the SawClient type — the integration agent will wire
+      // be reflected in the PolywaveClient type — the integration agent will wire
       // these together after wave merge.
-      const response = await (sawClient.impl as any).importImpls(req) as ImportIMPLsResponse
+      const response = await (polywaveClient.impl as any).importImpls(req) as ImportIMPLsResponse
       setResult(response)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))

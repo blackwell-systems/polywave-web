@@ -253,9 +253,9 @@ func (s *Server) handleGetPipeline(w http.ResponseWriter, r *http.Request) {
 
 	// 4. Load autonomy config (from primary repo)
 	autonomyLevel := "gated"
-	sawCfg := config.LoadOrDefault(s.cfg.RepoPath)
-	if sawCfg != nil && sawCfg.Autonomy.Level != "" {
-		autonomyLevel = string(sawCfg.Autonomy.Level)
+	pwCfg := config.LoadOrDefault(s.cfg.RepoPath)
+	if pwCfg != nil && pwCfg.Autonomy.Level != "" {
+		autonomyLevel = string(pwCfg.Autonomy.Level)
 	}
 
 	// 5. Build metrics

@@ -185,7 +185,7 @@ func (s *Server) runImplReviseAgent(ctx context.Context, runID, slug, feedback s
 
 	implPath := filepath.Join(s.cfg.IMPLDir, "IMPL-"+slug+".yaml")
 
-	systemPrompt := fmt.Sprintf(`You are an expert software architect revising a Scout-and-Wave IMPL doc.
+	systemPrompt := fmt.Sprintf(`You are an expert software architect revising a Polywave IMPL doc.
 
 The IMPL doc is at: %s
 
@@ -204,17 +204,17 @@ Instructions:
 		publish("revise_output", map[string]string{"run_id": runID, "chunk": chunk})
 	}
 
-	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("POLYWAVE_REPO")
-	if sawRepo == "" {
+	// Locate Polywave repo for prompt files.
+	pwRepo := os.Getenv("POLYWAVE_REPO")
+	if pwRepo == "" {
 		home, _ := os.UserHomeDir()
-		sawRepo = filepath.Join(home, "code", "polywave")
+		pwRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	scoutResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:     systemPrompt,
 		RepoPath:    s.cfg.RepoPath,
-		PolywaveRepoPath: sawRepo,
+		PolywaveRepoPath: pwRepo,
 		IMPLOutPath: implPath,
 	}, onChunk)
 

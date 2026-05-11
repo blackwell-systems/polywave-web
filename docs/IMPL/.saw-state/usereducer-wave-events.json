@@ -1,0 +1,32 @@
+{
+  "slug": "usereducer-wave-events",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-16T21:54:21.740629-07:00",
+      "completed_at": "2026-03-16T21:54:21.741372-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-16T21:54:21.763071-07:00",
+      "completed_at": "2026-03-16T22:01:27.964462-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-16T22:01:27.964663-07:00",
+      "completed_at": "2026-03-16T22:01:43.438046-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-16T22:01:43.441205-07:00"
+    }
+  ],
+  "updated_at": "2026-03-16T22:01:43.441205-07:00"
+}

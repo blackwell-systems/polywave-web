@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// ExecutionStage identifies a named phase in the SAW execution pipeline.
+// ExecutionStage identifies a named phase in the Polywave execution pipeline.
 type ExecutionStage string
 
 const (

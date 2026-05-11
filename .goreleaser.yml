@@ -5,9 +5,9 @@ before:
     - go mod tidy
 
 builds:
-  - id: saw
-    main: ./cmd/saw
-    binary: saw
+  - id: polywave
+    main: ./cmd/polywave
+    binary: polywave
     env:
       - CGO_ENABLED=0
     goos:
@@ -22,7 +22,7 @@ builds:
       - -X main.version={{.Version}}
 
 archives:
-  - id: saw
+  - id: polywave
     format: tar.gz
     format_overrides:
       - goos: windows
@@ -61,23 +61,23 @@ changelog:
 release:
   github:
     owner: blackwell-systems
-    name: scout-and-wave-go
+    name: polywave-go
   draft: false
   prerelease: auto
 
 # Brew publishing disabled - requires PAT with cross-repo permissions
 # Formula is manually maintained in blackwell-systems/homebrew-tap
 # brews:
-#   - name: saw
+#   - name: polywave
 #     repository:
 #       owner: blackwell-systems
 #       name: homebrew-tap
 #       token: "{{ .Env.GITHUB_TOKEN }}"
 #     directory: Formula
-#     homepage: https://github.com/blackwell-systems/scout-and-wave-go
-#     description: "CLI for the Scout-and-Wave parallel agent coordination protocol"
+#     homepage: https://github.com/blackwell-systems/polywave-go
+#     description: "CLI for the Polywave parallel agent coordination protocol"
 #     license: MIT
 #     install: |
-#       bin.install "saw"
+#       bin.install "polywave"
 #     test: |
-#       system "#{bin}/saw", "--version"
+#       system "#{bin}/polywave", "--version"

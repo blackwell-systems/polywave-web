@@ -186,7 +186,7 @@ func TestRootCmdHelp(t *testing.T) {
 	output := buf.String()
 
 	expectedStrings := []string{
-		"saw",
+		"polywave",
 		"wave",
 		"status",
 		"scout",
@@ -291,15 +291,15 @@ func TestRunWave_Auto_MultiWave_Integration(t *testing.T) {
 // TestLocatePromptFile_FoundViaSAWRepo verifies that locatePromptFile returns
 // the correct path when POLYWAVE_REPO points to a directory containing the file.
 func TestLocatePromptFile_FoundViaSAWRepo(t *testing.T) {
-	sawRepo := t.TempDir()
-	promptsDir := filepath.Join(sawRepo, "prompts")
+	pwRepo := t.TempDir()
+	promptsDir := filepath.Join(pwRepo, "prompts")
 	if err := os.MkdirAll(promptsDir, 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(promptsDir, "scout.md"), []byte("# Scout"), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
-	t.Setenv("POLYWAVE_REPO", sawRepo)
+	t.Setenv("POLYWAVE_REPO", pwRepo)
 
 	got, err := locatePromptFile(filepath.Join("prompts", "scout.md"))
 	if err != nil {
@@ -400,8 +400,8 @@ func TestRunScout_PromptIncludesFeature(t *testing.T) {
 	const featureDesc = "add-unique-feature-xyz-9876"
 
 	// Build the prompt the same way runScout does, then assert the feature is present.
-	sawRepo := t.TempDir()
-	promptsDir := filepath.Join(sawRepo, "prompts")
+	pwRepo := t.TempDir()
+	promptsDir := filepath.Join(pwRepo, "prompts")
 	if err := os.MkdirAll(promptsDir, 0o755); err != nil {
 		t.Fatalf("failed to create prompts dir: %v", err)
 	}

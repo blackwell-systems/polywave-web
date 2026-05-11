@@ -20,14 +20,14 @@ import (
 	"golang.org/x/net/http2/h2c"
 )
 
-// Config holds server configuration for saw serve.
+// Config holds server configuration for polywave serve.
 type Config struct {
 	Addr     string // e.g. "localhost:7432"
 	IMPLDir  string // directory to scan for IMPL docs (e.g. "docs/IMPL")
 	RepoPath string // absolute path to the repository root
 }
 
-// Server is the HTTP server for the saw web UI.
+// Server is the HTTP server for the polywave web UI.
 type Server struct {
 	cfg              Config
 	mux              *http.ServeMux
@@ -324,7 +324,7 @@ func New(cfg Config) *Server {
 
 	sub, err := build.StaticFS()
 	if err != nil {
-		panic("saw: failed to get static FS: " + err.Error())
+		panic("polywave: failed to get static FS: " + err.Error())
 	}
 	if sub != nil {
 		s.mux.Handle("/", http.FileServer(http.FS(sub)))
@@ -400,7 +400,7 @@ func initWebhookBridge(configPath string) *WebhookBridge {
 }
 
 // Start starts the HTTP server and blocks until ctx is cancelled or a fatal
-// error occurs. Callers (cmd/saw/serve_cmd.go) pass a context that is
+// error occurs. Callers (cmd/polywave/serve_cmd.go) pass a context that is
 // cancelled on SIGINT.
 func (s *Server) Start(ctx context.Context) error {
 	return s.StartTLS(ctx, "", "")
@@ -441,7 +441,7 @@ func (s *Server) StartTLS(ctx context.Context, certFile, keyFile string) error {
 
 	select {
 	case err := <-errCh:
-		return fmt.Errorf("saw serve: %w", err)
+		return fmt.Errorf("polywave serve: %w", err)
 	case <-ctx.Done():
 		s.serverCancel() // signal long-running goroutines (e.g. program tier execution)
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -115,17 +115,17 @@ func (s *Server) runImplChatAgent(ctx context.Context, runID, slug, message stri
 		publish("chat_output", map[string]string{"run_id": runID, "chunk": chunk})
 	}
 
-	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("POLYWAVE_REPO")
-	if sawRepo == "" {
+	// Locate Polywave repo for prompt files.
+	pwRepo := os.Getenv("POLYWAVE_REPO")
+	if pwRepo == "" {
 		home, _ := os.UserHomeDir()
-		sawRepo = filepath.Join(home, "code", "polywave")
+		pwRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	// Read config fresh so model changes in Settings take effect immediately.
 	chatModel := ""
-	if sawCfg := config.LoadOrDefault(s.cfg.RepoPath); sawCfg != nil {
-		chatModel = sawCfg.Agent.ChatModel
+	if pwCfg := config.LoadOrDefault(s.cfg.RepoPath); pwCfg != nil {
+		chatModel = pwCfg.Agent.ChatModel
 	}
 
 	log.Printf("[chat] Launching RunChat: runID=%s implPath=%s repoPath=%s historyLen=%d chatModel=%q", runID, implPath, s.cfg.RepoPath, len(engineHistory), chatModel)
@@ -133,7 +133,7 @@ func (s *Server) runImplChatAgent(ctx context.Context, runID, slug, message stri
 	chatResult := engine.RunChat(ctx, engine.RunChatOpts{
 		IMPLPath:    implPath,
 		RepoPath:    s.cfg.RepoPath,
-		PolywaveRepoPath: sawRepo,
+		PolywaveRepoPath: pwRepo,
 		History:     engineHistory,
 		Message:     message,
 		ChatModel:   chatModel,

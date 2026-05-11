@@ -1,8 +1,8 @@
-// @deprecated — Use sawClient from lib/apiClient.ts instead.
-// This file re-exports all functions as thin wrappers over sawClient.program
+// @deprecated — Use polywaveClient from lib/apiClient.ts instead.
+// This file re-exports all functions as thin wrappers over polywaveClient.program
 // so existing imports continue to work without breaking anything.
 
-import { sawClient } from './lib/apiClient'
+import { polywaveClient } from './lib/apiClient'
 import type {
   ProgramDiscovery,
   ProgramListResponse,
@@ -69,23 +69,23 @@ export async function listPrograms(): Promise<ProgramDiscovery[]> {
 }
 
 export async function fetchProgramStatus(slug: string): Promise<ProgramStatus> {
-  return sawClient.program.status(slug)
+  return polywaveClient.program.status(slug)
 }
 
 export async function fetchTierStatus(slug: string, tier: number): Promise<TierStatus> {
-  return sawClient.program.tierStatus(slug, tier)
+  return polywaveClient.program.tierStatus(slug, tier)
 }
 
 export async function executeTier(slug: string, tier: number, auto?: boolean): Promise<void> {
-  return sawClient.program.executeTier(slug, tier, auto)
+  return polywaveClient.program.executeTier(slug, tier, auto)
 }
 
 export async function fetchProgramContracts(slug: string): Promise<ContractStatus[]> {
-  return sawClient.program.contracts(slug)
+  return polywaveClient.program.contracts(slug)
 }
 
 export async function replanProgram(slug: string): Promise<void> {
-  return sawClient.program.replan(slug)
+  return polywaveClient.program.replan(slug)
 }
 
 // ── Planner API ──────────────────────────────────────────────────────────────
@@ -94,19 +94,19 @@ export async function runPlanner(
   description: string,
   repo?: string,
 ): Promise<{ runId: string }> {
-  return sawClient.program.runPlanner(description, repo)
+  return polywaveClient.program.runPlanner(description, repo)
 }
 
 export function subscribePlannerEvents(runId: string): EventSource {
-  return sawClient.program.subscribePlannerEvents(runId)
+  return polywaveClient.program.subscribePlannerEvents(runId)
 }
 
 export async function cancelPlanner(runId: string): Promise<void> {
-  return sawClient.program.cancelPlanner(runId)
+  return polywaveClient.program.cancelPlanner(runId)
 }
 
 export async function analyzeImpls(slugs: string[], repo?: string): Promise<ConflictReport> {
-  return sawClient.program.analyzeImpls(slugs, repo)
+  return polywaveClient.program.analyzeImpls(slugs, repo)
 }
 
 export async function createProgramFromImpls(
@@ -115,7 +115,7 @@ export async function createProgramFromImpls(
   programSlug?: string,
   repo?: string,
 ): Promise<GenerateProgramResult> {
-  return sawClient.program.createFromImpls(slugs, name, programSlug, repo)
+  return polywaveClient.program.createFromImpls(slugs, name, programSlug, repo)
 }
 
 // ── IMPL Branch SSE Helpers ─────────────────────────────────────────────────

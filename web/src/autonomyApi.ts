@@ -1,8 +1,8 @@
-// @deprecated — Use sawClient from lib/apiClient.ts instead.
-// This file re-exports all functions as thin wrappers over sawClient.autonomy
+// @deprecated — Use polywaveClient from lib/apiClient.ts instead.
+// This file re-exports all functions as thin wrappers over polywaveClient.autonomy
 // so existing imports continue to work without breaking anything.
 
-import { sawClient } from './lib/apiClient'
+import { polywaveClient } from './lib/apiClient'
 import type {
   PipelineResponse,
   QueueItem,
@@ -14,51 +14,51 @@ import type {
 // --- Pipeline ---
 
 export async function fetchPipeline(): Promise<PipelineResponse> {
-  return sawClient.autonomy.fetchPipeline()
+  return polywaveClient.autonomy.fetchPipeline()
 }
 
 // --- Queue ---
 
 export async function fetchQueue(): Promise<QueueItem[]> {
-  return sawClient.autonomy.fetchQueue()
+  return polywaveClient.autonomy.fetchQueue()
 }
 
 export async function addQueueItem(req: AddQueueItemRequest): Promise<QueueItem> {
-  return sawClient.autonomy.addQueueItem(req)
+  return polywaveClient.autonomy.addQueueItem(req)
 }
 
 export async function deleteQueueItem(slug: string): Promise<void> {
-  return sawClient.autonomy.deleteQueueItem(slug)
+  return polywaveClient.autonomy.deleteQueueItem(slug)
 }
 
 export async function updateQueuePriority(slug: string, priority: number): Promise<void> {
-  return sawClient.autonomy.updateQueuePriority(slug, priority)
+  return polywaveClient.autonomy.updateQueuePriority(slug, priority)
 }
 
 // --- Autonomy config ---
 
 export async function fetchAutonomy(): Promise<AutonomyConfig> {
-  return sawClient.autonomy.fetchConfig()
+  return polywaveClient.autonomy.fetchConfig()
 }
 
 export async function saveAutonomy(config: AutonomyConfig): Promise<void> {
-  return sawClient.autonomy.saveConfig(config)
+  return polywaveClient.autonomy.saveConfig(config)
 }
 
 // --- Daemon control ---
 
 export async function startDaemon(): Promise<DaemonState> {
-  return sawClient.autonomy.startDaemon()
+  return polywaveClient.autonomy.startDaemon()
 }
 
 export async function stopDaemon(): Promise<void> {
-  return sawClient.autonomy.stopDaemon()
+  return polywaveClient.autonomy.stopDaemon()
 }
 
 export async function fetchDaemonStatus(): Promise<DaemonState> {
-  return sawClient.autonomy.fetchDaemonStatus()
+  return polywaveClient.autonomy.fetchDaemonStatus()
 }
 
 export function subscribeDaemonEvents(): EventSource {
-  return sawClient.autonomy.subscribeDaemonEvents()
+  return polywaveClient.autonomy.subscribeDaemonEvents()
 }

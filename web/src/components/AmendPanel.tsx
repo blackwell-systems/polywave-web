@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { WaveInfo } from '../types'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 
 interface AmendPanelProps {
   slug: string
@@ -18,7 +18,7 @@ interface AmendResult {
 }
 
 async function callAmend(slug: string, body: object): Promise<AmendResult> {
-  return await sawClient.impl.amend(slug, body) as AmendResult
+  return await polywaveClient.impl.amend(slug, body) as AmendResult
 }
 
 type TabKey = 'add-wave' | 'redirect-agent' | 'extend-scope'

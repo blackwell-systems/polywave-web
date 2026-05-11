@@ -1,0 +1,47 @@
+{
+  "slug": "integration-checklist-m5",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T20:10:20.040634-07:00",
+      "completed_at": "2026-03-18T20:29:15.271028-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T20:29:15.271238-07:00",
+      "completed_at": "2026-03-18T20:29:32.195149-07:00"
+    },
+    {
+      "stage": "wave_gate",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-18T20:29:32.196348-07:00",
+      "completed_at": "2026-03-18T20:29:35.926896-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T20:29:35.96619-07:00",
+      "completed_at": "2026-03-18T20:30:40.458334-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T20:30:40.458559-07:00",
+      "completed_at": "2026-03-18T20:30:40.460006-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-18T20:30:40.464466-07:00"
+    }
+  ],
+  "updated_at": "2026-03-18T20:30:40.464466-07:00"
+}

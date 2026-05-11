@@ -1,0 +1,47 @@
+{
+  "slug": "program-layer-v2",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T16:32:47.898285-07:00",
+      "completed_at": "2026-03-18T16:37:16.340731-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T16:37:16.340981-07:00",
+      "completed_at": "2026-03-18T16:37:24.522273-07:00"
+    },
+    {
+      "stage": "wave_gate",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-18T16:37:24.522962-07:00",
+      "completed_at": "2026-03-18T16:39:51.857127-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 3,
+      "started_at": "2026-03-18T16:39:51.959814-07:00",
+      "completed_at": "2026-03-18T16:41:01.370559-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 3,
+      "started_at": "2026-03-18T16:41:01.370893-07:00",
+      "completed_at": "2026-03-18T16:41:01.371858-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-18T16:41:01.374589-07:00"
+    }
+  ],
+  "updated_at": "2026-03-18T16:41:01.374589-07:00"
+}

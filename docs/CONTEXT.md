@@ -4,7 +4,7 @@
 
 **Correct commands for IMPL docs in this repo:**
 ```
-test_command: go test ./... && cd /Users/dayna.blackwell/code/scout-and-wave-web/web && node_modules/.bin/vitest run
+test_command: go test ./... && cd /Users/dayna.blackwell/code/polywave-web/web && node_modules/.bin/vitest run
 lint_command: go vet ./...
 ```
 

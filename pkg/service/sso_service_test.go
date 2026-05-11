@@ -236,8 +236,8 @@ sso_region = us-west-2
 	newSSOOIDCClient = func(region string) ssooidcAPI {
 		return &mockSSOOIDCClient{
 			registerClientFn: func(ctx context.Context, params *ssooidc.RegisterClientInput, optFns ...func(*ssooidc.Options)) (*ssooidc.RegisterClientOutput, error) {
-				if *params.ClientName != "saw-web" {
-					t.Errorf("ClientName = %q, want %q", *params.ClientName, "saw-web")
+				if *params.ClientName != "polywave-web" {
+					t.Errorf("ClientName = %q, want %q", *params.ClientName, "polywave-web")
 				}
 				return &ssooidc.RegisterClientOutput{
 					ClientId:     &clientID,

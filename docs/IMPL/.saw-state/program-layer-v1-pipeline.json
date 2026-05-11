@@ -1,0 +1,28 @@
+{
+  "slug": "program-layer-v1",
+  "wave": 3,
+  "steps": {
+    "merge_agents": {
+      "status": "failed",
+      "error": "merge-agents encountered conflicts",
+      "timestamp": "2026-03-18T14:45:02.647669-07:00"
+    },
+    "run_gates": {
+      "status": "complete",
+      "timestamp": "2026-03-18T14:45:02.504821-07:00"
+    },
+    "scan_stubs": {
+      "status": "complete",
+      "timestamp": "2026-03-18T14:45:00.013527-07:00"
+    },
+    "validate_integration": {
+      "status": "complete",
+      "timestamp": "2026-03-18T14:45:02.507491-07:00"
+    },
+    "verify_commits": {
+      "status": "complete",
+      "timestamp": "2026-03-18T14:45:00.012138-07:00"
+    }
+  },
+  "updated_at": "2026-03-18T14:45:02.64767-07:00"
+}

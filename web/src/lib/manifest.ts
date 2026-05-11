@@ -110,13 +110,13 @@ export interface ValidationError {
   line?: number
 }
 
-import { sawClient } from './apiClient'
+import { polywaveClient } from './apiClient'
 
 // API functions
 export async function loadManifest(slug: string): Promise<IMPLManifest> {
-  return await sawClient.impl.manifest(slug) as IMPLManifest
+  return await polywaveClient.impl.manifest(slug) as IMPLManifest
 }
 
 export async function validateManifest(slug: string): Promise<{ valid: boolean; errors: ValidationError[] }> {
-  return await sawClient.impl.validateManifest(slug) as { valid: boolean; errors: ValidationError[] }
+  return await polywaveClient.impl.validateManifest(slug) as { valid: boolean; errors: ValidationError[] }
 }

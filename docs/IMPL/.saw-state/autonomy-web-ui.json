@@ -1,0 +1,32 @@
+{
+  "slug": "autonomy-web-ui",
+  "current_stage": "complete",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-17T03:44:03.483429-07:00",
+      "completed_at": "2026-03-17T03:44:03.486707-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-17T03:44:03.524572-07:00",
+      "completed_at": "2026-03-17T03:49:19.649542-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "complete",
+      "wave_num": 2,
+      "started_at": "2026-03-17T03:49:19.65003-07:00",
+      "completed_at": "2026-03-17T03:49:44.358711-07:00"
+    },
+    {
+      "stage": "complete",
+      "status": "complete",
+      "completed_at": "2026-03-17T03:49:44.363014-07:00"
+    }
+  ],
+  "updated_at": "2026-03-17T03:49:44.363014-07:00"
+}

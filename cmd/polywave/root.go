@@ -7,7 +7,7 @@ var repoDir string
 
 func newRootCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:     "saw",
+		Use:     "polywave",
 		Short:   "Polywave Orchestration CLI with embedded web UI",
 		Version: version,
 	}

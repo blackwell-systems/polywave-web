@@ -71,16 +71,16 @@ function injectHighContrastStyles(): void {
   // Remove any existing injection FIRST so getComputedStyle reads the raw
   // theme values — not previously-boosted HC values. Without this, each
   // dark/light switch compounds the boost until it saturates and freezes.
-  document.getElementById('saw-high-contrast')?.remove()
+  document.getElementById('polywave-high-contrast')?.remove()
   const css = buildHighContrastCSS()
   const el = document.createElement('style')
-  el.id = 'saw-high-contrast'
+  el.id = 'polywave-high-contrast'
   el.textContent = css
   document.head.appendChild(el)
 }
 
 function removeHighContrastStyles(): void {
-  document.getElementById('saw-high-contrast')?.remove()
+  document.getElementById('polywave-high-contrast')?.remove()
 }
 
 export function useContrast(): [boolean, () => void] {

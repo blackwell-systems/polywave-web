@@ -2,37 +2,37 @@
 
 ## Vision
 
-**SAW is the only agent coordination framework that solves merge conflicts by design — parallel agents own disjoint files, branches merge cleanly, and humans review the plan before any code is written.**
+**Polywave is the only agent coordination framework that solves merge conflicts by design — parallel agents own disjoint files, branches merge cleanly, and humans review the plan before any code is written.**
 
 Competitive positioning:
 - Single-agent tools (simple loop, great DX, serial execution — one agent, one task)
 - Parallel-capable tools (parallel stories, rich desktop app, complex surface area, vague on merge safety)
-- SAW: protocol-driven parallelism, hard merge safety guarantees, human review gate, zero merge conflicts by construction
+- Polywave: protocol-driven parallelism, hard merge safety guarantees, human review gate, zero merge conflicts by construction
 
-Distribution strategy: `/saw` skill + subagents for orchestration (already works, zero setup); Wails desktop app for rich wave monitoring with native OS distribution.
+Distribution strategy: `/polywave` skill + subagents for orchestration (already works, zero setup); Wails desktop app for rich wave monitoring with native OS distribution.
 
 **Repo structure:**
 ```
-scout-and-wave-go/       github.com/blackwell-systems/scout-and-wave-go (engine)
+polywave-go/       github.com/blackwell-systems/polywave-go (engine)
   pkg/engine/            wave runner, scout runner, merge, worktree mgmt
   pkg/protocol/          IMPL doc parser
   internal/git/          git commands
 
-scout-and-wave-web/      github.com/blackwell-systems/scout-and-wave-web (current repo)
+polywave-web/      github.com/blackwell-systems/polywave-web (current repo)
   pkg/api/               HTTP adapter over engine (imports engine module)
   web/                   React frontend
-  cmd/saw/               web server binary
+  cmd/polywave/               web server binary
 
-scout-and-wave-app/      Wails desktop app (future)
-  cmd/saw-app/           Wails binary
-  src/                   React frontend (shared from scout-and-wave-web)
+polywave-app/      Wails desktop app (future)
+  cmd/polywave-app/           Wails binary
+  src/                   React frontend (shared from polywave-web)
 ```
 
 ---
 
 ## Current Status
 
-**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E41+ execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`scout-and-wave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop), markdown system fully removed (YAML-only manifests), base commit tracking for post-merge verification, duplicate completion report detection, E24 retry loop (engine-side — `sawtools retry` command, `pkg/retry` package), closed-loop gate retry (R3).
+**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E41+ execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`polywave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop), markdown system fully removed (YAML-only manifests), base commit tracking for post-merge verification, duplicate completion report detection, E24 retry loop (engine-side — `polywavetools retry` command, `pkg/retry` package), closed-loop gate retry (R3).
 
 **Web UI** — 3-column layout, Scout launcher, ReviewScreen (15+ panels), WaveBoard (failure-type action buttons, notes callout, scope-hint reruns, timeout badge + rerun), RevisePanel, GitActivity, CommandPalette, Settings, ThemePicker, SVG dep graph (animated during execution), wave gate, cancellation, desktop notifications, ManifestValidation panel, WorktreePanel (modal overlay with batch delete), QualityGatesPanel (required/optional display with command table), per-agent context toggle in ReviewScreen.
 
@@ -48,7 +48,7 @@ See CHANGELOG.md for full version history.
 
 ### Verification Loop UI (Auto-Retry Visualization)
 
-**Why:** The engine has E24 verification loop and `sawtools retry` command. The web UI has no visibility into retry chains — users see failures with no indication that a fix wave exists or is running.
+**Why:** The engine has E24 verification loop and `polywavetools retry` command. The web UI has no visibility into retry chains — users see failures with no indication that a fix wave exists or is running.
 
 **Scope:**
 - IMPL list: show retry chain hierarchy (e.g., "Feature X → Fix Wave 1 → Fix Wave 2")
@@ -147,10 +147,10 @@ See CHANGELOG.md for full version history.
 
 ### Wails Desktop App
 
-**Why:** The web server is the wrong distribution primitive for end users. The `/saw` skill handles orchestration — the UI's job is monitoring, and monitoring deserves a real native app.
+**Why:** The web server is the wrong distribution primitive for end users. The `/polywave` skill handles orchestration — the UI's job is monitoring, and monitoring deserves a real native app.
 
 **Scope:**
-- New `scout-and-wave-app` repo: Wails app importing `scout-and-wave-go`
+- New `polywave-app` repo: Wails app importing `polywave-go`
 - Replace `net/http` handlers with Wails bound methods
 - Replace SSE `EventSource` with `runtime.EventsEmit` / `EventsOn`
 - Replace `fetch` calls in `api.ts` with Wails JS bindings
@@ -158,7 +158,7 @@ See CHANGELOG.md for full version history.
 - SVG dep graph, wave board, all components work without modification
 
 **What you get:**
-- `brew install --cask saw` on Mac, MSI on Windows, AppImage on Linux
+- `brew install --cask polywave` on Mac, MSI on Windows, AppImage on Linux
 - No port, no server process — double-click and it works
 - Real OS notifications, menu bar wave progress indicator
 - Hot reload in dev mode via `wails dev`
@@ -168,7 +168,7 @@ See CHANGELOG.md for full version history.
 
 ### Multi-Provider Backends
 
-SAW agents are Claude-native today. This milestone decouples the engine from Anthropic's API so any model with tool-use support can run Scout, Wave, and Scaffold agents.
+Polywave agents are Claude-native today. This milestone decouples the engine from Anthropic's API so any model with tool-use support can run Scout, Wave, and Scaffold agents.
 
 **Providers:**
 - **OpenAI** — GPT-4o, o3, o4-mini via OpenAI API
@@ -179,10 +179,10 @@ SAW agents are Claude-native today. This milestone decouples the engine from Ant
 - Any provider with OpenAI-compatible `/v1/chat/completions` endpoint
 
 **Interface:**
-- `--backend claude|openai|litellm|ollama|gemini|kimi` flag on all `saw` commands
+- `--backend claude|openai|litellm|ollama|gemini|kimi` flag on all `polywave` commands
 - Auto-detection from env vars: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY`, `MOONSHOT_API_KEY`, `OLLAMA_HOST`
 - Per-agent model override: Scout on Claude Opus, Wave agents on a cheaper model
-- `saw backends list` — show detected providers and their status
+- `polywave backends list` — show detected providers and their status
 
 **Translation layer:**
 - Normalize tool-use format across providers
@@ -194,7 +194,7 @@ SAW agents are Claude-native today. This milestone decouples the engine from Ant
 
 ### MCP Server
 
-`mcp-server-saw` package. Tools: `saw_scout`, `saw_wave`, `saw_status`, `saw_approve`. Expose SAW engine to any MCP-capable host.
+`mcp-server-polywave` package. Tools: `polywave_scout`, `polywave_wave`, `polywave_status`, `polywave_approve`. Expose Polywave engine to any MCP-capable host.
 
 ---
 
@@ -229,9 +229,9 @@ GitHub App that posts IMPL doc reviews as PR comments. Approval workflow in GitH
 - Pre-wave quality gates editing (inline toggle required/optional)
 - Large IMPL scalability (per-agent context in wave launch, lazy-load panels)
 
-**Then:** Wails desktop app. Engine extraction complete — import `scout-and-wave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
+**Then:** Wails desktop app. Engine extraction complete — import `polywave-go`, replace HTTP/SSE with Wails bindings, React frontend unchanged. Ships as native cross-platform app.
 
-**Goal:** By Wails release, SAW is installable in one command on Mac/Windows/Linux with full OS integration.
+**Goal:** By Wails release, Polywave is installable in one command on Mac/Windows/Linux with full OS integration.
 
 ---
 

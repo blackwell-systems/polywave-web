@@ -150,9 +150,9 @@ func (s *Server) handleResumeExecution(w http.ResponseWriter, r *http.Request) {
 	// Read model config (same pattern as handleWaveAgentRerun).
 	waveModel := ""
 	integrationModel := ""
-	if sawCfg := config.LoadOrDefault(repoPath); sawCfg != nil {
-		waveModel = sawCfg.Agent.WaveModel
-		integrationModel = sawCfg.Agent.IntegrationModel
+	if pwCfg := config.LoadOrDefault(repoPath); pwCfg != nil {
+		waveModel = pwCfg.Agent.WaveModel
+		integrationModel = pwCfg.Agent.IntegrationModel
 	}
 	if fallbackPolywaveConfig != nil {
 		if waveModel == "" {

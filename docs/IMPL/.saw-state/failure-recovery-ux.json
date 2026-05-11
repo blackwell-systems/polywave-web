@@ -1,0 +1,28 @@
+{
+  "slug": "failure-recovery-ux",
+  "current_stage": "wave_merge",
+  "entries": [
+    {
+      "stage": "scaffold",
+      "status": "complete",
+      "started_at": "2026-03-16T22:52:18.669205-07:00",
+      "completed_at": "2026-03-16T22:52:18.67001-07:00"
+    },
+    {
+      "stage": "wave_execute",
+      "status": "complete",
+      "wave_num": 1,
+      "started_at": "2026-03-16T22:52:18.688294-07:00",
+      "completed_at": "2026-03-16T22:57:49.749054-07:00"
+    },
+    {
+      "stage": "wave_merge",
+      "status": "failed",
+      "wave_num": 1,
+      "message": "engine.FinalizeWave: merge-agents encountered conflicts",
+      "started_at": "2026-03-16T22:57:49.749247-07:00",
+      "completed_at": "2026-03-16T22:58:02.662301-07:00"
+    }
+  ],
+  "updated_at": "2026-03-16T22:58:02.662301-07:00"
+}

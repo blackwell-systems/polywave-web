@@ -47,7 +47,7 @@ func (s *Server) runStaleCleanup() {
 		}
 
 		// Auto-clean all three reasons: completed_impl, orphaned, merged_but_not_cleaned.
-		// SAW worktrees use a known branch format so orphaned SAW worktrees are
+		// Polywave worktrees use a known branch format so orphaned Polywave worktrees are
 		// definitively stale debris.
 		res := protocol.CleanStaleWorktrees(stale, false)
 		if res.IsFatal() {

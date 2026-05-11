@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { sawClient } from '../../lib/apiClient'
+import { polywaveClient } from '../../lib/apiClient'
 
 async function fetchFileDiff(slug: string, agent: string, wave: number, file: string): Promise<string> {
-  const result = await sawClient.impl.diff(slug, agent, wave, file)
+  const result = await polywaveClient.impl.diff(slug, agent, wave, file)
   return result.diff ?? ''
 }
 

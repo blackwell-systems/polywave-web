@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Toast } from '../components/ToastContainer'
 import { useGlobalEvents } from './useGlobalEvents'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 
 // Mirror the Go types from pkg/api/notification_types.go
 export type NotificationEventType =
@@ -30,13 +30,13 @@ export interface NotificationPreferences {
   toast_notify: boolean
 }
 
-// API functions for notification preferences — delegate to sawClient
+// API functions for notification preferences — delegate to polywaveClient
 async function getNotificationPrefs(): Promise<NotificationPreferences> {
-  return await sawClient.notifications.getPreferences() as NotificationPreferences
+  return await polywaveClient.notifications.getPreferences() as NotificationPreferences
 }
 
 async function saveNotificationPrefs(prefs: NotificationPreferences): Promise<void> {
-  await sawClient.notifications.savePreferences(prefs)
+  await polywaveClient.notifications.savePreferences(prefs)
 }
 
 // Request browser notification permission

@@ -2,14 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, act, waitFor } from '@testing-library/react'
 import InterviewLauncher from './InterviewLauncher'
 
-// ─── Mock sawClient ──────────────────────────────────────────────────────────
+// ─── Mock polywaveClient ──────────────────────────────────────────────────────────
 
 const mockInterviewStart = vi.fn()
 const mockInterviewSubscribeEvents = vi.fn()
 const mockInterviewAnswer = vi.fn()
 
 vi.mock('../lib/apiClient', () => ({
-  sawClient: {
+  polywaveClient: {
     interview: {
       start: (...args: unknown[]) => mockInterviewStart(...args),
       subscribeEvents: (...args: unknown[]) => mockInterviewSubscribeEvents(...args),
@@ -89,9 +89,9 @@ describe('InterviewLauncher', () => {
     expect(toggleBtn).toBeDefined()
   })
 
-  // ── Test 2: start button calls sawClient.interview.start with form values ─
+  // ── Test 2: start button calls polywaveClient.interview.start with form values ─
 
-  it('calls sawClient.interview.start with correct form values on submit', async () => {
+  it('calls polywaveClient.interview.start with correct form values on submit', async () => {
     mockInterviewStart.mockResolvedValue({ runId: 'run-abc' })
     mockInterviewSubscribeEvents.mockImplementation((runId: string) => {
       return new MockEventSource(`/api/interview/${runId}/events`) as unknown as EventSource
@@ -178,9 +178,9 @@ describe('InterviewLauncher', () => {
     expect(screen.getByText('Q 1/12')).toBeDefined()
   })
 
-  // ── Test 4: answer submit calls sawClient.interview.answer ───────────────
+  // ── Test 4: answer submit calls polywaveClient.interview.answer ───────────────
 
-  it('calls sawClient.interview.answer when answer is submitted', async () => {
+  it('calls polywaveClient.interview.answer when answer is submitted', async () => {
     mockInterviewStart.mockResolvedValue({ runId: 'run-789' })
     mockInterviewSubscribeEvents.mockImplementation((runId: string) => {
       return new MockEventSource(`/api/interview/${runId}/events`) as unknown as EventSource

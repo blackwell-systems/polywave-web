@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -12,7 +12,7 @@ interface InterviewQuestionEvent {
   hint?: string
 }
 
-// The interview namespace is added to sawClient by Agent A (wave2-agent-A).
+// The interview namespace is added to polywaveClient by Agent A (wave2-agent-A).
 // We cast to access it here until the type definition is merged.
 interface InterviewClient {
   start(description: string, opts?: { maxQuestions?: number; projectPath?: string }): Promise<{ runId: string }>
@@ -23,7 +23,7 @@ interface InterviewClient {
 
 function getInterviewClient(): InterviewClient {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (sawClient as any).interview as InterviewClient
+  return (polywaveClient as any).interview as InterviewClient
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────

@@ -74,10 +74,10 @@ var criticTimeout = 5 * time.Minute
 // criticCommandFunc creates the exec.Cmd for critic execution.
 // Overridable in tests.
 var criticCommandFunc = func(ctx context.Context, implPath string) *exec.Cmd {
-	return exec.CommandContext(ctx, "sawtools", "run-critic", implPath) //nolint:gosec
+	return exec.CommandContext(ctx, "polywave-tools", "run-critic", implPath) //nolint:gosec
 }
 
-// runCriticAsync invokes sawtools run-critic, streaming stdout/stderr as
+// runCriticAsync invokes polywave-tools run-critic, streaming stdout/stderr as
 // critic_output SSE events, and emits critic_review_complete on success or
 // critic_review_failed on error. Safe to call in a goroutine.
 func (s *Server) runCriticAsync(slug, implPath string) {
@@ -154,7 +154,7 @@ func (s *Server) runCriticAsync(slug, implPath string) {
 
 // handleFixCritic serves PATCH /api/impl/{slug}/fix-critic.
 // Accepts a CriticFix JSON body, applies the fix to the IMPL manifest YAML,
-// re-validates with sawtools validate --fix, and returns the updated CriticData.
+// re-validates with polywave-tools validate --fix, and returns the updated CriticData.
 // Emits impl_updated SSE event so other panels refresh.
 func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 	slug := r.PathValue("slug")
@@ -236,8 +236,8 @@ func (s *Server) handleFixCritic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Re-validate with sawtools validate --fix
-	_ = exec.Command("sawtools", "validate", "--fix", implPath).Run() //nolint:gosec
+	// Re-validate with polywave-tools validate --fix
+	_ = exec.Command("polywave-tools", "validate", "--fix", implPath).Run() //nolint:gosec
 
 	// Reload manifest to get updated state (including any validator auto-fixes)
 	manifest, err = protocol.Load(context.Background(), implPath)
@@ -288,10 +288,10 @@ type FailedFix struct {
 // autoFixCriticTimeout is the maximum duration for the critic re-run during auto-fix.
 var autoFixCriticTimeout = 3 * time.Minute
 
-// validateCommandFunc creates the exec.Cmd for sawtools validate --fix.
+// validateCommandFunc creates the exec.Cmd for polywave-tools validate --fix.
 // Overridable in tests.
 var validateCommandFunc = func(implPath string) *exec.Cmd {
-	return exec.Command("sawtools", "validate", "--fix", implPath) //nolint:gosec
+	return exec.Command("polywave-tools", "validate", "--fix", implPath) //nolint:gosec
 }
 
 // symbolAccuracyPattern matches "expected X, found Y" in critic issue descriptions.
@@ -421,7 +421,7 @@ func (s *Server) handleAutoFixCritic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Re-validate with sawtools validate --fix
+	// Re-validate with polywave-tools validate --fix
 	_ = validateCommandFunc(implPath).Run()
 
 	// Re-run critic synchronously with timeout

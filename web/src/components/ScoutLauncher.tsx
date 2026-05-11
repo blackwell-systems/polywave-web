@@ -11,7 +11,7 @@ const WORKING_MESSAGES = [
   'Writing IMPL doc…',
 ]
 import { runScout, subscribeScoutEvents, cancelScout } from '../api'
-import { sawClient } from '../lib/apiClient'
+import { polywaveClient } from '../lib/apiClient'
 
 interface ScoutLauncherProps {
   onComplete: (slug: string) => void
@@ -141,7 +141,7 @@ export default function ScoutLauncher({ onComplete, onScoutReady, repos, activeR
         setCompletedSlug(slug)
         onScoutReady?.()
         if (slug) {
-          sawClient.impl.get(slug)
+          polywaveClient.impl.get(slug)
             .then((data: any) => {
               const agents = data.waves?.reduce((s: number, w: any) => s + (w.agents?.length ?? 0), 0) ?? 0
               const waves = data.waves?.length ?? 0

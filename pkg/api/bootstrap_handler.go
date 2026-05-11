@@ -88,9 +88,9 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 	slug := "bootstrap"
 	implOut := filepath.Join(repoRoot, "docs", "IMPL", "IMPL-bootstrap.yaml")
 
-	// Locate SAW repo for prompt files.
-	sawRepo := os.Getenv("POLYWAVE_REPO")
-	if sawRepo == "" {
+	// Locate Polywave repo for prompt files.
+	pwRepo := os.Getenv("POLYWAVE_REPO")
+	if pwRepo == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			publish("scout_failed", map[string]string{
@@ -99,13 +99,13 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 			})
 			return
 		}
-		sawRepo = filepath.Join(home, "code", "polywave")
+		pwRepo = filepath.Join(home, "code", "polywave")
 	}
 
 	// Read config to pick up the configured scout model.
 	scoutModel := ""
-	if sawCfg := config.LoadOrDefault(repoRoot); sawCfg != nil {
-		scoutModel = sawCfg.Agent.ScoutModel
+	if pwCfg := config.LoadOrDefault(repoRoot); pwCfg != nil {
+		scoutModel = pwCfg.Agent.ScoutModel
 	}
 
 	onChunk := func(chunk string) {
@@ -123,7 +123,7 @@ func (s *Server) runBootstrapAgent(ctx context.Context, runID, description, repo
 	execResult := engine.RunScout(ctx, engine.RunScoutOpts{
 		Feature:             feature,
 		RepoPath:            repoRoot,
-		PolywaveRepoPath:         sawRepo,
+		PolywaveRepoPath:         pwRepo,
 		IMPLOutPath:         implOut,
 		ScoutModel:          scoutModel,
 		UseStructuredOutput: true,

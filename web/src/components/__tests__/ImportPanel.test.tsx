@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import ImportPanel from '../ImportPanel'
 
-// Mock sawClient so we don't make real HTTP requests.
+// Mock polywaveClient so we don't make real HTTP requests.
 vi.mock('../../lib/apiClient', () => ({
-  sawClient: {
+  polywaveClient: {
     impl: {
       importImpls: vi.fn(),
     },
   },
 }))
 
-import { sawClient } from '../../lib/apiClient'
+import { polywaveClient } from '../../lib/apiClient'
 
-const mockImportImpls = (sawClient.impl as any).importImpls as ReturnType<typeof vi.fn>
+const mockImportImpls = (polywaveClient.impl as any).importImpls as ReturnType<typeof vi.fn>
 
 describe('ImportPanel', () => {
   beforeEach(() => {
@@ -52,7 +52,7 @@ describe('ImportPanel', () => {
     expect(textarea).not.toBeDisabled()
   })
 
-  it('import button calls sawClient.impl.importImpls with correct payload', async () => {
+  it('import button calls polywaveClient.impl.importImpls with correct payload', async () => {
     mockImportImpls.mockResolvedValue({
       program_path: '/path/to/PROGRAM-test.yaml',
       imported: ['feature-a', 'feature-b'],

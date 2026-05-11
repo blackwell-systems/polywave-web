@@ -233,7 +233,7 @@ func StartSSODeviceAuth(ctx context.Context, req SSOStartRequest) (*SSOStartResp
 
 	// Step 1: Register a public OIDC client.
 	regOut, err := client.RegisterClient(ctx, &ssooidc.RegisterClientInput{
-		ClientName: strPtr("saw-web"),
+		ClientName: strPtr("polywave-web"),
 		ClientType: strPtr("public"),
 	})
 	if err != nil {

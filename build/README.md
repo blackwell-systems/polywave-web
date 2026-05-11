@@ -25,7 +25,7 @@ Two implementations exist, selected at compile time via Go build tags:
 No build tags needed. This is the standard build:
 
 ```bash
-go build -o saw ./cmd/saw
+go build -o polywave ./cmd/polywave
 ```
 
 The binary embeds the frontend assets from `web/dist/` and serves them
@@ -36,7 +36,7 @@ via the Go HTTP server.
 Use the `wails` build tag:
 
 ```bash
-go build -tags wails -o saw-desktop ./cmd/saw
+go build -tags wails -o polywave-desktop ./cmd/polywave
 ```
 
 In this mode, `StaticFS()` returns `nil`. The Wails runtime handles
@@ -48,7 +48,7 @@ Callers should use `build.StaticFS()` to obtain the filesystem for
 serving static assets:
 
 ```go
-import "github.com/blackwell-systems/scout-and-wave-web/build"
+import "github.com/blackwell-systems/polywave-web/build"
 
 staticFS, err := build.StaticFS()
 if staticFS != nil {
