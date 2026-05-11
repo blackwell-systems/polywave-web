@@ -1,9 +1,0 @@
-{
-  "agent": "D",
-  "wave": 2,
-  "impl_doc": "/Users/dayna.blackwell/code/scout-and-wave/docs/IMPL/IMPL-bedrock-sso-device-auth.yaml",
-  "owned_files": [
-    "pkg/api/server.go",
-    "web/src/components/SettingsScreen.tsx"
-  ]
-}
