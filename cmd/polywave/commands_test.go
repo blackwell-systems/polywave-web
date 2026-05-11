@@ -467,7 +467,7 @@ completion_reports:
     A:
         status: complete
         worktree: /tmp/worktree-a
-        branch: saw/wave1-agent-a
+        branch: polywave/wave1-agent-a
         commit: abc1234
 `
 

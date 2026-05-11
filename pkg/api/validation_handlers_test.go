@@ -108,7 +108,7 @@ waves:
           A:
             status: complete
             commit: abc123
-            branch: saw/gap-feat/wave1-agent-A
+            branch: polywave/gap-feat/wave1-agent-A
             files_changed: pkg/handler.go
             out_of_scope_deps:
               - "RegisterRoutes must be called from server.go"

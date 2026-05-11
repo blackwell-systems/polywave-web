@@ -13,7 +13,7 @@ import (
 
 // waveAgentBranchRe matches Polywave-managed branches in both legacy format
 // ("wave1-agent-A") and slug-scoped format ("polywave/my-slug/wave1-agent-A").
-var waveAgentBranchRe = regexp.MustCompile(`^(?:saw/[a-z0-9][-a-z0-9]*/)?wave\d+-agent-[A-Z][2-9]?$`)
+var waveAgentBranchRe = regexp.MustCompile(`^(?:polywave/[a-z0-9][-a-z0-9]*/)?wave\d+-agent-[A-Z][2-9]?$`)
 
 // handleListWorktrees serves GET /api/impl/{slug}/worktrees.
 // Parses `git worktree list --porcelain` output, filters to Polywave-managed

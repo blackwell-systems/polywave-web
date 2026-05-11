@@ -166,8 +166,8 @@ worktree: .claude/worktrees/wave1-agent-A
 branch: wave1-agent-A
 commit: abc123def456
 files_changed:
-  - cmd/saw/completion.go
-  - cmd/saw/completion_test.go
+  - cmd/polywave/completion.go
+  - cmd/polywave/completion_test.go
 tests_added:
   - TestRunSetCompletion
 verification: PASS (go test)

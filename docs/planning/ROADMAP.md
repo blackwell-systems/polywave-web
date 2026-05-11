@@ -1,4 +1,4 @@
-# Scout-and-Wave Roadmap
+# Polywave Roadmap
 
 ## Vision
 

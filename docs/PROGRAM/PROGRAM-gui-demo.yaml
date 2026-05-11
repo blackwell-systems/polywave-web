@@ -1,4 +1,4 @@
-title: Scout-and-Wave GUI Demo
+title: Polywave GUI Demo
 program_slug: gui-demo
 state: TIER_EXECUTING
 created: "2026-03-18"
@@ -203,7 +203,7 @@ tier_gates:
       required: false
       description: All tests must pass
     - type: custom
-      command: sawtools validate-integration docs/IMPL/IMPL-*.yaml
+      command: polywave-tools validate-integration docs/IMPL/IMPL-*.yaml
       required: false
       description: No unconnected exports between IMPLs
 completion:

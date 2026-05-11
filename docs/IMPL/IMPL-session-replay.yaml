@@ -212,7 +212,7 @@ waves:
           Create `pkg/api/event_recorder.go` with:
 
           1. `RecordedEvent` struct: `{TimestampMS int64, EventType string, Data interface{}}`.
-          2. `EventRecorder` struct that writes JSONL to `.saw-state/<slug>/event-log.jsonl`.
+          2. `EventRecorder` struct that writes JSONL to `.polywave-state/<slug>/event-log.jsonl`.
              - `NewEventRecorder(dir string) (*EventRecorder, error)` — creates/truncates the JSONL file.
              - `Record(eventType string, data interface{})` — appends one JSON line with timestamp_ms
                relative to recorder creation time. Must be goroutine-safe (mutex around writes).
@@ -220,8 +220,8 @@ waves:
 
           3. Integrate recording into `wave_runner.go`:
              - In `runWaveLoop()`, after the `publish("run_started", ...)` call near line 96,
-               create an `EventRecorder` writing to the .saw-state directory for the slug.
-               The .saw-state dir path: find it from repoPath + "/.saw-state/" + slug + "/".
+               create an `EventRecorder` writing to the .polywave-state directory for the slug.
+               The .polywave-state dir path: find it from repoPath + "/.polywave-state/" + slug + "/".
                Create the directory if it doesn't exist.
              - Wrap the existing `publish` function to also call `recorder.Record(event, data)`
                for every event. The original publish behavior must be preserved exactly.
@@ -253,7 +253,7 @@ waves:
           - The recorder must not block or slow down SSE delivery. Writes happen in the same
             goroutine (publish is already serialized), so a simple mutex suffices.
           - Use `json.Encoder` for streaming writes (no buffering full event list in memory).
-          - File path: `<repoPath>/.saw-state/<slug>/event-log.jsonl`
+          - File path: `<repoPath>/.polywave-state/<slug>/event-log.jsonl`
         files:
           - pkg/api/event_recorder.go
           - pkg/api/event_recorder_test.go
@@ -271,7 +271,7 @@ waves:
           1. `handleGetReplayLog(w, r)` — GET /api/replay/{slug}
              - Read `r.PathValue("slug")` to get the slug.
              - Resolve the IMPL path using `s.resolveIMPLPath(slug)` to get the repoPath.
-             - Open `<repoPath>/.saw-state/<slug>/event-log.jsonl`.
+             - Open `<repoPath>/.polywave-state/<slug>/event-log.jsonl`.
              - If file not found, return 404 with JSON error `{"error": "no replay log found"}`.
              - Set Content-Type: application/x-ndjson and stream the file contents to the response.
 
@@ -468,7 +468,7 @@ post_merge_checklist:
           command: "cd /Users/dayna.blackwell/code/polywave-web && go test ./..."
     - title: "Smoke tests"
       items:
-        - description: "Start a wave execution, verify event-log.jsonl is created in .saw-state/<slug>/"
+        - description: "Start a wave execution, verify event-log.jsonl is created in .polywave-state/<slug>/"
         - description: "After completion, click Replay button, verify playback controls work"
         - description: "Download HTML export, open in browser, verify standalone playback"
 

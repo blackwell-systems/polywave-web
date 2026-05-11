@@ -384,7 +384,7 @@ quality_gates:
 completion_reports:
     A:
         status: complete
-        branch: saw/sdk-api-drift-fix/wave1-agent-A
+        branch: polywave/sdk-api-drift-fix/wave1-agent-A
         commit: 82d2762
         files_changed:
             - pkg/service/impl_service.go
