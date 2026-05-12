@@ -37,3 +37,4 @@ Thumbs.db
 .polywave-state/
 web/dist/
 node_modules/
+polywave-web

@@ -11,14 +11,14 @@
 
 ## What is this?
 
-Polywave coordinates multiple AI agents working in parallel on non-overlapping parts of a codebase. This repo provides the **`polywave` binary** — the user-facing web UI + orchestration tool.
+Polywave coordinates multiple AI agents working in parallel on non-overlapping parts of a codebase. This repo provides the **`polywave-web` binary** — the user-facing web UI + orchestration tool.
 
 **Features:**
 - **Interactive web UI** for reviewing IMPL docs (implementation plans) with visual dependency graphs, wave timelines, and file ownership tables
 - **Live wave dashboard** with real-time agent status, streaming logs, and progress tracking
 - **Chat interface** to ask Claude questions about IMPL docs with full conversation context
 - **HTTP API** (42 endpoints) for programmatic access to Polywave operations
-- **CLI interface** (`./polywave`) as an alternative to the web UI
+- **CLI interface** (`./polywave-web`) as an alternative to the web UI
 
 The web server imports the [polywave-go](https://github.com/blackwell-systems/polywave-go) engine package for all Polywave orchestration logic. The protocol specification lives in [polywave-protocol](https://github.com/blackwell-systems/polywave-protocol).
 
@@ -33,7 +33,7 @@ cd polywave-web
 make build
 
 # Start the web server
-./polywave serve
+./polywave-web serve
 # Opens http://localhost:7432 in your browser
 ```
 
@@ -60,10 +60,10 @@ The web UI provides:
 git clone https://github.com/blackwell-systems/polywave-web.git
 cd polywave-web
 make build
-./polywave --version
+./polywave-web --version
 ```
 
-The `make build` target builds the React frontend (`web/`) and embeds it into the Go binary via `go:embed`. You can then copy `./polywave` anywhere on your `$PATH`.
+The `make build` target builds the React frontend (`web/`) and embeds it into the Go binary via `go:embed`. You can then copy `./polywave-web` anywhere on your `$PATH`.
 
 ### Docker (coming soon)
 
@@ -78,13 +78,13 @@ docker run -p 7432:7432 -v $(pwd):/workspace blackwellsystems/polywave-web
 
 ```bash
 # Start server and open browser
-./polywave serve
+./polywave-web serve
 
 # Custom port and repo path
-./polywave serve --addr :8080 --repo /path/to/your/project
+./polywave-web serve --addr :8080 --repo /path/to/your/project
 
 # Don't auto-open browser
-./polywave serve --no-browser
+./polywave-web serve --no-browser
 ```
 
 The web UI provides three main views:
@@ -117,20 +117,20 @@ The binary also provides a CLI for scripting and CI/CD:
 
 ```bash
 # Analyze codebase and generate IMPL doc
-./polywave scout --feature "add caching layer"
+./polywave-web scout --feature "add caching layer"
 
 # Create scaffold files from IMPL doc
-./polywave scaffold --impl docs/IMPL/IMPL-caching.yaml
+./polywave-web scaffold --impl docs/IMPL/IMPL-caching.yaml
 
 # Execute all waves automatically
-./polywave wave --impl docs/IMPL/IMPL-caching.yaml --auto
+./polywave-web wave --impl docs/IMPL/IMPL-caching.yaml --auto
 
 # Check status
-./polywave status --impl docs/IMPL/IMPL-caching.yaml
-./polywave status --impl docs/IMPL/IMPL-caching.yaml --json
+./polywave-web status --impl docs/IMPL/IMPL-caching.yaml
+./polywave-web status --impl docs/IMPL/IMPL-caching.yaml --json
 
 # Manual merge (recovery)
-./polywave merge --impl docs/IMPL/IMPL-caching.yaml --wave 1
+./polywave-web merge --impl docs/IMPL/IMPL-caching.yaml --wave 1
 ```
 
 See [CLI Reference](docs/reference/cli-reference.md) for full command reference.
@@ -188,7 +188,7 @@ The dependency graph panel renders an interactive SVG:
 
 ### Live wave execution
 
-When running `./polywave wave --auto` (or via API), the Wave Dashboard streams live updates:
+When running `./polywave-web wave --auto` (or via API), the Wave Dashboard streams live updates:
 
 - Per-wave progress bars
 - Per-agent status cards (pending → running → complete/failed)
@@ -202,7 +202,7 @@ All updates arrive over SSE (`/api/wave/{slug}/events`), so no polling required.
 
 ```
 polywave-web/
-├── cmd/polywave/         # CLI entry point (wraps pkg/api + pkg/engine calls)
+├── cmd/polywave-web/     # CLI entry point (wraps pkg/api + pkg/engine calls)
 ├── pkg/
 │   ├── api/             # HTTP server, SSE broker, REST endpoints
 │   │   ├── server.go    # Main server with embedded web bundle
@@ -254,7 +254,7 @@ npm run build  # outputs to web/dist/
 ### Build the Go binary
 
 ```bash
-go build -o polywave ./cmd/polywave
+go build -o polywave-web ./cmd/polywave-web
 ```
 
 Or use the Makefile:
@@ -273,14 +273,14 @@ cd web
 npm run dev  # Vite dev server on port 5173 with hot-reload
 ```
 
-The Vite dev server proxies API requests to `http://localhost:7432` (configure in `vite.config.ts`). Run `./polywave serve` in another terminal to provide the backend.
+The Vite dev server proxies API requests to `http://localhost:7432` (configure in `vite.config.ts`). Run `./polywave-web serve` in another terminal to provide the backend.
 
 **Backend changes**:
 ```bash
 # Edit Go files
-go build -o polywave ./cmd/polywave
+go build -o polywave-web ./cmd/polywave-web
 pkill -f "polywave serve"
-./polywave serve &>/tmp/polywave-serve.log &
+./polywave-web serve &>/tmp/polywave-serve.log &
 ```
 
 Or use the restart helper:
@@ -290,7 +290,7 @@ make restart  # kills server, rebuilds, restarts
 
 **Full rebuild** (after frontend changes):
 ```bash
-cd web && npm run build && cd .. && go build -o polywave ./cmd/polywave
+cd web && npm run build && cd .. && go build -o polywave-web ./cmd/polywave-web
 ```
 
 The binary embeds `web/dist/` via `go:embed`, so you must rebuild the Go binary after every npm build for changes to appear.
@@ -319,19 +319,19 @@ Example log output:
 
 ```bash
 # Generate IMPL doc
-./polywave scout --feature "add OAuth support"
+./polywave-web scout --feature "add OAuth support"
 
 # Create interface scaffolds
-./polywave scaffold --impl docs/IMPL/IMPL-oauth.yaml
+./polywave-web scaffold --impl docs/IMPL/IMPL-oauth.yaml
 
 # Execute waves
-./polywave wave --impl docs/IMPL/IMPL-oauth.yaml --auto
+./polywave-web wave --impl docs/IMPL/IMPL-oauth.yaml --auto
 
 # Check status
-./polywave status --impl docs/IMPL/IMPL-oauth.yaml
+./polywave-web status --impl docs/IMPL/IMPL-oauth.yaml
 
 # Start web server
-./polywave serve
+./polywave-web serve
 ```
 
 ### Quick API Examples
@@ -420,7 +420,7 @@ tail -20 /tmp/polywave-serve.log | grep "\[chat\]"
 3. Restart server:
 ```bash
 pkill -f "polywave serve"
-./polywave serve &>/tmp/polywave-serve.log &
+./polywave-web serve &>/tmp/polywave-serve.log &
 ```
 
 ### "Merge conflict detected"
@@ -428,7 +428,7 @@ pkill -f "polywave serve"
 This means I1 was violated (overlapping file ownership). Check the file ownership table in the IMPL doc:
 
 ```bash
-./polywave status --impl docs/IMPL/IMPL-feature.yaml --missing
+./polywave-web status --impl docs/IMPL/IMPL-feature.yaml --missing
 ```
 
 If two agents claim the same file, edit the IMPL doc to reassign ownership, then re-run the wave.
