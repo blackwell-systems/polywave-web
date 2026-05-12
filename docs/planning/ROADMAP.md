@@ -32,7 +32,7 @@ polywave-app/      Wails desktop app (future)
 
 ## Current Status
 
-**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E41+ execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`polywave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop), markdown system fully removed (YAML-only manifests), base commit tracking for post-merge verification, duplicate completion report detection, E24 retry loop (engine-side — `polywavetools retry` command, `pkg/retry` package), closed-loop gate retry (R3).
+**Protocol & engine** — Core protocol (I1–I6 invariants, E1–E41+ execution rules), Go orchestration engine, E16 validator, scaffold build verification (E22), per-agent context extraction (E23), engine extraction complete (`polywave-go` standalone module), cross-repo wave support, single-agent rerun (`RunSingleAgent`), unified tool system (`pkg/tools` Workshop), markdown system fully removed (YAML-only manifests), base commit tracking for post-merge verification, duplicate completion report detection, E24 retry loop (engine-side — `polywave-tools retry` command, `pkg/retry` package), closed-loop gate retry (R3).
 
 **Web UI** — 3-column layout, Scout launcher, ReviewScreen (15+ panels), WaveBoard (failure-type action buttons, notes callout, scope-hint reruns, timeout badge + rerun), RevisePanel, GitActivity, CommandPalette, Settings, ThemePicker, SVG dep graph (animated during execution), wave gate, cancellation, desktop notifications, ManifestValidation panel, WorktreePanel (modal overlay with batch delete), QualityGatesPanel (required/optional display with command table), per-agent context toggle in ReviewScreen.
 
@@ -48,7 +48,7 @@ See CHANGELOG.md for full version history.
 
 ### Verification Loop UI (Auto-Retry Visualization)
 
-**Why:** The engine has E24 verification loop and `polywavetools retry` command. The web UI has no visibility into retry chains — users see failures with no indication that a fix wave exists or is running.
+**Why:** The engine has E24 verification loop and `polywave-tools retry` command. The web UI has no visibility into retry chains — users see failures with no indication that a fix wave exists or is running.
 
 **Scope:**
 - IMPL list: show retry chain hierarchy (e.g., "Feature X → Fix Wave 1 → Fix Wave 2")
