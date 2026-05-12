@@ -2541,4 +2541,4 @@ No rate limiting. All operations are synchronous or streamed.
 
 - [CLI Reference](cli-reference.md) -- Command-line interface
 - [Configuration Reference](configuration.md) -- `polywave.config.json` structure
-- [Protocol Specification](https://github.com/blackwell-systems/polywave) -- Polywave protocol invariants
+- [Protocol Specification](https://github.com/blackwell-systems/polywave-protocol) -- Polywave protocol invariants

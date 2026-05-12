@@ -710,4 +710,4 @@ The server only loads config on startup.
 
 - [CLI Reference](cli-reference.md) — Command-line flags and options
 - [API Reference](api-reference.md) — `GET /api/config` and `POST /api/config` endpoints
-- [Protocol Specification](https://github.com/blackwell-systems/polywave) — IMPL manifest structure
+- [Protocol Specification](https://github.com/blackwell-systems/polywave-protocol) — IMPL manifest structure

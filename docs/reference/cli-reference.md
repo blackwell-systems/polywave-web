@@ -816,4 +816,4 @@ All commands support:
 
 - [API Reference](api-reference.md) -- HTTP endpoints for web UI
 - [Configuration Reference](configuration.md) -- `polywave.config.json` structure
-- [Protocol Specification](https://github.com/blackwell-systems/polywave) -- Polywave protocol invariants
+- [Protocol Specification](https://github.com/blackwell-systems/polywave-protocol) -- Polywave protocol invariants
