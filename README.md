@@ -7,6 +7,8 @@
 
 **Web UI for [Polywave](https://github.com/blackwell-systems/polywave)** — review IMPL docs, monitor live wave execution, and chat with Claude about your implementation plans.
 
+> **Using Claude Code?** Start at [polywave](https://github.com/blackwell-systems/polywave) for the Agent Skill and install guide. This repo provides the web dashboard as an alternative interface.
+
 ## What is this?
 
 Polywave coordinates multiple AI agents working in parallel on non-overlapping parts of a codebase. This repo provides the **`polywave` binary** — the user-facing web UI + orchestration tool.
