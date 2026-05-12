@@ -66,7 +66,7 @@ Array of repository entries for multi-repo support (future feature).
 }
 ```
 
-**Note:** Currently, `polywave serve --repo` flag takes precedence. The `repos` array is for future multi-repo workspace support.
+**Note:** Currently, `polywave-web serve --repo` flag takes precedence. The `repos` array is for future multi-repo workspace support.
 
 ---
 
@@ -87,7 +87,7 @@ Model selection for Scout, Wave, and Chat agents.
 
 #### agent.scout_model
 
-Model used for `polywave scout` (IMPL doc generation).
+Model used for `polywave-web scout` (IMPL doc generation).
 
 **Type:** `string`
 
@@ -427,7 +427,7 @@ Override agent backend selection globally.
 **Example:**
 ```bash
 export POLYWAVE_BACKEND=cli
-polywave scout --feature "add OAuth"
+polywave-web scout --feature "add OAuth"
 ```
 
 **Precedence:** CLI flag > environment variable > config file
@@ -443,7 +443,7 @@ Anthropic API key for `--backend api` or `--backend auto`.
 **Example:**
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-api03-...
-polywave scout --feature "add OAuth" --backend api
+polywave-web scout --feature "add OAuth" --backend api
 ```
 
 ---
@@ -465,7 +465,7 @@ export AWS_ACCESS_KEY_ID=your_key
 export AWS_SECRET_ACCESS_KEY=your_secret
 export AWS_REGION=us-east-1
 
-polywave scout --feature "add OAuth"
+polywave-web scout --feature "add OAuth"
 ```
 
 **Option B: AWS Credentials File**
@@ -698,8 +698,8 @@ cat polywave.config.json | jq .agent.scout_model
 
 **Fix:** Restart the server:
 ```bash
-pkill -f "polywave serve"
-polywave serve
+pkill -f "polywave-web serve"
+polywave-web serve
 ```
 
 The server only loads config on startup.
