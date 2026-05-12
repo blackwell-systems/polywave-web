@@ -22,7 +22,7 @@ Polywave coordinates multiple AI agents working in parallel on non-overlapping p
 
 The web server imports the [polywave-go](https://github.com/blackwell-systems/polywave-go) engine package for all Polywave orchestration logic. The protocol specification lives in [polywave-protocol](https://github.com/blackwell-systems/polywave-protocol).
 
-**Note:** There's also a separate `polywavetools` CLI in polywave-go for protocol-level operations (CI/CD, power users). See [polywave-go/docs/binaries.md](https://github.com/blackwell-systems/polywave-go/blob/develop/docs/binaries.md) for when to use which binary.
+**Note:** There's also a separate `polywave-tools` CLI in polywave-go for protocol-level operations (CI/CD, power users). See [polywave-go/docs/reference/binaries.md](https://github.com/blackwell-systems/polywave-go/blob/main/docs/reference/binaries.md) for when to use which binary.
 
 ## Quickstart
 
@@ -65,12 +65,9 @@ make build
 
 The `make build` target builds the React frontend (`web/`) and embeds it into the Go binary via `go:embed`. You can then copy `./polywave-web` anywhere on your `$PATH`.
 
-### Docker (coming soon)
+### Docker (planned)
 
-```bash
-docker pull blackwellsystems/polywave-web:latest
-docker run -p 7432:7432 -v $(pwd):/workspace blackwellsystems/polywave-web
-```
+Docker support is planned but not yet available.
 
 ## Usage
 
@@ -439,7 +436,7 @@ MIT
 
 ## Contributing
 
-Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Issues and PRs welcome.
 
 ## Links
 

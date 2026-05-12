@@ -1,6 +1,6 @@
 # polywave CLI Reference
 
-`saw` is the Polywave web orchestration binary. It provides both a web UI (via `polywave serve`) and a CLI for Polywave operations.
+`polywave-web` is the Polywave web orchestration binary. It provides both a web UI (via `polywave-web serve`) and a CLI for Polywave operations.
 
 ```
 polywave [command] [args] [flags]
