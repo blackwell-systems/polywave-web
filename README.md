@@ -438,7 +438,7 @@ If two agents claim the same file, edit the IMPL doc to reassign ownership, then
 
 ## License
 
-MIT
+[MIT OR Apache-2.0](LICENSE)
 
 ## Contributing
 
