@@ -1,9 +1,15 @@
 # Polywave Web
 
-[![Blackwell Systems™](https://raw.githubusercontent.com/blackwell-systems/blackwell-docs-theme/main/badge-trademark.svg)](https://github.com/blackwell-systems)
-[![CI](https://github.com/blackwell-systems/polywave-web/actions/workflows/ci.yml/badge.svg)](https://github.com/blackwell-systems/polywave-web/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.20.3-blue)
-[![Buy Me A Coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg)](https://buymeacoffee.com/blackwellsystems)
+<p align="center">
+  <img src="assets/logo.png" alt="Polywave" width="600" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/blackwell-systems"><img src="https://raw.githubusercontent.com/blackwell-systems/blackwell-docs-theme/main/badge-trademark.svg" alt="Blackwell Systems" /></a>
+  <a href="https://github.com/blackwell-systems/polywave-web/actions/workflows/ci.yml"><img src="https://github.com/blackwell-systems/polywave-web/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
+  <img src="https://img.shields.io/badge/version-0.20.3-blue" alt="Version" />
+  <a href="https://buymeacoffee.com/blackwellsystems"><img src="https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg" alt="Buy Me A Coffee" /></a>
+</p>
 
 **Web UI for [Polywave](https://github.com/blackwell-systems/polywave)** — review IMPL docs, monitor live wave execution, and chat with Claude about your implementation plans.
 
