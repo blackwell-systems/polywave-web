@@ -1,6 +1,6 @@
 # polywave API Reference
 
-The `polywave serve` command exposes an HTTP API on `localhost:7432` (configurable via `--addr`). All endpoints return JSON unless otherwise noted. SSE (Server-Sent Events) endpoints stream `text/event-stream`.
+The `polywave-web serve` command exposes an HTTP API on `localhost:7432` (configurable via `--addr`). All endpoints return JSON unless otherwise noted. SSE (Server-Sent Events) endpoints stream `text/event-stream`.
 
 **Base URL:** `http://localhost:7432`
 
@@ -2527,7 +2527,7 @@ es.addEventListener('wave_started', (e) => {
 
 ## Authentication
 
-Currently, the API has no authentication. It's intended for local development only. Do not expose `polywave serve` to untrusted networks.
+Currently, the API has no authentication. It's intended for local development only. Do not expose `polywave-web serve` to untrusted networks.
 
 ---
 

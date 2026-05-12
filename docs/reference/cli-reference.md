@@ -3,9 +3,9 @@
 `polywave-web` is the Polywave web orchestration binary. It provides both a web UI (via `polywave-web serve`) and a CLI for Polywave operations.
 
 ```
-polywave [command] [args] [flags]
-polywave --version
-polywave --help
+polywave-web [command] [args] [flags]
+polywave-web --version
+polywave-web --help
 ```
 
 ## Quick Reference
@@ -45,7 +45,7 @@ polywave --help
 Start the HTTP server with React web interface for reviewing IMPL docs and monitoring wave execution.
 
 ```bash
-polywave serve [flags]
+polywave-web serve [flags]
 ```
 
 **Flags:**
@@ -64,13 +64,13 @@ polywave serve [flags]
 **Examples:**
 ```bash
 # Start server with defaults (localhost:7432, auto-detect repo)
-polywave serve
+polywave-web serve
 
 # Custom port and repo path
-polywave serve --addr :8080 --repo /path/to/project
+polywave-web serve --addr :8080 --repo /path/to/project
 
 # Custom IMPL directory, don't open browser
-polywave serve --impl-dir /custom/impls --no-browser
+polywave-web serve --impl-dir /custom/impls --no-browser
 ```
 
 **See also:** [API Reference](api-reference.md) for HTTP endpoints
@@ -84,7 +84,7 @@ polywave serve --impl-dir /custom/impls --no-browser
 Run Scout agent to analyze codebase and generate an IMPL doc for a feature request.
 
 ```bash
-polywave scout --feature "description" [flags]
+polywave-web scout --feature "description" [flags]
 ```
 
 **Flags:**
@@ -105,17 +105,17 @@ polywave scout --feature "description" [flags]
 **Examples:**
 ```bash
 # Generate IMPL doc with auto backend
-polywave scout --feature "add OAuth 2.0 authentication"
+polywave-web scout --feature "add OAuth 2.0 authentication"
 
 # Force API backend
 export ANTHROPIC_API_KEY=sk-ant-...
-polywave scout --feature "add caching layer" --backend api
+polywave-web scout --feature "add caching layer" --backend api
 
 # Force CLI backend (Claude Max plan)
-polywave scout --feature "refactor database layer" --backend cli
+polywave-web scout --feature "refactor database layer" --backend cli
 
 # Specify output path
-polywave scout --feature "add rate limiting" --impl docs/IMPL/IMPL-rate-limit.yaml
+polywave-web scout --feature "add rate limiting" --impl docs/IMPL/IMPL-rate-limit.yaml
 ```
 
 **See also:** `scaffold` (next step after Scout)
@@ -127,7 +127,7 @@ polywave scout --feature "add rate limiting" --impl docs/IMPL/IMPL-rate-limit.ya
 Run Scaffold agent to create interface contract stubs from an IMPL doc (I2 enforcement).
 
 ```bash
-polywave scaffold --impl <path> [flags]
+polywave-web scaffold --impl <path> [flags]
 ```
 
 **Flags:**
@@ -144,10 +144,10 @@ polywave scaffold --impl <path> [flags]
 **Examples:**
 ```bash
 # Create scaffolds with auto backend
-polywave scaffold --impl docs/IMPL/IMPL-oauth.yaml
+polywave-web scaffold --impl docs/IMPL/IMPL-oauth.yaml
 
 # Force specific backend
-polywave scaffold --impl docs/IMPL/IMPL-caching.yaml --backend cli
+polywave-web scaffold --impl docs/IMPL/IMPL-caching.yaml --backend cli
 ```
 
 **See also:** `wave` (next step after scaffolding)
@@ -159,7 +159,7 @@ polywave scaffold --impl docs/IMPL/IMPL-caching.yaml --backend cli
 Execute agents for a specific wave from an IMPL doc.
 
 ```bash
-polywave wave --impl <path> [flags]
+polywave-web wave --impl <path> [flags]
 ```
 
 **Flags:**
@@ -177,16 +177,16 @@ polywave wave --impl <path> [flags]
 **Examples:**
 ```bash
 # Execute wave 1 (interactive, pause after completion)
-polywave wave --impl docs/IMPL/IMPL-oauth.yaml
+polywave-web wave --impl docs/IMPL/IMPL-oauth.yaml
 
 # Execute wave 2 specifically
-polywave wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2
+polywave-web wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2
 
 # Execute all waves automatically (no pauses)
-polywave wave --impl docs/IMPL/IMPL-oauth.yaml --auto
+polywave-web wave --impl docs/IMPL/IMPL-oauth.yaml --auto
 
 # Start from wave 2, continue automatically
-polywave wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2 --auto
+polywave-web wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2 --auto
 ```
 
 **See also:** `merge`, `status`
@@ -198,7 +198,7 @@ polywave wave --impl docs/IMPL/IMPL-oauth.yaml --wave 2 --auto
 Manually merge agent worktrees for a completed wave (recovery/debugging tool).
 
 ```bash
-polywave merge --impl <path> --wave <n>
+polywave-web merge --impl <path> --wave <n>
 ```
 
 **Flags:**
@@ -215,10 +215,10 @@ polywave merge --impl <path> --wave <n>
 **Examples:**
 ```bash
 # Merge wave 1
-polywave merge --impl docs/IMPL/IMPL-oauth.yaml --wave 1
+polywave-web merge --impl docs/IMPL/IMPL-oauth.yaml --wave 1
 
 # Merge wave 3
-polywave merge --impl docs/IMPL/IMPL-oauth.yaml --wave 3
+polywave-web merge --impl docs/IMPL/IMPL-oauth.yaml --wave 3
 ```
 
 **Note:** Normally called automatically by `wave --auto`. Use this for manual recovery when `wave` is interrupted.
@@ -234,7 +234,7 @@ polywave merge --impl docs/IMPL/IMPL-oauth.yaml --wave 3
 Show current wave/agent completion status from an IMPL doc.
 
 ```bash
-polywave status --impl <path> [flags]
+polywave-web status --impl <path> [flags]
 ```
 
 **Flags:**
@@ -276,13 +276,13 @@ Wave 2: In Progress (1/2 agents)
 **Examples:**
 ```bash
 # Human-readable status
-polywave status --impl docs/IMPL/IMPL-oauth.yaml
+polywave-web status --impl docs/IMPL/IMPL-oauth.yaml
 
 # JSON output for scripting
-polywave status --impl docs/IMPL/IMPL-oauth.yaml --json
+polywave-web status --impl docs/IMPL/IMPL-oauth.yaml --json
 
 # Show only incomplete agents
-polywave status --impl docs/IMPL/IMPL-oauth.yaml --missing
+polywave-web status --impl docs/IMPL/IMPL-oauth.yaml --missing
 ```
 
 **See also:** `current-wave`, `merge-wave`
@@ -294,7 +294,7 @@ polywave status --impl docs/IMPL/IMPL-oauth.yaml --missing
 Return the wave number of the first incomplete wave, or "complete" if all waves finished.
 
 ```bash
-polywave current-wave <manifest-path>
+polywave-web current-wave <manifest-path>
 ```
 
 **Arguments:**
@@ -311,7 +311,7 @@ polywave current-wave <manifest-path>
 **Examples:**
 ```bash
 # Get current wave
-polywave current-wave docs/IMPL/IMPL-oauth.yaml
+polywave-web current-wave docs/IMPL/IMPL-oauth.yaml
 # Output: 2
 
 # Use in scripts
@@ -332,7 +332,7 @@ fi
 Check if a wave is ready to merge and output JSON status (used internally by orchestrator).
 
 ```bash
-polywave merge-wave <manifest-path> <wave-number>
+polywave-web merge-wave <manifest-path> <wave-number>
 ```
 
 **Arguments:**
@@ -343,10 +343,10 @@ polywave merge-wave <manifest-path> <wave-number>
 
 **Examples:**
 ```bash
-polywave merge-wave docs/IMPL/IMPL-oauth.yaml 1
+polywave-web merge-wave docs/IMPL/IMPL-oauth.yaml 1
 # {"ready": true, "agents": ["A", "B", "C"]}
 
-polywave merge-wave docs/IMPL/IMPL-oauth.yaml 2
+polywave-web merge-wave docs/IMPL/IMPL-oauth.yaml 2
 # {"ready": false, "reason": "Agent E has no completion report"}
 ```
 
@@ -361,7 +361,7 @@ polywave merge-wave docs/IMPL/IMPL-oauth.yaml 2
 Validate a YAML IMPL manifest against protocol invariants (E1-E23).
 
 ```bash
-polywave validate <manifest-path>
+polywave-web validate <manifest-path>
 ```
 
 **Arguments:**
@@ -375,7 +375,7 @@ polywave validate <manifest-path>
 
 **Examples:**
 ```bash
-polywave validate docs/IMPL/IMPL-oauth.yaml
+polywave-web validate docs/IMPL/IMPL-oauth.yaml
 
 # Output (valid):
 # {"valid": true, "errors": []}
@@ -395,7 +395,7 @@ polywave validate docs/IMPL/IMPL-oauth.yaml
 Detect file ownership conflicts across agents in an IMPL manifest (I1 validation).
 
 ```bash
-polywave check-conflicts <manifest-path>
+polywave-web check-conflicts <manifest-path>
 ```
 
 **Arguments:**
@@ -409,7 +409,7 @@ polywave check-conflicts <manifest-path>
 
 **Examples:**
 ```bash
-polywave check-conflicts docs/IMPL/IMPL-oauth.yaml
+polywave-web check-conflicts docs/IMPL/IMPL-oauth.yaml
 
 # Output (no conflicts):
 # []
@@ -430,7 +430,7 @@ polywave check-conflicts docs/IMPL/IMPL-oauth.yaml
 Run quality gate checks for a wave (test/lint commands from manifest).
 
 ```bash
-polywave run-gates --wave <n> [flags]
+polywave-web run-gates --wave <n> [flags]
 ```
 
 **Flags:**
@@ -444,8 +444,8 @@ polywave run-gates --wave <n> [flags]
 
 **Examples:**
 ```bash
-polywave run-gates --wave 1
-polywave run-gates --wave 2 --repo-dir /path/to/repo
+polywave-web run-gates --wave 1
+polywave-web run-gates --wave 2 --repo-dir /path/to/repo
 ```
 
 **See also:** `validate`
@@ -457,7 +457,7 @@ polywave run-gates --wave 2 --repo-dir /path/to/repo
 Validate that scaffold files declared in manifest are committed to the repository.
 
 ```bash
-polywave validate-scaffolds <manifest-path>
+polywave-web validate-scaffolds <manifest-path>
 ```
 
 **Arguments:**
@@ -471,7 +471,7 @@ polywave validate-scaffolds <manifest-path>
 
 **Examples:**
 ```bash
-polywave validate-scaffolds docs/IMPL/IMPL-oauth.yaml
+polywave-web validate-scaffolds docs/IMPL/IMPL-oauth.yaml
 
 # Output (valid):
 # {"valid": true, "missing": []}
@@ -489,7 +489,7 @@ polywave validate-scaffolds docs/IMPL/IMPL-oauth.yaml
 Check IMPL manifest for interface contract freeze violations (E17).
 
 ```bash
-polywave freeze-check <manifest-path>
+polywave-web freeze-check <manifest-path>
 ```
 
 **Arguments:**
@@ -503,7 +503,7 @@ polywave freeze-check <manifest-path>
 
 **Examples:**
 ```bash
-polywave freeze-check docs/IMPL/IMPL-oauth.yaml
+polywave-web freeze-check docs/IMPL/IMPL-oauth.yaml
 ```
 
 **See also:** `validate`
@@ -517,7 +517,7 @@ polywave freeze-check docs/IMPL/IMPL-oauth.yaml
 Analyze Go repository dependencies and produce a dependency graph.
 
 ```bash
-polywave analyze-deps [flags]
+polywave-web analyze-deps [flags]
 ```
 
 **Flags:**
@@ -530,8 +530,8 @@ polywave analyze-deps [flags]
 
 **Examples:**
 ```bash
-polywave analyze-deps
-polywave analyze-deps --repo-dir /path/to/go/project
+polywave-web analyze-deps
+polywave-web analyze-deps --repo-dir /path/to/go/project
 ```
 
 ---
@@ -541,7 +541,7 @@ polywave analyze-deps --repo-dir /path/to/go/project
 Scan codebase for pre-implementation status of requirements.
 
 ```bash
-polywave analyze-suitability [flags]
+polywave-web analyze-suitability [flags]
 ```
 
 **Flags:**
@@ -554,8 +554,8 @@ polywave analyze-suitability [flags]
 
 **Examples:**
 ```bash
-polywave analyze-suitability
-polywave analyze-suitability --repo-dir /path/to/project
+polywave-web analyze-suitability
+polywave-web analyze-suitability --repo-dir /path/to/project
 ```
 
 ---
@@ -565,7 +565,7 @@ polywave analyze-suitability --repo-dir /path/to/project
 Detect cascade candidates from type renames via AST analysis.
 
 ```bash
-polywave detect-cascades [flags]
+polywave-web detect-cascades [flags]
 ```
 
 **Flags:**
@@ -578,8 +578,8 @@ polywave detect-cascades [flags]
 
 **Examples:**
 ```bash
-polywave detect-cascades
-polywave detect-cascades --repo-dir /path/to/project
+polywave-web detect-cascades
+polywave-web detect-cascades --repo-dir /path/to/project
 ```
 
 ---
@@ -589,7 +589,7 @@ polywave detect-cascades --repo-dir /path/to/project
 Detect shared types that need scaffold files from interface contracts.
 
 ```bash
-polywave detect-scaffolds [flags]
+polywave-web detect-scaffolds [flags]
 ```
 
 **Flags:**
@@ -602,8 +602,8 @@ polywave detect-scaffolds [flags]
 
 **Examples:**
 ```bash
-polywave detect-scaffolds
-polywave detect-scaffolds --repo-dir /path/to/project
+polywave-web detect-scaffolds
+polywave-web detect-scaffolds --repo-dir /path/to/project
 ```
 
 ---
@@ -613,7 +613,7 @@ polywave detect-scaffolds --repo-dir /path/to/project
 Extract build/test/lint/format commands from CI configs and project manifests.
 
 ```bash
-polywave extract-commands [flags]
+polywave-web extract-commands [flags]
 ```
 
 **Flags:**
@@ -626,8 +626,8 @@ polywave extract-commands [flags]
 
 **Examples:**
 ```bash
-polywave extract-commands
-polywave extract-commands --repo-dir /path/to/project
+polywave-web extract-commands
+polywave-web extract-commands --repo-dir /path/to/project
 ```
 
 ---
@@ -639,7 +639,7 @@ polywave extract-commands --repo-dir /path/to/project
 Extract agent-specific context from an IMPL manifest as JSON (E23 context payload).
 
 ```bash
-polywave extract-context --impl <path> --agent <id>
+polywave-web extract-context --impl <path> --agent <id>
 ```
 
 **Flags:**
@@ -654,7 +654,7 @@ polywave extract-context --impl <path> --agent <id>
 
 **Examples:**
 ```bash
-polywave extract-context --impl docs/IMPL/IMPL-oauth.yaml --agent A
+polywave-web extract-context --impl docs/IMPL/IMPL-oauth.yaml --agent A
 
 # Output:
 # {
@@ -674,7 +674,7 @@ polywave extract-context --impl docs/IMPL/IMPL-oauth.yaml --agent A
 Register a completion report for an agent in a manifest (reads YAML from stdin).
 
 ```bash
-polywave set-completion <manifest-path> <agent-id> < completion-report.yaml
+polywave-web set-completion <manifest-path> <agent-id> < completion-report.yaml
 ```
 
 **Arguments:**
@@ -710,7 +710,7 @@ EOF
 Update an agent's task prompt in a manifest (interactive editor).
 
 ```bash
-polywave update-agent-prompt --agent <id> < manifest.yaml > updated.yaml
+polywave-web update-agent-prompt --agent <id> < manifest.yaml > updated.yaml
 ```
 
 **Flags:**
@@ -723,7 +723,7 @@ polywave update-agent-prompt --agent <id> < manifest.yaml > updated.yaml
 
 **Examples:**
 ```bash
-polywave update-agent-prompt --agent B < docs/IMPL/IMPL-oauth.yaml > /tmp/updated.yaml
+polywave-web update-agent-prompt --agent B < docs/IMPL/IMPL-oauth.yaml > /tmp/updated.yaml
 mv /tmp/updated.yaml docs/IMPL/IMPL-oauth.yaml
 ```
 
@@ -738,7 +738,7 @@ mv /tmp/updated.yaml docs/IMPL/IMPL-oauth.yaml
 Render a YAML IMPL manifest as markdown (for human readability).
 
 ```bash
-polywave render < manifest.yaml > output.md
+polywave-web render < manifest.yaml > output.md
 ```
 
 **Input:** Reads YAML manifest from stdin
@@ -752,10 +752,10 @@ polywave render < manifest.yaml > output.md
 **Examples:**
 ```bash
 # Render to stdout
-polywave render < docs/IMPL/IMPL-oauth.yaml
+polywave-web render < docs/IMPL/IMPL-oauth.yaml
 
 # Save to file
-polywave render < docs/IMPL/IMPL-oauth.yaml > /tmp/IMPL-oauth.md
+polywave-web render < docs/IMPL/IMPL-oauth.yaml > /tmp/IMPL-oauth.md
 ```
 
 ---
@@ -765,7 +765,7 @@ polywave render < docs/IMPL/IMPL-oauth.yaml > /tmp/IMPL-oauth.md
 Write `POLYWAVE:COMPLETE` marker to an IMPL doc with completion date.
 
 ```bash
-polywave mark-complete --date <YYYY-MM-DD> < manifest.yaml > updated.yaml
+polywave-web mark-complete --date <YYYY-MM-DD> < manifest.yaml > updated.yaml
 ```
 
 **Flags:**
@@ -776,11 +776,11 @@ polywave mark-complete --date <YYYY-MM-DD> < manifest.yaml > updated.yaml
 
 **Examples:**
 ```bash
-polywave mark-complete < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
+polywave-web mark-complete < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
 mv /tmp/complete.yaml docs/IMPL/IMPL-oauth.yaml
 
 # Custom date
-polywave mark-complete --date 2026-03-15 < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
+polywave-web mark-complete --date 2026-03-15 < docs/IMPL/IMPL-oauth.yaml > /tmp/complete.yaml
 ```
 
 **See also:** `status`
