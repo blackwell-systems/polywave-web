@@ -5,7 +5,7 @@
 ![Version](https://img.shields.io/badge/version-0.20.3-blue)
 [![Buy Me A Coffee](https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg)](https://buymeacoffee.com/blackwellsystems)
 
-**Web UI for the [Polywave protocol](https://github.com/blackwell-systems/polywave)** — review IMPL docs, monitor live wave execution, and chat with Claude about your implementation plans.
+**Web UI for [Polywave](https://github.com/blackwell-systems/polywave)** — review IMPL docs, monitor live wave execution, and chat with Claude about your implementation plans.
 
 ## What is this?
 
@@ -18,7 +18,7 @@ Polywave coordinates multiple AI agents working in parallel on non-overlapping p
 - **HTTP API** (42 endpoints) for programmatic access to Polywave operations
 - **CLI interface** (`./polywave`) as an alternative to the web UI
 
-The web server imports the [polywave-go](https://github.com/blackwell-systems/polywave-go) engine package for all Polywave orchestration logic. The protocol specification lives in [polywave](https://github.com/blackwell-systems/polywave).
+The web server imports the [polywave-go](https://github.com/blackwell-systems/polywave-go) engine package for all Polywave orchestration logic. The protocol specification lives in [polywave-protocol](https://github.com/blackwell-systems/polywave-protocol).
 
 **Note:** There's also a separate `polywavetools` CLI in polywave-go for protocol-level operations (CI/CD, power users). See [polywave-go/docs/binaries.md](https://github.com/blackwell-systems/polywave-go/blob/develop/docs/binaries.md) for when to use which binary.
 
@@ -118,17 +118,17 @@ The binary also provides a CLI for scripting and CI/CD:
 ./polywave scout --feature "add caching layer"
 
 # Create scaffold files from IMPL doc
-./polywave scaffold --impl docs/IMPL/IMPL-caching.md
+./polywave scaffold --impl docs/IMPL/IMPL-caching.yaml
 
 # Execute all waves automatically
-./polywave wave --impl docs/IMPL/IMPL-caching.md --auto
+./polywave wave --impl docs/IMPL/IMPL-caching.yaml --auto
 
 # Check status
-./polywave status --impl docs/IMPL/IMPL-caching.md
-./polywave status --impl docs/IMPL/IMPL-caching.md --json
+./polywave status --impl docs/IMPL/IMPL-caching.yaml
+./polywave status --impl docs/IMPL/IMPL-caching.yaml --json
 
 # Manual merge (recovery)
-./polywave merge --impl docs/IMPL/IMPL-caching.md --wave 1
+./polywave merge --impl docs/IMPL/IMPL-caching.yaml --wave 1
 ```
 
 See [CLI Reference](docs/reference/cli-reference.md) for full command reference.
@@ -217,7 +217,7 @@ polywave-web/
 ```
 
 **Dependency chain**:
-- `polywave-web` (this repo) → imports `polywave-go` (engine) → references `polywave` (protocol spec)
+- `polywave-web` (this repo) -> imports `polywave-go` (engine) -> references `polywave-protocol` (spec)
 
 The engine repo (`polywave-go`) provides:
 - `pkg/engine` — RunScout, RunChat, StartWave, MergeWave
@@ -352,7 +352,7 @@ curl -N http://localhost:7432/api/wave/oauth/events
 
 ## Protocol Compliance
 
-Implements [Polywave Protocol v0.14.5](https://github.com/blackwell-systems/polywave):
+Implements [Polywave Protocol](https://github.com/blackwell-systems/polywave-protocol):
 
 | Invariant | Enforcement |
 |-----------|-------------|
@@ -375,7 +375,7 @@ ScoutPending → Reviewed → ScaffoldPending → WavePending → WaveExecuting
 
 Terminal states: `NotSuitable`, `Complete`. Recovery state: `Blocked`.
 
-See [protocol/state-machine.md](https://github.com/blackwell-systems/polywave/blob/main/protocol/state-machine.md) for transition logic.
+See [state-machine.md](https://github.com/blackwell-systems/polywave-protocol/blob/main/state-machine.md) for transition logic.
 
 ## Troubleshooting
 
@@ -383,7 +383,7 @@ See [protocol/state-machine.md](https://github.com/blackwell-systems/polywave/bl
 
 ```bash
 # Run the validator manually
-bash ~/.claude/skills/polywave/scripts/validate-impl.sh docs/IMPL/IMPL-feature.md
+polywave-tools validate docs/IMPL/IMPL-feature.yaml
 ```
 
 Common issues:
@@ -426,7 +426,7 @@ pkill -f "polywave serve"
 This means I1 was violated (overlapping file ownership). Check the file ownership table in the IMPL doc:
 
 ```bash
-./polywave status --impl docs/IMPL/IMPL-feature.md --missing
+./polywave status --impl docs/IMPL/IMPL-feature.yaml --missing
 ```
 
 If two agents claim the same file, edit the IMPL doc to reassign ownership, then re-run the wave.
@@ -441,6 +441,7 @@ Issues and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## Links
 
-- **Protocol spec**: [polywave](https://github.com/blackwell-systems/polywave)
+- **Protocol spec**: [polywave-protocol](https://github.com/blackwell-systems/polywave-protocol)
+- **Claude Code skill**: [polywave](https://github.com/blackwell-systems/polywave)
 - **Go engine**: [polywave-go](https://github.com/blackwell-systems/polywave-go)
 - **Buy me a coffee**: [buymeacoffee.com/blackwellsystems](https://buymeacoffee.com/blackwellsystems)
